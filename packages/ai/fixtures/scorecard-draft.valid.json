@@ -1,0 +1,59 @@
+{
+  "contract": "SCORECARD_DRAFT",
+  "draft_only": true,
+  "ambiguous_phrases": [
+    {
+      "source_phrase": "Clear written communication",
+      "ambiguity_note": "The phrase does not define observable work evidence.",
+      "ambiguity_status": "HUMAN_ONLY",
+      "suggested_interview_question": "Describe a time you made a complex technical decision clear to a non-specialist."
+    }
+  ],
+  "criteria": [
+    {
+      "client_id": "criterion-draft-1",
+      "name": "Production service operations",
+      "type": "REQUIRED",
+      "definition": "Experience operating production services and responding to incidents.",
+      "accepted_evidence": [
+        "A production service ownership scope is stated",
+        "An incident response example is stated"
+      ],
+      "alternative_evidence": ["On-call responsibility for a comparable service is stated"],
+      "evidence_fields": [
+        {
+          "field_name": "operational_scope",
+          "description": "What production service or responsibility was operated"
+        },
+        {
+          "field_name": "incident_response",
+          "description": "A concrete incident response or reliability outcome"
+        }
+      ],
+      "resume_assessable": true,
+      "source_phrase": "operating production services and responding to incidents",
+      "ambiguity_note": null,
+      "ambiguity_status": "CLEAR",
+      "suggested_interview_question": null
+    },
+    {
+      "client_id": "criterion-draft-2",
+      "name": "Written communication",
+      "type": "INTERVIEW_ONLY",
+      "definition": "Clarify communication practices through a structured interview.",
+      "accepted_evidence": [],
+      "alternative_evidence": [],
+      "evidence_fields": [
+        {
+          "field_name": "communication_example",
+          "description": "A concrete example to explore during interview"
+        }
+      ],
+      "resume_assessable": false,
+      "source_phrase": "Clear written communication",
+      "ambiguity_note": "The job description does not define observable evidence.",
+      "ambiguity_status": "HUMAN_ONLY",
+      "suggested_interview_question": "Describe a time you made a complex technical decision clear to a non-specialist."
+    }
+  ]
+}

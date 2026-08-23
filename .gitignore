@@ -7,11 +7,17 @@ test-results/
 .env
 .env.local
 .env.*.local
+.env.development
+.env.alpha
+.env.*.development
+.env.*.alpha
 *.log
+*.tsbuildinfo
 .DS_Store
 
 # Local Supabase
 supabase/.temp/
+supabase/.branches/
 
 # Confidential/local reference material
 references/private/
