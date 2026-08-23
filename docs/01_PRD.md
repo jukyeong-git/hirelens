@@ -22,6 +22,7 @@ Build a demo-quality ATS that proves this statement:
 10. Append-only audit timeline
 11. Synthetic demo seed and reset
 12. Unit, integration, E2E, security, and AI eval gates
+13. Internal in-app notifications with role-based recipients
 
 ### P1
 
@@ -44,9 +45,9 @@ Build a demo-quality ATS that proves this statement:
 
 | Role | Main permissions |
 |---|---|
-| `ADMIN` | manage demo users, inspect all jobs, reset demo, view audit |
-| `RECRUITER` | create jobs, upload applications, review evidence, request manager review |
-| `HIRING_MANAGER` | approve scorecards, review assigned candidates, save human decisions |
+| `ADMIN` | manage users and roles, inspect all jobs, reset demo, manage scorecards, processing, notes, decisions, and view audit |
+| `RECRUITER` | create jobs, upload applications, review evidence, assign candidates, request manager review, manage own temporary notes |
+| `HIRING_MANAGER` | approve scorecards, review assigned candidates, save and change human decisions |
 
 The exact production organization and role model is not defined by the source brief. This role model is an MVP decision.
 
@@ -72,7 +73,7 @@ The exact production organization and role model is not defined by the source br
 - `HOLD`
 - `DO_NOT_PROCEED`
 
-Only humans may create a decision.
+Only authenticated human roles may create or change a decision. `HIRING_MANAGER` and `ADMIN` may write decisions; AI and worker identities never have a decision-write path. Every initial decision and decision change requires a structured reason.
 
 ## 5. Functional requirements
 
@@ -101,11 +102,11 @@ Acceptance criteria:
 
 ### FR-003 — Approve and version a scorecard
 
-A hiring manager can edit and approve a draft scorecard.
+An authorized hiring manager or admin can edit and approve a draft scorecard.
 
 Acceptance criteria:
 
-- Approval requires an authenticated hiring manager.
+- Approval requires an authenticated hiring manager or admin.
 - An approved version is immutable.
 - Editing an approved scorecard creates a new version.
 - Every analysis references exactly one approved version.
@@ -135,6 +136,9 @@ Acceptance criteria:
 - Duplicate task delivery does not duplicate evidence.
 - Progress and failure reason are visible.
 - Retries are bounded and categorized.
+- The demo uses `OPENAI_MODEL=gpt-5.6-luna` through a server-side environment variable.
+- Each application and scorecard version has at most one retry after the initial attempt.
+- Demo input and output token caps and an application-level cost budget prevent unbounded model spend.
 
 ### FR-006 — Extract criterion-level evidence
 
@@ -173,14 +177,15 @@ Acceptance criteria:
 
 ### FR-009 — Complete a 60-second structured review
 
-A hiring manager can save a concise review.
+A hiring manager or admin can save a concise human review.
 
 Acceptance criteria:
 
 - The reviewer selects a decision, structured reason, and confidence.
-- `DO_NOT_PROCEED` requires a reason.
+- Every initial decision requires a structured reason.
+- Every decision change requires a structured reason.
 - An optional note and suggested interview question may be added.
-- The review stores actor and time.
+- The review stores actor, role, reason, prior value when changed, and time.
 - The review can be changed only through a new decision event, not silent overwrite.
 
 ### FR-010 — Preserve audit history
@@ -195,22 +200,32 @@ Minimum events:
 - resume uploaded,
 - processing started/completed/failed,
 - review assigned,
-- human decision created/changed.
+- human decision created/changed,
+- user or role created/changed/disabled,
+- scorecard or job changed,
+- processing retried/quarantined,
+- evidence changed or restored,
+- review note created/edited/soft-deleted/restored,
+- demo reset,
+- notification sent or failed.
 
 Acceptance criteria:
 
 - Events are append-only.
-- Events contain aggregate ID, actor or system identity, timestamp, correlation ID, and version references.
+- Events contain aggregate ID, actor or system identity and role, action, target, before/after values when applicable, reason when applicable, timestamp, correlation ID, source, result, and version references.
+- Admin may perform all product operations but may not update or delete audit events.
 - Audit payloads do not contain raw resume text.
 
 ### FR-011 — Recover from processing errors
 
-A recruiter or admin can understand and retry eligible failures.
+An admin can understand and retry eligible failures; the responsible user receives normal workflow notifications, while processing failures notify admin only in P0.
 
 Acceptance criteria:
 
 - Retryable and non-retryable failures are distinct.
 - A retry creates a new processing attempt under the same idempotency key/version contract.
+- Only bounded transient failures are retried; policy refusals, schema failures, invalid pages, and fabricated quotes are quarantined.
+- After the single retry fails, the processing state becomes `FAILED` and an in-app admin notification is created.
 - Invalid model evidence is quarantined.
 - A failed analysis never changes the human decision state.
 
@@ -232,6 +247,7 @@ Acceptance criteria:
 - Secret keys are server-only.
 - Resume files are private.
 - No PII in logs.
+- Audit events are append-only and protected at the database layer.
 - Demo uses synthetic data.
 
 ### Reliability
@@ -240,11 +256,13 @@ Acceptance criteria:
 - Task failures are observable.
 - Partial batch completion is supported.
 - Human decisions remain available when AI services are unavailable.
+- Internal notifications are delivered to the responsible role; processing failures are delivered to admins only in P0.
 
 ### Traceability
 
 - AI and human outputs are distinguishable.
 - Model, prompt, schema, scorecard, and source versions are recorded.
+- Model token usage, attempt count, and estimated cost are recorded without resume text.
 
 ### Accessibility
 
@@ -266,6 +284,7 @@ Given:
 - one approved backend-engineer scorecard,
 - 20 synthetic PDF resumes,
 - one recruiter and one hiring manager,
+- one admin,
 
 When:
 

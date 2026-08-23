@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "preserve",
+    "strict": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "allowJs": false,
+    "baseUrl": ".",
+    "paths": {
+      "@hirelens/domain": ["packages/domain/src/index.ts"],
+      "@hirelens/ai": ["packages/ai/src/index.ts"],
+      "@hirelens/database": ["packages/database/src/index.ts"],
+      "@hirelens/pdf": ["packages/pdf/src/index.ts"]
+    }
+  }
+}

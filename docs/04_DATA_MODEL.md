@@ -16,15 +16,16 @@ HIRING_MANAGER
 
 ```text
 DRAFT
-OPEN
-PAUSED
-CLOSED
+SCORECARD_PENDING_APPROVAL
+READY_FOR_INTAKE
+ARCHIVED
 ```
 
 ### Scorecard status
 
 ```text
 DRAFT
+PENDING_APPROVAL
 APPROVED
 SUPERSEDED
 ```
@@ -89,6 +90,11 @@ LOW
 
 Do not use real personal profiles in seed data.
 
+For the HL-020 Job workspace, Admin can read all profiles, Recruiters can read
+Hiring Manager profiles for assignment, and authorized Job participants can read
+the other participant profile needed to render the list. Browser access remains
+publishable-key plus authenticated-session only.
+
 ### `jobs`
 
 - `id`
@@ -108,11 +114,24 @@ Do not use real personal profiles in seed data.
 - `version_number`
 - `status`
 - `source_job_description_hash`
+- `prompt_version`
+- `schema_version`
+- `model_id`
+- `ambiguous_phrases`
+- `created_by`
 - `approved_by`
 - `approved_at`
+- `content_revision`
 - `created_at`
 
-Invariant: `(job_id, version_number)` is unique.
+`ambiguous_phrases` stores only structured review metadata: the original source
+phrase when available, why it is ambiguous, the `CLEAR`, `AMBIGUOUS`, or
+`HUMAN_ONLY` status, and an optional interview question. It does not store a
+model verdict or a hiring decision.
+
+Invariant: `(job_id, version_number)` is unique and a draft is never used for
+resume analysis. Only an approved version may be consumed by the processing
+pipeline.
 
 Invariant: an approved version cannot be updated.
 
@@ -125,11 +144,56 @@ Invariant: an approved version cannot be updated.
 - `definition`
 - `accepted_evidence`
 - `alternative_evidence`
+- `evidence_fields`
 - `resume_assessable`
+- `source_phrase`
+- `ambiguity_note`
+- `ambiguity_status`
+- `suggested_interview_question`
 - `display_order`
 - `created_at`
 
-`accepted_evidence` and `alternative_evidence` may be structured JSON arrays, validated at the application boundary.
+`accepted_evidence`, `alternative_evidence`, and `evidence_fields` are
+structured JSON arrays validated by the shared Zod contract and the database
+boundary. `INTERVIEW_ONLY` and `HUMAN_ONLY` criteria cannot be marked as
+resume-assessable. A criterion marked resume-assessable must include accepted
+evidence.
+
+For HL-021, Recruiters and Admins request a draft through the atomic
+`create_scorecard_draft` RPC. Direct application writes to scorecard versions
+and criteria are revoked. Admin and assigned Job participants may read the
+result through RLS; Hiring Manager approval and immutable edit/version UI are
+implemented by HL-023.
+
+For HL-022, only the assigned Hiring Manager or Admin may resolve a non-`CLEAR`
+criterion through the `review_scorecard_ambiguity` RPC. A clarification changes
+the criterion to `CLEAR`; an interview-only resolution changes its type to
+`INTERVIEW_ONLY`, sets `resume_assessable` to false, and uses `HUMAN_ONLY` for
+the ambiguity status. The RPC accepts an expected criterion snapshot and
+rejects stale edits. It retains the original AI `ambiguous_phrases` metadata
+and writes a safe before/after audit event with the human reason.
+
+For HL-023, the assigned Hiring Manager or Admin approves a `DRAFT` through
+the atomic `approve_scorecard` RPC. Every approval requires a reason and is
+blocked while any criterion remains `AMBIGUOUS`. Approval sets the Job to
+`READY_FOR_INTAKE`; when a replacement draft is approved, the prior active
+version becomes `SUPERSEDED` while retaining its original approver and time.
+There is at most one active `APPROVED` version per Job.
+
+`content_revision` is a positive concurrency token incremented whenever draft
+criteria change. Approval compares the value shown to the reviewer with the
+locked database value so a criterion changed after page load cannot be
+silently approved. The original `create_scorecard_draft` entry point is
+initial-only; after any version exists, subsequent drafts must use the
+reasoned Hiring Manager/Admin revision workflow.
+
+Approved and superseded versions and their criteria are immutable at the
+database boundary. `create_scorecard_revision` copies an active approved
+version into the next `DRAFT` version without changing the source. The source
+remains active for analysis until the replacement draft is explicitly
+approved. New processing may use only the active `APPROVED` version; future
+processing tables must retain the exact historical version reference after
+supersession.
 
 ### `candidates`
 
@@ -282,16 +346,16 @@ Add indexes based on actual query plans, not only this list.
 
 ## 5. RLS access matrix
 
-| Resource | Admin | Recruiter | Hiring manager |
-|---|---|---|---|
-| Jobs | all demo jobs | assigned/owned | assigned |
-| Scorecards | all | read/draft | read/edit/approve assigned |
-| Applications | all | assigned job | assigned job |
-| Resume pages | all | assigned job | assigned job |
-| Evidence | all | assigned job | assigned job |
-| Human reviews | all | read/create as self | read/create as self |
-| Audit | read | assigned aggregate read | assigned aggregate read |
-| Audit update/delete | never | never | never |
+| Resource            | Admin         | Recruiter               | Hiring manager             |
+| ------------------- | ------------- | ----------------------- | -------------------------- |
+| Jobs                | all demo jobs | assigned/owned          | assigned                   |
+| Scorecards          | all           | read/draft              | read/edit/approve assigned |
+| Applications        | all           | assigned job            | assigned job               |
+| Resume pages        | all           | assigned job            | assigned job               |
+| Evidence            | all           | assigned job            | assigned job               |
+| Human reviews       | all           | read/create as self     | read/create as self        |
+| Audit               | read          | assigned aggregate read | assigned aggregate read    |
+| Audit update/delete | never         | never                   | never                      |
 
 Server-side secret access does not replace user authorization. Privileged server operations must still verify the authenticated user or system task.
 

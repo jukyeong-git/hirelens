@@ -30,7 +30,29 @@ HireLens는 **AI가 지원자를 대신 선발하는 시스템이 아니라, 사
 - **Test:** Vitest + Playwright
 - **Deploy:** Vercel + Railway 또는 동등한 컨테이너 호스팅
 
-버전은 프로젝트 스캐폴딩 시점에 공식 문서를 확인해 고정합니다. 문서에 특정 패키지 버전을 선반영하지 않습니다.
+HL-001에서 사용하는 패키지 버전은 루트 및 앱의 `package.json`과 `pnpm-lock.yaml`에 고정했습니다.
+
+## HL-001 실행 기반
+
+현재 저장소에는 실행 가능한 웹 셸, 장기 실행 워커 셸, 공유 패키지 경계, 환경변수 검증, CI 검증 명령이 있습니다.
+
+```bash
+pnpm install
+pnpm dev
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm env:check
+```
+
+일상 개발의 웹·워커와 Alpha 배포는 동일한 hosted Alpha Supabase 프로젝트에 연결하며 Docker를 실행할 필요가 없습니다. `.env.example`의 `SUPABASE_ENV=hosted-alpha`와 공용 Supabase URL·publishable key를 설정하세요. 로컬과 Alpha는 `APP_ENV`만 각각 `development`와 `alpha`로 다르게 사용합니다.
+
+`pnpm db:start`는 hosted 환경에서는 아무 컨테이너도 시작하지 않습니다. RLS pgTAP 테스트가 필요할 때만 `SUPABASE_ENV=local-docker pnpm db:start`로 로컬 Supabase를 켭니다. `pnpm test:integration`도 이 일회성 로컬 테스트 스택을 대상으로 실행합니다.
+
+공용 hosted Alpha 프로젝트에 migration을 적용할 때는 project ref를 확인한 뒤 `SUPABASE_ENV=hosted-alpha SUPABASE_PROJECT_REF=<alpha-ref> SUPABASE_CONFIRM_MIGRATION=YES pnpm db:push`로 실행합니다. 로컬과 Alpha가 같은 데이터를 사용하므로 `db:reset`은 계속 local Docker의 합성 데모 데이터에만 허용됩니다.
+
+HL-001에는 Job, Scorecard, 후보자, PDF 처리, OpenAI 호출, Supabase 스키마/RLS, Slack·이메일 알림을 포함하지 않습니다.
 
 ## 시작 순서
 

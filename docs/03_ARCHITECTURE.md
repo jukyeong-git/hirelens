@@ -181,21 +181,17 @@ A batch is not all-or-nothing.
 
 ## 10. Environment plan
 
-### Local
+### Shared developer and Alpha backend
 
-- local Supabase,
-- local Next.js,
-- local worker,
-- synthetic files,
-- mocked or development model access.
+- one hosted Alpha Supabase project,
+- local Next.js and worker for development,
+- deployed web and worker for Alpha,
+- shared synthetic seed, Auth users, PostgreSQL, and private Storage,
+- no Docker Supabase containers during normal development.
 
-### Demo
+Local development and Alpha use the same project ref, URL, publishable key, server key, database, Auth users, and Storage bucket. Only `APP_ENV` differs: `development` locally and `alpha` in the Alpha deployment. The repository still keeps a local Supabase configuration for on-demand migration and pgTAP authorization tests; it is not the application database.
 
-- isolated Supabase project,
-- deployed web and worker,
-- synthetic seed,
-- restricted owner account,
-- no customer integrations.
+Because the environments share data, all data remains synthetic for the demo. Destructive reset is never allowed against the hosted Alpha project; migrations are forward-only and operational reset is a separate guarded workflow.
 
 ### Production-like pilot
 
