@@ -1,0 +1,10 @@
+# Project-scoped Codex configuration.
+# Codex loads this only after the repository is trusted.
+
+[agents]
+enabled = true
+max_concurrent_threads_per_session = 4
+interrupt_message = true
+
+# Model, provider, and approval preferences intentionally inherit from the user.
+# Avoid forcing machine-specific settings into the repository.
