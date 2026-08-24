@@ -1,6 +1,6 @@
 begin;
 
-select plan(17);
+select plan(18);
 
 set local role authenticated;
 
@@ -18,7 +18,7 @@ select is(
 
 select is(
   (select count(*)::integer from public.profiles),
-  4,
+  5,
   'Admin can read all demo profiles'
 );
 
@@ -40,7 +40,7 @@ select is(
   'Recruiter can list Hiring Manager profiles for the Job form'
 );
 
-select lives_ok(
+select throws_ok(
   $$
     insert into public.jobs (
       title,
@@ -56,7 +56,9 @@ select lives_ok(
       '00000000-0000-0000-0000-000000000004'
     )
   $$,
-  'Recruiter can create an assigned job'
+  '42501',
+  'new row violates row-level security policy for table "jobs"',
+  'Recruiter cannot create a requisition for a Hiring Manager'
 );
 
 select lives_ok(
@@ -92,7 +94,13 @@ select is(
   'Hiring Manager can read the Recruiter assigned to the visible job'
 );
 
-select throws_ok(
+select is(
+  (select count(*)::integer from public.profiles where role = 'REQUISITION_APPROVER'),
+  1,
+  'Hiring Manager can list Requisition Approvers for assignment'
+);
+
+select lives_ok(
   $$
     insert into public.jobs (
       title,
@@ -108,9 +116,7 @@ select throws_ok(
       '00000000-0000-0000-0000-000000000003'
     )
   $$,
-  '42501',
-  'new row violates row-level security policy for table "jobs"',
-  'Hiring Manager cannot create a job'
+  'Hiring Manager can create an assigned requisition'
 );
 
 select ok(

@@ -23,19 +23,21 @@ Primary job: operate the demo, inspect failures, manage access, and review the a
 
 ### Candidate
 
-Primary job: submit a synthetic or explicitly anonymized demo PDF through a
+Primary job: submit a PDF resume through a
 published posting. The candidate has no account and cannot view internal
 application, processing, or review data.
 
-## 2. Flow A — Requisition, posting, and scorecard setup
+## 2. Flow A — Requisition, posting, and application-review-criteria setup
 
 ```text
-Hiring Manager creates requisition
-→ defines job description and requests scorecard draft
+Hiring Manager enters title, department, and hiring need
+→ optionally and explicitly requests an editable AI Job Requisition/job-description draft
+→ reviews or edits the description and explicitly saves the requisition
+→ explicitly requests an AI-proposed application-review-criteria draft
 → system flags ambiguous phrases
 → hiring manager edits criteria
 → manager classifies each criterion
-→ manager approves version
+→ manager approves the review-criteria version
 → Requisition Approver approves or returns requisition with a reason
 → Recruiter publishes posting
 ```
@@ -51,7 +53,6 @@ Hiring Manager creates requisition
 
 ```text
 Candidate opens published posting
-→ attests data is synthetic/anonymized
 → selects PDF
 → client validates basic type/size
 → server creates candidate/application/file rows
@@ -60,7 +61,7 @@ Candidate opens published posting
 → UI shows per-file state
 ```
 
-Recruiter/Admin batch upload remains an internal synthetic-demo operations path.
+Recruiter/Admin batch upload does not classify file content; presentation fixtures remain synthetic.
 
 ### Failure branches
 

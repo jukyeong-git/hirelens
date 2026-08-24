@@ -46,6 +46,23 @@ async function getCriteriaForVersion(
   );
 }
 
+export async function getScorecardVersion(
+  client: SupabaseRestClient,
+  scorecardVersionId: string,
+): Promise<ScorecardDetail | null> {
+  const versionParams = new URLSearchParams({
+    select: versionSelect,
+    id: `eq.${scorecardVersionId}`,
+    limit: "1",
+  });
+  const versions = await client.request<ScorecardVersionRecord[]>(
+    `/rest/v1/scorecard_versions?${versionParams.toString()}`,
+  );
+  const version = versions[0];
+  if (!version) return null;
+  return { version, criteria: await getCriteriaForVersion(client, version.id) };
+}
+
 export async function getScorecardForJob(
   client: SupabaseRestClient,
   jobId: string,

@@ -10,13 +10,14 @@ This document defines controls for the demo. It is not a declaration of legal co
 
 - synthetic job descriptions,
 - synthetic resumes,
+- real applicant resumes submitted at runtime through the private intake path,
 - clearly fake user accounts,
 - fake candidate labels,
 - generated test email addresses using reserved/example domains where possible.
 
 ### Prohibited
 
-- real applicant resumes,
+- real applicant resumes in Git, seeds, fixtures, screenshots, or logs,
 - real phone numbers or addresses,
 - customer confidential documents in Git,
 - copied Slack messages containing personal data,
@@ -44,7 +45,7 @@ The provided challenge document is confidential and must not be committed to the
 ### Authentication and authorization
 
 - authenticated access for all internal application, review, decision, and administration routes,
-- unauthenticated access only to a narrow published-posting projection and the synthetic/anonymized public submission endpoint,
+- unauthenticated access only to a narrow published-posting projection and the server-owned public submission endpoint,
 - explicit roles,
 - server-side authorization on every write,
 - RLS default deny,
@@ -68,20 +69,24 @@ The provided challenge document is confidential and must not be committed to the
 - no public CDN caching,
 - deletion workflow for file and derived artifacts.
 
-### Synthetic public submission
+### Candidate public submission
 
-- published posting and public submission routes accept only synthetic or explicitly anonymized demo data;
-- the form requires an explicit attestation and must not request real contact details for the demo;
+- published posting and public submission routes accept technically valid PDFs without assigning a content classification;
+- the form does not ask the submitter to classify the file as real or test data and does not infer that classification;
 - submission uses a dedicated server-side transaction, not anonymous access to internal upload RPCs, database tables, or Storage policies;
 - public responses never disclose candidate, application, Storage, signed URL, queue, or processing identifiers;
-- actual applicant data, real privacy notices, retention/deletion/withdrawal workflows, and abuse-control operations remain pilot prerequisites.
+- approved privacy notice ownership, retention/deletion/withdrawal workflows, and abuse-control operations remain pilot prerequisites.
 
 ### Model requests
 
-- synthetic data in demo,
+- synthetic data in presentations, seeds, resets, and committed fixtures,
+- minimize direct identifiers before model requests for every resume,
 - minimize direct identifiers,
 - use `store: false` by default,
 - send only required pages and criteria,
+- for Job Requisition drafting, send only the human-entered title, department,
+  and optional hiring need; keep the generated text transient until an explicit
+  human save,
 - no model request body in application logs,
 - provider key exists only on server/worker.
 
@@ -106,6 +111,10 @@ Do not log:
 - API key,
 - full prompt,
 - full model output containing resume content.
+
+The same no-raw-content rule applies to Job Requisition draft prompts and
+outputs. Log only opaque request references, outcome category, duration, and
+model/prompt/schema versions when observability is needed.
 
 ### Audit
 

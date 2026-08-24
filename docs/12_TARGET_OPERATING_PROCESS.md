@@ -2,7 +2,7 @@
 
 ## 1. Purpose and boundary
 
-HireLens is a synthetic-demo hiring workflow that includes the smallest
+HireLens is a hiring workflow that uses synthetic presentation data and includes the smallest
 requisition, posting, and candidate-intake path needed to demonstrate the
 evidence-review and reasoned-decision module. It is not an enterprise ATS or
 HRIS system of record.
@@ -15,15 +15,16 @@ This process intentionally addresses only the Builderthon Judgment Track bottlen
 - the organization must retain evidence and reasons for decisions.
 
 P0 includes a minimal business requisition approval, public posting, and
-account-free candidate submission. It accepts only synthetic or explicitly
-anonymized demo data. Budget approval, candidate communication, scheduling,
+account-free candidate submission. Intake accepts real resumes as well as test
+material, while seed, reset, committed fixtures, and presentations remain
+synthetic. Budget approval, candidate communication, scheduling,
 offer, hire, and HRIS records remain outside HireLens.
 
 ## 2. Minimal end-to-end process
 
 ```text
 Hiring Manager requisition + screening criteria → business approval
-  → Recruiter posting → synthetic candidate submission
+  → Recruiter posting → candidate submission
   → Evidence processing and visible exception handling
   → Recruiter triage and review request
   → Hiring Manager’s interview-progression decision
@@ -39,29 +40,39 @@ example an organizational leader, budget owner, or HRBP) approves or returns
 the requisition with a reason. `ADMIN` is a system-operations role and does not
 approve or return requisitions.
 
-The Recruiter prepares a Job Posting and may publish it only after both the
-requisition and one screening-criteria version are human-approved. The public posting
-can be closed to stop new submissions while preserving internal review data.
+The Recruiter prepares a Job Posting and may publish or close it only after
+both the requisition and one screening-criteria version are human-approved.
+`ADMIN` may perform those actions only as a system-operations override. Closing
+stops new submissions while preserving internal review data; the P0 posting is
+terminal after close and is not reopened.
+The candidate-facing copy is separate from the internal Requisition source.
+HL-028 provides the public page. HL-029 provides the
+one-PDF submission form, server-owned private upload
+transaction, a server-verified demo access code, and a generic receipt that
+reveals no internal IDs or processing details.
 
 ### Step 1 — Define and approve the evaluation policy
 
-HireLens creates a draft screening-criteria version from the Hiring Manager's
-job description. The Hiring Manager reviews it, resolves ambiguous language,
+After the Hiring Manager explicitly requests it, HireLens creates a draft
+screening-criteria version from the job description. The user-facing term is
+`지원서 검토 기준` (`Scorecard` is the internal contract name). The Hiring Manager
+reviews it, resolves ambiguous language,
 and approves a version with a reason.
 
-Gate: only one active, human-approved Scorecard version may be used for intake and analysis. Approved versions are immutable.
+Gate: only one active, human-approved application-review-criteria version may
+be used for intake and analysis. Approved versions are immutable.
 
 Output: a versioned set of `REQUIRED`, `PREFERRED`, and `INTERVIEW_ONLY` criteria, including what counts as resume evidence.
 
 ### Step 2 — Candidate submission and application registration
 
-An account-free candidate uses a published posting to submit a synthetic or
-explicitly anonymized PDF. The server registers the application, stores the
+An account-free candidate uses a published posting to submit a PDF without
+classifying its content as real or test material. The server registers the application, stores the
 resume in private Storage, and associates it with the active Scorecard version.
 Recruiter/Admin batch upload remains a demo-operations path.
 
-Gate: input must be an allowed PDF within the size limit and the candidate must
-attest that it is synthetic or anonymized demo data. Every file receives a
+Gate: input must be an allowed PDF within the size limit. Content classification
+and synthetic-data attestation are not intake gates. Every file receives a
 visible processing state; no received application is silently dropped.
 
 ### Step 3 — Process evidence and handle exceptions
@@ -104,16 +115,16 @@ interviews, make offers, or update an external ATS.
 
 ## 3. Ownership
 
-| Activity | Owner | HireLens responsibility |
-| --- | --- | --- |
-| Requisition creation | Hiring Manager | Create requisition and approve screening criteria |
-| Requisition approval | Requisition Approver | Reasonedly approve or return a submitted requisition |
-| Job posting and closure | Recruiter | Publish/close an approved posting |
-| Intake completeness and review routing | Recruiter | Register/import application, triage, assign review |
-| PDF and evidence processing | System Worker | Extract and validate evidence only |
-| Interview-progression review | Hiring Manager | Decide interview, hold, or more information required |
-| Hiring judgment | Hiring Manager; Admin exception | Record a separate reasoned human decision |
-| Access, failure recovery, change history | Admin | Operate safely without altering retained history |
+| Activity                                 | Owner                           | HireLens responsibility                              |
+| ---------------------------------------- | ------------------------------- | ---------------------------------------------------- |
+| Requisition creation                     | Hiring Manager                  | Create requisition and approve screening criteria    |
+| Requisition approval                     | Requisition Approver            | Reasonedly approve or return a submitted requisition |
+| Job posting and closure                  | Recruiter                       | Publish/close an approved posting                    |
+| Intake completeness and review routing   | Recruiter                       | Register/import application, triage, assign review   |
+| PDF and evidence processing              | System Worker                   | Extract and validate evidence only                   |
+| Interview-progression review             | Hiring Manager                  | Decide interview, hold, or more information required |
+| Hiring judgment                          | Hiring Manager; Admin exception | Record a separate reasoned human decision            |
+| Access, failure recovery, change history | Admin                           | Operate safely without altering retained history     |
 
 ## 4. Explicitly outside this process
 

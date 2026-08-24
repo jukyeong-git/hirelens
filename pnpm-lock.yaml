@@ -75,6 +75,9 @@ importers:
 
   apps/worker:
     dependencies:
+      '@hirelens/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
       '@hirelens/database':
         specifier: workspace:*
         version: link:../../packages/database

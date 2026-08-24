@@ -21,12 +21,7 @@ export class PdfExtractionError extends Error {
 }
 
 export function normalizePdfText(value: string): string {
-  return value
-    .normalize("NFKC")
-    .split("\0")
-    .join("")
-    .replace(/\s+/gu, " ")
-    .trim();
+  return value.normalize("NFKC").split("\0").join("").replace(/\s+/gu, " ").trim();
 }
 
 export function sha256Text(value: string): string {

@@ -1,10 +1,17 @@
-import { listJobs, listNotifications, listProfiles } from "@hirelens/database";
+import {
+  listJobs,
+  listNotifications,
+  listProfiles,
+  listRequisitionStatusHistory,
+} from "@hirelens/database";
 
 import { JobCreateForm } from "./_components/job-create-form";
 import { JobList } from "./_components/job-list";
 import { LoginForm } from "./_components/login-form";
+import { RequisitionApprovalQueue } from "./_components/requisition-approval-queue";
 import { markNotificationReadAction, signOutAction } from "./actions";
 import { getAuthenticatedViewer } from "../../lib/supabase-server";
+import { visibleCopy } from "../_components/visible-copy";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +20,7 @@ export default async function JobsPage() {
 
   if (!authenticated) {
     return (
-      <main className="auth-shell">
+      <main className="auth-shell" id="main-content">
         <section className="auth-card" aria-labelledby="login-title">
           <LoginForm />
         </section>
@@ -22,12 +29,68 @@ export default async function JobsPage() {
   }
 
   const { client, viewer } = authenticated;
+  if (viewer.role === "REQUISITION_APPROVER") {
+    const jobs = await listJobs(client);
+    const historyResults = await Promise.allSettled(
+      jobs
+        .filter((job) => job.requisition_status === "PENDING_APPROVAL")
+        .map(async (job) => [job.id, await listRequisitionStatusHistory(client, job.id)] as const),
+    );
+    const historiesByJobId = new Map<
+      string,
+      Awaited<ReturnType<typeof listRequisitionStatusHistory>>
+    >();
+    const unavailableHistoryJobIds = new Set<string>();
+
+    for (const result of historyResults) {
+      if (result.status === "fulfilled") {
+        historiesByJobId.set(result.value[0], result.value[1]);
+      }
+    }
+    for (const job of jobs.filter((job) => job.requisition_status === "PENDING_APPROVAL")) {
+      if (!historiesByJobId.has(job.id)) unavailableHistoryJobIds.add(job.id);
+    }
+
+    return (
+      <main className="app-shell" id="main-content">
+        <header className="app-header requisition-header">
+          <div>
+            <p className="eyebrow">Approvals</p>
+            <h1>Requisition 승인 대기열</h1>
+            <p className="lede">지정 승인자 업무</p>
+          </div>
+          <div className="header-actions">
+            <div className="viewer-card" aria-label="현재 사용자">
+              <strong>{visibleCopy(viewer.displayName)}</strong>
+              <span>{viewer.role}</span>
+            </div>
+            <form action={signOutAction}>
+              <button className="button button-quiet" type="submit">
+                로그아웃
+              </button>
+            </form>
+          </div>
+        </header>
+        <RequisitionApprovalQueue
+          jobs={jobs}
+          viewerId={viewer.id}
+          historiesByJobId={historiesByJobId}
+          unavailableHistoryJobIds={unavailableHistoryJobIds}
+        />
+      </main>
+    );
+  }
+
   const [jobs, profiles, notifications] = await Promise.all([
     listJobs(client),
     listProfiles(client),
     listNotifications(client),
   ]);
-  const profileById = new Map(profiles.map((profile) => [profile.id, profile.display_name]));
+  const safeProfiles = profiles.map((profile) => ({
+    ...profile,
+    display_name: visibleCopy(profile.display_name),
+  }));
+  const profileById = new Map(safeProfiles.map((profile) => [profile.id, profile.display_name]));
   const jobsWithNames = jobs.map((job) => ({
     ...job,
     recruiter_name: profileById.get(job.recruiter_id) ?? null,
@@ -38,16 +101,16 @@ export default async function JobsPage() {
   );
 
   return (
-    <main className="app-shell">
-      <header className="app-header">
+    <main className="app-shell" id="main-content">
+      <header className="app-header requisition-header">
         <div>
-          <p className="eyebrow">HireLens · HL-020</p>
-          <h1>Job 작업 공간</h1>
-          <p className="lede">직무 설명을 저장하고, 담당자와 다음 scorecard 작업을 준비합니다.</p>
+          <p className="eyebrow">Recruiting workspace</p>
+          <h1>Requisition 작업 공간</h1>
+          <p className="lede">직무·승인·지원서 운영</p>
         </div>
         <div className="header-actions">
           <div className="viewer-card" aria-label="현재 사용자">
-            <strong>{viewer.displayName}</strong>
+            <strong>{visibleCopy(viewer.displayName)}</strong>
             <span>{viewer.role}</span>
           </div>
           <form action={signOutAction}>
@@ -97,12 +160,16 @@ export default async function JobsPage() {
         )}
       </section>
 
-      {viewer.role === "ADMIN" || viewer.role === "RECRUITER" ? (
-        <JobCreateForm viewerId={viewer.id} viewerRole={viewer.role} profiles={profiles} />
+      {viewer.role === "HIRING_MANAGER" ? (
+        <JobCreateForm
+          viewerId={viewer.id}
+          viewerName={visibleCopy(viewer.displayName)}
+          profiles={safeProfiles}
+        />
       ) : (
         <section className="info-banner" aria-label="읽기 전용 안내">
           <strong>읽기 전용</strong>
-          <span>Hiring Manager는 할당된 Job을 조회하고 다음 scorecard 단계에서 검토합니다.</span>
+          <span>Hiring Manager 작성 · Recruiter 조회</span>
         </section>
       )}
 
@@ -114,7 +181,7 @@ export default async function JobsPage() {
 function notificationLabel(eventType: string) {
   return (
     {
-      SCORECARD_APPROVAL_REQUEST: "Scorecard 승인 검토 요청",
+      SCORECARD_APPROVAL_REQUEST: "검토 기준 승인 검토 요청",
       REVIEW_ASSIGNMENT: "지원서 검토가 배정되었습니다",
       PROCESSING_COMPLETED: "지원서 처리가 완료되었습니다",
       PROCESSING_FAILED: "처리에 실패했습니다",

@@ -6,7 +6,7 @@ HireLens는 **AI가 지원자를 대신 선발하는 시스템이 아니라, 사
 
 ## MVP의 한 문장
 
-> 모호한 직무기술서를 승인 가능한 평가 기준으로 바꾸고, 모든 이력서에서 기준별 원문 근거를 찾아 보여준 뒤, 사람이 내린 판단과 이유를 기록한다.
+> Hiring Manager가 채용 요청과 서류 검토 기준을 만들고, 승인된 공고의 모든 이력서에서 기준별 원문 근거를 찾아 보여준 뒤, Recruiter와 Hiring Manager가 사람의 판단과 이유를 기록한다.
 
 ## 이 스타터에 포함된 것
 
@@ -48,9 +48,11 @@ pnpm env:check
 
 일상 개발의 웹·워커와 Alpha 배포는 동일한 hosted Alpha Supabase 프로젝트에 연결하며 Docker를 실행할 필요가 없습니다. `.env.example`의 `SUPABASE_ENV=hosted-alpha`와 공용 Supabase URL·publishable key를 설정하세요. 로컬과 Alpha는 `APP_ENV`만 각각 `development`와 `alpha`로 다르게 사용합니다.
 
-`pnpm db:start`는 hosted 환경에서는 아무 컨테이너도 시작하지 않습니다. RLS pgTAP 테스트가 필요할 때만 `SUPABASE_ENV=local-docker pnpm db:start`로 로컬 Supabase를 켭니다. `pnpm test:integration`도 이 일회성 로컬 테스트 스택을 대상으로 실행합니다.
+공개 지원서 접수는 별도의 서버 전용 `DEMO_PUBLIC_SUBMISSION_CODE`가 설정된 경우에만 활성화됩니다. 이 코드는 공개 페이지에 포함하지 말고 진행자가 참가자에게 별도로 전달하세요.
 
-공용 hosted Alpha 프로젝트에 migration을 적용할 때는 project ref를 확인한 뒤 `SUPABASE_ENV=hosted-alpha SUPABASE_PROJECT_REF=<alpha-ref> SUPABASE_CONFIRM_MIGRATION=YES pnpm db:push`로 실행합니다. 로컬과 Alpha가 같은 데이터를 사용하므로 `db:reset`은 계속 local Docker의 합성 데모 데이터에만 허용됩니다.
+`pnpm db:start`는 항상 Docker 실행을 거부합니다. `pnpm test:integration`은 `.env.local`의 `DATABASE_URL`로 공유 Alpha PostgreSQL에 연결해 등록된 pgTAP 검증을 실행합니다. 각 검증은 임시 합성 데이터를 트랜잭션 안에서 만들고 rollback하며 Alpha 데이터를 초기화하지 않습니다.
+
+공용 hosted Alpha 프로젝트에 migration을 적용할 때는 project ref를 확인한 뒤 `SUPABASE_ENV=hosted-alpha SUPABASE_PROJECT_REF=<alpha-ref> SUPABASE_CONFIRM_MIGRATION=YES pnpm db:push`로 실행합니다. 공유 Alpha는 `db:reset` 대상이 아니며, 초기화 명령은 프로젝트에서 비활성화되어 있습니다.
 
 HL-001에는 Job, Scorecard, 후보자, PDF 처리, OpenAI 호출, Supabase 스키마/RLS, Slack·이메일 알림을 포함하지 않습니다.
 
@@ -106,23 +108,22 @@ hirelens/
 
 이 스타터에는 출제 PDF나 실제 지원자 이력서를 포함하지 않습니다.
 
-- 데모에는 합성 이력서만 사용합니다.
+- 발표·시드·테스트에는 합성 이력서만 사용하며, 업로드 기능은 실제 이력서를 형식만으로 차단하지 않습니다.
 - 고객사 자료는 저장소에 커밋하지 않습니다.
 - 실제 개인정보를 사용하기 전에는 별도의 보안·개인정보 검토가 필요합니다.
 - AI는 최종 합격·불합격을 결정하지 않습니다.
 
-## 가장 먼저 구현할 수직 흐름
+## 업무 흐름 기준 구현 순서
 
 ```text
-공고 생성
-→ 직무기술서에서 평가 기준 초안 생성
-→ 현업 리더가 기준 승인
-→ 합성 이력서 20건 업로드
-→ 페이지별 텍스트 추출
-→ 기준별 원문 근거 추출
-→ 채용 담당자/현업 리더의 구조화 검토
-→ 사람이 최종 판단
-→ 판단 이유와 버전·시각·행위자 기록
+Hiring Manager: Job Requisition + 서류 검토 기준 작성
+→ Requisition Approver: 업무 승인/반려
+→ Recruiter: 공고 게시
+→ 지원자: PDF 이력서 제출
+→ Worker: 페이지별 텍스트·기준별 원문 근거 추출
+→ Recruiter: 사전 검토 후 Hiring Manager 리뷰 요청
+→ Hiring Manager: 인터뷰 진행/보류/추가 정보 요청 결정
+→ 이후: 별도 최종 인사결정 및 이유 기록
 ```
 
 Slack, Google Calendar, 실제 채용 플랫폼 연동은 위 흐름이 검증된 뒤 P1에서 추가합니다.

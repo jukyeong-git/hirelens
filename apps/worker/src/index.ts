@@ -1,14 +1,10 @@
 import pg from "pg";
 
-import {
-  claimResumeExtractionRun,
-  completeResumeExtraction,
-  createSupabaseRestClient,
-  failResumeExtraction,
-  markResumeExtractionNeedsOcr,
-} from "@hirelens/database";
+import { createEvidenceAdapter } from "@hirelens/ai/server";
+
+import { createSupabaseRestClient } from "@hirelens/database";
 import { DOMAIN_PACKAGE_NAME, parseEnvironment } from "@hirelens/domain";
-import { extractPdfPages, PdfExtractionError } from "@hirelens/pdf";
+import { createEvidenceRunProcessor } from "./evidence-processor";
 
 interface QueueMessage {
   msg_id: number;
@@ -24,7 +20,7 @@ function isOpaqueUuid(value: unknown): value is string {
 
 async function downloadResume(url: string, secret: string, path: string): Promise<Uint8Array> {
   const response = await fetch(`${url.replace(/\/+$/, "")}/storage/v1/object/resumes/${path}`, {
-    headers: { apikey: secret, Authorization: `Bearer ${secret}` },
+    headers: { apikey: secret },
   });
   if (!response.ok) {
     throw Object.assign(new Error("Resume storage download failed"), {
@@ -50,11 +46,11 @@ export function startWorker() {
   if (
     !environment.DATABASE_URL ||
     !environment.SUPABASE_SECRET_KEY ||
-    !environment.NEXT_PUBLIC_SUPABASE_URL
+    !environment.NEXT_PUBLIC_SUPABASE_URL ||
+    !environment.OPENAI_API_KEY ||
+    !environment.OPENAI_MODEL
   ) {
-    throw new Error(
-      "Worker requires DATABASE_URL, SUPABASE_SECRET_KEY, and NEXT_PUBLIC_SUPABASE_URL",
-    );
+    throw new Error("Worker requires database, Supabase server, and OpenAI credentials");
   }
   if (environment.WORKER_MAX_ATTEMPTS !== 2) {
     throw new Error("WORKER_MAX_ATTEMPTS must be 2 for the Phase 3 processing contract");
@@ -64,36 +60,38 @@ export function startWorker() {
   const serviceClient = createSupabaseRestClient({
     url: environment.NEXT_PUBLIC_SUPABASE_URL,
     publishableKey: environment.SUPABASE_SECRET_KEY,
-    accessToken: environment.SUPABASE_SECRET_KEY,
+  });
+  const evidenceAdapter = createEvidenceAdapter({
+    apiKey: environment.OPENAI_API_KEY,
+    model: environment.OPENAI_MODEL,
+    maxInputTokens: environment.AI_MAX_INPUT_TOKENS,
+    maxOutputTokens: environment.AI_MAX_OUTPUT_TOKENS,
+    maxTotalTokens: environment.AI_MAX_TOTAL_TOKENS_PER_RUN,
+    inputCostMicrousdPerMillionTokens: environment.AI_INPUT_COST_MICROUSD_PER_MILLION_TOKENS,
+    outputCostMicrousdPerMillionTokens: environment.AI_OUTPUT_COST_MICROUSD_PER_MILLION_TOKENS,
+    maxCostMicrousdPerRun: environment.AI_MAX_COST_MICROUSD_PER_RUN,
+  });
+  if (
+    evidenceAdapter.versions.pipeline !== environment.AI_PIPELINE_VERSION ||
+    evidenceAdapter.versions.prompt !== environment.AI_EVIDENCE_PROMPT_VERSION ||
+    evidenceAdapter.versions.schema !== environment.AI_SCHEMA_VERSION
+  ) {
+    throw new Error(
+      "Worker AI contract environment versions do not match the compiled evidence contract",
+    );
+  }
+  const processEvidenceRun = createEvidenceRunProcessor({
+    client: serviceClient,
+    adapter: evidenceAdapter,
+    downloadResume: (path) =>
+      downloadResume(environment.NEXT_PUBLIC_SUPABASE_URL!, environment.SUPABASE_SECRET_KEY!, path),
   });
   let polling = false;
 
   const processMessage = async (message: QueueMessage) => {
     const runId = message.message.processing_run_id;
     if (!isOpaqueUuid(runId)) return;
-    const claimed = await claimResumeExtractionRun(serviceClient, runId);
-    if (!claimed) return;
-
-    try {
-      const bytes = await downloadResume(
-        environment.NEXT_PUBLIC_SUPABASE_URL!,
-        environment.SUPABASE_SECRET_KEY!,
-        claimed.storage_path,
-      );
-      const pages = await extractPdfPages(bytes);
-      if (pages.every((page) => page.normalizedText.length === 0)) {
-        await markResumeExtractionNeedsOcr(serviceClient, runId);
-      } else {
-        await completeResumeExtraction(serviceClient, { processingRunId: runId, pages });
-      }
-    } catch (error) {
-      const details = error as { category?: string; retryable?: boolean };
-      const category =
-        error instanceof PdfExtractionError
-          ? error.category
-          : (details.category ?? "STORAGE_DOWNLOAD_FAILED");
-      await failResumeExtraction(serviceClient, runId, category, details.retryable === true);
-    }
+    await processEvidenceRun(runId);
   };
 
   const poll = async () => {

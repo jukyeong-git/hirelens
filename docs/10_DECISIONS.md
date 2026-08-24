@@ -255,7 +255,7 @@ Slack and email delivery are explicitly P1 and are not required for the P0 demo 
 
 ## ADR-011 — Recruiter job form and approved scorecard workflow
 
-- Status: Accepted
+- Status: Superseded in its Job-authoring portion by ADR-022 and ADR-024
 - Date: 2026-08-23
 - Decision owner: Product team
 - Supersedes: None
@@ -353,6 +353,33 @@ Docker Supabase remains an optional isolated environment for migration and pgTAP
 
 - Add an explicit shared-environment banner and demo reset authorization flow before wider access.
 
+## ADR-026 — Alpha-only database verification
+
+- Status: Accepted
+- Date: 2026-08-24
+- Decision owner: Product/Engineering
+
+### Decision
+
+Local Docker Supabase is not used for development or verification. The local
+web, worker, migration checks, and integration checks use the shared hosted
+Alpha Supabase project. `pnpm test:integration` runs only the HL-024 and HL-025
+pgTAP files through `DATABASE_URL`; each test is wrapped in a transaction and
+rolls back its synthetic fixtures. `pnpm db:start` and `pnpm db:reset` are
+disabled.
+
+Browser authentication E2E also targets the locally running web app configured
+against Alpha. It requires the existing synthetic demo credentials but does
+not create a second database or reset Alpha.
+
+### Consequences
+
+- Alpha must remain synthetic-only and migration-compatible with the repository.
+- The verification suite cannot prove clean-seed reset or repair a corrupted
+  Alpha state; those concerns require an explicitly approved forward migration
+  or a separate disposable Supabase project.
+- Connection strings and secret keys remain outside Git and are never printed.
+
 ## ADR-014 — Admin authority, Recruiter note history, and internal notifications
 
 - Status: Accepted
@@ -374,7 +401,7 @@ Admin may create the first human decision and change an existing human decision.
 
 Admin may manage user roles, except an Admin cannot demote or remove their own account or remove the last remaining Admin. Audit events cannot be edited or deleted by Admin or any other application role. Product records use archive or soft delete where removal is needed; hard deletion is not part of the demo workflow.
 
-The shared hosted Alpha project cannot be physically reset by an Admin or application command. Any future Admin reset must be a scoped, synthetic-fixture reset with explicit confirmation and an audit event; `db:reset` remains limited to the isolated local Docker test environment.
+The shared hosted Alpha project cannot be physically reset by an Admin or application command. Any future Admin reset must be a scoped, synthetic-fixture reset with explicit confirmation and an audit event. Local Docker is not used for development or verification, and `db:reset` remains disabled.
 
 #### Recruiter temporary notes
 
@@ -764,6 +791,9 @@ the Hiring Manager's role-specific review.
 - A designated `REQUISITION_APPROVER`, such as an organizational leader,
   budget owner, or HRBP, approves or returns the submitted requisition with a
   required reason. `ADMIN` is not in this business-approval path.
+- Self-approval is prohibited. Only the assigned Hiring Manager may resubmit a
+  returned requisition, and the designated approver may change only while the
+  requisition is `DRAFT` or `RETURNED`; it cannot change while pending.
 - The Recruiter prepares and publishes the posting after requisition and
   screening-criteria approval, performs evidence-based triage, and can request
   a Hiring Manager review.
@@ -784,3 +814,198 @@ the Hiring Manager's role-specific review.
   human decision.
 - The UI must label the AI evidence, Recruiter review request, and Hiring
   Manager outcome separately so a user cannot mistake one for another.
+
+## ADR-023 — `Review Framework` replaces `Scorecard` as the internal concept
+
+- Status: Accepted
+- Date: 2026-08-24
+- Decision owner: Product team
+
+### Context
+
+`Scorecard` is a common ATS term, but it suggests a numerical score, ranking,
+or automated pass/fail outcome. HireLens instead keeps a versioned set of
+criteria, evidence definitions, resume-assessability rules, and human approval
+history. Its user-facing term is `지원서 검토 기준`.
+
+### Decision
+
+The internal product concept is `Review Framework` and its user-facing label is
+`지원서 검토 기준`. An AI may explicitly propose a draft Review Framework; a
+human must resolve ambiguity and approve a version before it affects resume
+analysis.
+
+Existing database objects, RPCs, TypeScript types, and historical records that
+use `scorecard` remain compatible legacy identifiers. They will be renamed only
+through a separately planned, forward-only compatibility migration after the
+P0 workflow is stable.
+
+### Consequences
+
+- New product documentation and UI use `Review Framework` or `지원서 검토 기준`.
+- No AI output is represented as a score, rank, recommendation, or decision.
+- A future terminology migration must preserve version IDs, RLS, immutable
+  history, AI prompt/schema version references, and existing integrations.
+
+## ADR-024 — Explicit AI Job Requisition drafting before human save
+
+- Status: Accepted
+- Date: 2026-08-24
+- Decision owner: Product team
+
+### Context
+
+Hiring Managers need a faster way to turn a role title and hiring need into a
+first Job Requisition description. This assistance must not obscure who owns
+the requisition, introduce discriminatory or invented policy language, or allow
+AI to change a workflow state.
+
+### Decision
+
+An authenticated Hiring Manager may explicitly request an AI-generated Job
+Requisition/job-description draft after entering title, department, and an
+optional human author brief. The result is visibly labeled AI-generated,
+editable, and transient. Only the existing explicit `Job 초안 저장` action
+persists a requisition and creates the existing human-authored audit event.
+
+The AI contract is distinct from `Review Framework` drafting and returns only a
+strict `JOB_REQUISITION_DRAFT` object containing `raw_job_description`. It uses
+the configured server-only model, `store: false`, versioned prompt/schema, and
+bounded failure handling. It must not generate a recruiter, approver, status,
+scorecard, candidate rank, decision, compensation, legal or eligibility term,
+company-policy commitment, or protected-trait preference.
+
+### Consequences
+
+- Requisition generation never automatically saves, submits, approves,
+  returns, publishes, assigns people, or changes a candidate decision.
+- Invalid, incomplete, refused, or failed generation leaves the form and all
+  persistence unchanged; no raw prompt or output is written to application logs
+  or audit metadata.
+- Human review and approval of the separate `Review Framework` remain required
+  before resume analysis.
+
+## ADR-025 — Review Framework draft editor separates generation from save
+
+- Status: Accepted
+- Date: 2026-08-24
+- Decision owner: Product team
+
+### Decision
+
+Only the assigned Hiring Manager or an Admin may create and save the initial
+Review Framework draft. They can start from a blank structured editor or ask
+AI to propose content. AI output fills that same editor but is never persisted
+automatically; the person must explicitly save the edited form before the
+existing ambiguity-review, approval, immutable-version, and audit path starts.
+Recruiters are read-only for Review Framework creation and approval.
+
+### Consequences
+
+- The structured form records criteria, evidence definitions, resume
+  assessability, and suggested interview questions without introducing a global
+  fit score or hiring verdict.
+- A saved manual draft is recorded with explicit human-authored provenance. A
+  saved AI-assisted, human-edited draft retains its signed generation model,
+  prompt, and schema provenance rather than false human metadata.
+- This does not alter the approval gate: only an approved version can drive
+  resume evidence analysis.
+
+## ADR-027 — Recruiter-owned posting with Admin operational override
+
+- Status: Accepted
+- Date: 2026-08-24
+- Decision owner: Product team
+
+### Decision
+
+Job Posting is an independent operational aggregate. The assigned Recruiter is
+the default operator for creating a posting draft, publishing it, and closing
+it. Admin may perform the same operations only as a system-operations override;
+Admin is not a Requisition business approver.
+
+A posting moves only `DRAFT → PUBLISHED → CLOSED`. `CLOSED` is terminal for
+P0: reopening is not supported, and a later hiring need uses a new posting.
+Publishing requires an approved Requisition and an approved immutable Review
+Framework version. Closing needs no free-text reason in P0. Every posting
+transition is human-operated and creates append-only status history plus safe
+audit metadata.
+
+### Consequences
+
+- Posting status never reuses Job intake, Requisition, Review Framework,
+  candidate-processing, interview, or final-decision state.
+- No AI or worker identity can create, publish, close, or reopen a posting.
+- HL-027 remains internal only. The narrow anonymous projection, candidate
+  attestation, and public submission route are deferred to HL-028/HL-029.
+
+## ADR-028 — Candidate-facing posting content is a separate public projection
+
+- Status: Accepted
+- Date: 2026-08-24
+- Decision owner: Product team
+
+### Context
+
+The internal Requisition contains source material and operational fields that
+must not be exposed to an anonymous candidate. Workday-style posting uses a
+candidate-facing template and lifecycle rather than publishing the entire
+internal record.
+
+### Decision
+
+HL-028 stores complete candidate-facing posting content on the Job Posting
+aggregate: `public_slug`, `public_title`, `public_summary`,
+`public_responsibilities`, `public_requirements`, `public_location`, and
+`public_employment_type`. The slug is opaque and immutable. Recruiter is the
+default editor and Admin is an operational exception; neither role may edit a
+closed posting.
+
+Only a `PUBLISHED` posting is returned by the anonymous
+`get_public_job_posting` projection. The projection returns no Job/Requisition
+ID, internal description, users, Review Framework, candidates, files,
+processing state, evidence, or decisions. HL-028 provides the public page and
+synthetic-data notice. Anonymous submission, attestation persistence, and
+private upload remain HL-029.
+
+Public projection eligibility also requires the Job's explicit
+`is_synthetic_demo = true` classification. The notice is not the enforcement
+mechanism; the publication RPC and anonymous projection enforce the boundary.
+
+### Consequences
+
+- Publication is blocked until both approval gates and all public fields are
+  complete.
+- Public content changes are authenticated, role-checked, and safely audited.
+- A public URL remains stable once issued; corrections use a forward update to
+  the content, not slug replacement.
+
+## ADR-029 — Classification-free resume intake
+
+- Status: Accepted
+- Date: 2026-08-24
+- Decision owner: Product team
+- Supersedes: the synthetic-only intake and attestation portions of ADR-006,
+  ADR-021, and ADR-028
+
+### Decision
+
+HireLens presentations, seed/reset data, committed fixtures, and fallback
+artifacts remain synthetic. Runtime intake accepts technically valid PDFs
+without asking, storing, or inferring whether their content is real, test,
+synthetic, or anonymized.
+
+Private Storage, opaque paths, PDF type/size/signature checks, access control,
+safe audit metadata, AI `store: false`, evidence validation, and human-only
+decisions remain mandatory. Historical synthetic attestations are preserved;
+new real submissions are never falsely marked as synthetic.
+
+### Consequences
+
+- Synthetic-only warnings, classification controls, and synthetic attestation
+  gates are removed from public and internal intake.
+- The shared Alpha presentation dataset remains synthetic even though the code
+  path can accept real resumes.
+- Privacy notice ownership, retention/deletion/withdrawal, abuse controls,
+  provider review, and production environment separation remain release risks
+  and `TBD`; this decision alone does not establish production legal readiness.

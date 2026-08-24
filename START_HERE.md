@@ -55,33 +55,46 @@ and append-only audit event constraints from docs/04_DATA_MODEL.md.
 Add tests that prove unauthorized reads and writes fail.
 ```
 
-### Turn 3 — 평가 기준 Builder
+### Turn 3 — Requisition과 서류 검토 기준
 
 ```text
-Use $scorecard-contract and $vertical-slice.
-Implement job creation, scorecard draft, human approval, and versioning.
-Do not allow a draft scorecard to analyze resumes.
+Use $scorecard-contract, $supabase-safe-change, and $vertical-slice.
+Implement Hiring Manager requisition creation, screening-criteria draft and
+approval, and designated Requisition Approver approval/return with reasons.
+Admin must not approve requisitions. Do not allow a draft screening criteria
+version to analyze resumes.
 ```
 
-### Turn 4 — 이력서 처리
+### Turn 4 — 공고 게시와 지원서 접수
+
+```text
+Use $supabase-safe-change and $vertical-slice.
+Implement Recruiter posting publish/close, narrow public careers route, and
+PDF submission through a private server-side path without content classification.
+```
+
+### Turn 5 — 이력서 처리와 Recruiter 사전 검토
 
 ```text
 Use $evidence-pipeline.
 Implement multi-PDF upload, per-file processing state, page text extraction,
-queueing, idempotent worker behavior, and recoverable failures.
-Use synthetic fixtures only.
+queueing, idempotent worker behavior, recoverable failures, and Recruiter
+evidence triage with a Hiring Manager review request. Use synthetic fixtures
+only.
 ```
 
-### Turn 5 — AI 근거 추출과 검토
+### Turn 6 — AI 근거 추출과 Hiring Manager 인터뷰 게이트
 
 ```text
 Use $ai-contract-change and $vertical-slice.
 Implement structured evidence extraction and source validation.
-Then implement the evidence-first candidate detail page and 60-second review card.
-No automatic acceptance, rejection, or global fit score.
+Then implement the evidence-first candidate detail page and the assigned Hiring
+Manager's `INTERVIEW`, `HOLD`, or `MORE_INFORMATION_REQUIRED` outcome with a
+reason. No automatic acceptance, rejection, interview progression, or global
+fit score.
 ```
 
-### Turn 6 — 품질 게이트
+### Turn 7 — 최종 인사결정과 품질 게이트
 
 ```text
 Have security_reviewer and product_guardian review in parallel.
