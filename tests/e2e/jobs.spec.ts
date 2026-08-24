@@ -66,4 +66,38 @@ test.describe("Job and scorecard workspace", () => {
     await expect(page.getByLabel("승인 사유 *")).toBeEditable();
     await expect(page.getByRole("button", { name: "v1 승인" })).toBeVisible();
   });
+
+  test("recruiter can open an assigned application but cannot see the final-decision form", async ({
+    page,
+  }) => {
+    await signIn(page, "recruiter@demo.hirelens.example");
+    await page.getByRole("link", { name: "Backend Engineer" }).click();
+    await page.getByRole("link", { name: /Synthetic Backend Candidate/ }).click();
+
+    await expect(page.getByRole("heading", { name: "최종 결정" })).toBeVisible();
+    await expect(page.getByText("Recruiter는 최종 결정을 저장할 수 없습니다.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "최종 결정 저장" })).toHaveCount(0);
+    await expect(page.getByLabel("새 임시 의견")).toBeEditable();
+  });
+
+  test("assigned manager can open an application and sees the approved-scorecard gate", async ({
+    page,
+  }) => {
+    await signIn(page, "hiring-manager@demo.hirelens.example");
+    await page.getByRole("link", { name: "Backend Engineer" }).click();
+    await page.getByRole("link", { name: /Synthetic Backend Candidate/ }).click();
+
+    await expect(page.getByRole("heading", { name: "최종 결정" })).toBeVisible();
+    await expect(
+      page.getByText("승인된 Scorecard가 아직 없어 최종 결정을 저장할 수 없습니다."),
+    ).toBeVisible();
+    await expect(page.getByLabel("새 임시 의견")).toHaveCount(0);
+  });
 });
+
+async function signIn(page: import("@playwright/test").Page, email: string) {
+  await page.goto("/jobs");
+  await page.getByLabel("이메일").fill(email);
+  await page.getByLabel("비밀번호").fill(demoPassword!);
+  await page.getByRole("button", { name: "로그인" }).click();
+}

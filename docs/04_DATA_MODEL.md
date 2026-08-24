@@ -293,6 +293,11 @@ Rules:
 - `created_at`
 - `completed_at`
 
+For the initial demo, a Hiring Manager needs an active assignment for the
+application and must also be the Job's assigned Hiring Manager to save a human
+decision. Admin may act across all demo data. Recruiters do not create or
+change human decisions.
+
 ### `human_reviews`
 
 - `id`
@@ -301,12 +306,39 @@ Rules:
 - `reviewer_id`
 - `decision`
 - `reason_code`
+- `reason_detail`
 - `confidence`
 - `note`
 - `created_at`
 - `supersedes_review_id`
 
 A changed decision appends a new row and references the prior review.
+
+Every initial decision and every changed decision requires both a bounded
+reason code and non-empty human-written detail. Decisions are append-only and
+are stored against the active approved Scorecard version for the application's
+Job. The safe audit record captures actor, timestamp, prior decision, new
+decision, confidence, and reason code; it does not copy free-form decision
+detail or Recruiter-note bodies.
+
+### `review_notes` and `review_note_versions`
+
+`review_notes` holds the lifecycle record (`author_id`, `deleted_at`,
+`deleted_by`) and `review_note_versions` holds immutable, numbered text
+versions. A Recruiter may create, edit, soft-delete, and restore only their
+own notes; Admin may manage all notes. Assigned Hiring Managers may read active
+notes only. Delete and restore each require a reason and create a safe audit
+event without copying note text.
+
+### `notifications`
+
+In-app notifications use a recipient, event type, aggregate reference,
+relevant version, safe metadata, and read timestamp. The recipient marks only
+their own notification read; reading does not create an audit event. Delivery
+is idempotent by recipient/event/aggregate/version. Creating a Scorecard draft
+notifies the assigned Hiring Manager. The Phase 3 worker will create the
+processing-completion and Admin-only processing-failure events after bounded
+retries exist.
 
 ### `audit_events`
 
@@ -353,7 +385,9 @@ Add indexes based on actual query plans, not only this list.
 | Applications        | all           | assigned job            | assigned job               |
 | Resume pages        | all           | assigned job            | assigned job               |
 | Evidence            | all           | assigned job            | assigned job               |
-| Human reviews       | all           | read/create as self     | read/create as self        |
+| Human reviews       | create/read/change | read only            | read/create/change when assigned |
+| Recruiter notes     | create/read/edit/delete/restore | own create/read/edit/delete/restore | assigned active notes read |
+| Notifications       | all read; own read receipt | own read; own read receipt | own read; own read receipt |
 | Audit               | read          | assigned aggregate read | assigned aggregate read    |
 | Audit update/delete | never         | never                   | never                      |
 

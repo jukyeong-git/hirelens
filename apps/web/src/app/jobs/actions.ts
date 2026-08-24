@@ -9,21 +9,31 @@ import type { ScorecardDraftPromptInput } from "@hirelens/ai";
 import type { ScorecardDraftAdapter, ScorecardDraftAdapterResult } from "@hirelens/ai/server";
 import {
   createJobInputSchema,
+  createHumanReviewInputSchema,
+  createReviewNoteInputSchema,
+  markNotificationReadInputSchema,
   parseEnvironment,
   scorecardAmbiguityReviewInputSchema,
   scorecardApprovalInputSchema,
   scorecardRevisionInputSchema,
+  setReviewNoteDeletedInputSchema,
+  updateReviewNoteInputSchema,
   type AppRole,
 } from "@hirelens/domain";
 import {
   approveScorecard,
   createJob,
+  createHumanReview,
+  createReviewNote,
   createScorecardDraft,
   createScorecardRevision,
   getJobForScorecard,
   getScorecardForJob,
+  markNotificationRead,
   reviewScorecardAmbiguity,
+  setReviewNoteDeleted,
   SupabaseRestError,
+  updateReviewNote,
 } from "@hirelens/database";
 
 import type {
@@ -31,6 +41,7 @@ import type {
   AuthActionState,
   JobActionState,
   ScorecardActionState,
+  ReviewActionState,
 } from "./action-state";
 import {
   clearPasswordSession,
@@ -359,6 +370,130 @@ export async function createScorecardRevisionAction(
   return { status: "success", message: "승인본을 보존하고 새 초안 버전을 만들었습니다." };
 }
 
+export async function saveHumanDecisionAction(
+  _previousState: ReviewActionState,
+  formData: FormData,
+): Promise<ReviewActionState> {
+  const authenticated = await getAuthenticatedViewer();
+  if (!authenticated)
+    return { status: "error", message: "세션이 만료되었습니다. 다시 로그인하세요." };
+  if (authenticated.viewer.role !== "ADMIN" && authenticated.viewer.role !== "HIRING_MANAGER") {
+    return {
+      status: "error",
+      message: "최종 결정은 Hiring Manager 또는 Admin만 저장할 수 있습니다.",
+    };
+  }
+  const parsed = createHumanReviewInputSchema.safeParse({
+    applicationId: String(formData.get("applicationId") ?? "").trim(),
+    scorecardVersionId: String(formData.get("scorecardVersionId") ?? "").trim(),
+    decision: String(formData.get("decision") ?? "").trim(),
+    reasonCode: String(formData.get("reasonCode") ?? "").trim(),
+    reasonDetail: String(formData.get("reasonDetail") ?? "").trim(),
+    confidence: String(formData.get("confidence") ?? "").trim(),
+    note: nullableFormText(formData.get("note")),
+  });
+  if (!parsed.success)
+    return { status: "error", message: "결정, 사유 분류, 상세 사유, 확신도를 확인하세요." };
+  try {
+    await createHumanReview(authenticated.client, parsed.data);
+  } catch (error) {
+    return reviewActionError(error, "최종 결정을 저장하지 못했습니다. 다시 시도하세요.");
+  }
+  revalidatePath(`/applications/${parsed.data.applicationId}`);
+  return { status: "success", message: "사람의 최종 결정과 사유를 감사 이력에 저장했습니다." };
+}
+
+export async function createRecruiterNoteAction(
+  _previousState: ReviewActionState,
+  formData: FormData,
+): Promise<ReviewActionState> {
+  const authenticated = await getAuthenticatedViewer();
+  if (!authenticated)
+    return { status: "error", message: "세션이 만료되었습니다. 다시 로그인하세요." };
+  if (authenticated.viewer.role !== "ADMIN" && authenticated.viewer.role !== "RECRUITER")
+    return { status: "error", message: "임시 의견을 작성할 권한이 없습니다." };
+  const parsed = createReviewNoteInputSchema.safeParse({
+    applicationId: String(formData.get("applicationId") ?? "").trim(),
+    body: String(formData.get("body") ?? ""),
+  });
+  if (!parsed.success) return { status: "error", message: "의견 내용을 입력하세요." };
+  try {
+    await createReviewNote(authenticated.client, parsed.data.applicationId, parsed.data.body);
+  } catch (error) {
+    return reviewActionError(error, "임시 의견을 저장하지 못했습니다.");
+  }
+  revalidatePath(`/applications/${parsed.data.applicationId}`);
+  return { status: "success", message: "Recruiter 임시 의견을 버전 1로 저장했습니다." };
+}
+
+export async function updateRecruiterNoteAction(
+  _previousState: ReviewActionState,
+  formData: FormData,
+): Promise<ReviewActionState> {
+  const authenticated = await getAuthenticatedViewer();
+  if (!authenticated)
+    return { status: "error", message: "세션이 만료되었습니다. 다시 로그인하세요." };
+  const applicationId = String(formData.get("applicationId") ?? "").trim();
+  const parsed = updateReviewNoteInputSchema.safeParse({
+    noteId: String(formData.get("noteId") ?? "").trim(),
+    body: String(formData.get("body") ?? ""),
+  });
+  if (!isUuid(applicationId) || !parsed.success)
+    return { status: "error", message: "의견 내용을 확인하세요." };
+  try {
+    await updateReviewNote(authenticated.client, parsed.data.noteId, parsed.data.body);
+  } catch (error) {
+    return reviewActionError(error, "의견 변경을 저장하지 못했습니다.");
+  }
+  revalidatePath(`/applications/${applicationId}`);
+  return { status: "success", message: "새 의견 버전을 저장했습니다." };
+}
+
+export async function setRecruiterNoteDeletedAction(
+  _previousState: ReviewActionState,
+  formData: FormData,
+): Promise<ReviewActionState> {
+  const authenticated = await getAuthenticatedViewer();
+  if (!authenticated)
+    return { status: "error", message: "세션이 만료되었습니다. 다시 로그인하세요." };
+  const applicationId = String(formData.get("applicationId") ?? "").trim();
+  const parsed = setReviewNoteDeletedInputSchema.safeParse({
+    noteId: String(formData.get("noteId") ?? "").trim(),
+    reason: String(formData.get("reason") ?? ""),
+  });
+  const shouldDelete = String(formData.get("shouldDelete")) === "true";
+  if (!isUuid(applicationId) || !parsed.success)
+    return { status: "error", message: "삭제 또는 복구 사유를 입력하세요." };
+  try {
+    await setReviewNoteDeleted(
+      authenticated.client,
+      parsed.data.noteId,
+      shouldDelete,
+      parsed.data.reason,
+    );
+  } catch (error) {
+    return reviewActionError(error, "의견 상태를 변경하지 못했습니다.");
+  }
+  revalidatePath(`/applications/${applicationId}`);
+  return {
+    status: "success",
+    message: shouldDelete
+      ? "의견을 숨기고 이력을 보존했습니다."
+      : "의견을 복구하고 이력을 보존했습니다.",
+  };
+}
+
+export async function markNotificationReadAction(formData: FormData) {
+  const authenticated = await getAuthenticatedViewer();
+  if (!authenticated) return;
+  const parsed = markNotificationReadInputSchema.safeParse({
+    notificationId: String(formData.get("notificationId") ?? "").trim(),
+  });
+  if (!parsed.success) return;
+  await markNotificationRead(authenticated.client, parsed.data.notificationId);
+  revalidatePath("/jobs");
+}
+
 async function generateScorecardDraftWithRetry(
   adapter: ScorecardDraftAdapter,
   input: ScorecardDraftPromptInput,
@@ -422,5 +557,18 @@ function scorecardWorkflowError(error: unknown, fallback: string): ScorecardActi
     }
   }
 
+  return { status: "error", message: fallback };
+}
+
+function reviewActionError(error: unknown, fallback: string): ReviewActionState {
+  if (error instanceof SupabaseRestError) {
+    if (error.status === 401 || error.status === 403)
+      return { status: "error", message: "현재 사용자에게 이 작업 권한이 없습니다." };
+    if (/approved scorecard/iu.test(error.responseBody))
+      return {
+        status: "error",
+        message: "승인된 Scorecard가 있어야 최종 결정을 저장할 수 있습니다.",
+      };
+  }
   return { status: "error", message: fallback };
 }
