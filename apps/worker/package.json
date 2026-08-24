@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@hirelens/ai": "workspace:*",
     "@hirelens/database": "workspace:*",
     "@hirelens/domain": "workspace:*",
     "@hirelens/pdf": "workspace:*",

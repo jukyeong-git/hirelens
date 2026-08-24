@@ -4,6 +4,7 @@ import { useActionState } from "react";
 
 import { initialAuthActionState } from "../action-state";
 import { signInAction } from "../actions";
+import { visibleCopy } from "../../_components/visible-copy";
 
 export function LoginForm() {
   const [state, formAction, pending] = useActionState(signInAction, initialAuthActionState);
@@ -11,28 +12,21 @@ export function LoginForm() {
   return (
     <form className="login-form" action={formAction}>
       <div className="section-heading">
-        <p className="eyebrow">Demo access</p>
+        <p className="eyebrow">Internal workspace</p>
         <h1 id="login-title">HireLens에 로그인</h1>
-        <p>합성 Demo 계정으로 Job 작업 공간에 접근합니다.</p>
+        <p>채용 담당자 전용</p>
       </div>
 
       {state.status === "error" ? (
         <p className="form-alert form-alert-error" role="alert">
-          {state.message}
+          {visibleCopy(state.message)}
         </p>
       ) : null}
 
       <div className="field-stack">
         <div className="field">
           <label htmlFor="email">이메일</label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            defaultValue="recruiter@demo.hirelens.example"
-            required
-          />
+          <input id="email" name="email" type="email" autoComplete="email" required />
         </div>
         <div className="field">
           <label htmlFor="password">비밀번호</label>

@@ -5,6 +5,8 @@ import { useActionState } from "react";
 import type {
   AppRole,
   HumanReviewRecord,
+  InterviewProgressionReviewRecord,
+  ReviewAssignmentRecord,
   ReviewNoteRecord,
   ReviewNoteVersionRecord,
   ScorecardVersionRecord,
@@ -13,10 +15,13 @@ import type {
 import {
   createRecruiterNoteAction,
   saveHumanDecisionAction,
+  requestHiringManagerReviewAction,
+  recordInterviewProgressionAction,
   setRecruiterNoteDeletedAction,
   updateRecruiterNoteAction,
 } from "../actions";
 import { initialReviewActionState } from "../action-state";
+import { visibleCopy } from "../../_components/visible-copy";
 
 interface ApplicationReviewPanelProps {
   applicationId: string;
@@ -24,6 +29,9 @@ interface ApplicationReviewPanelProps {
   approvedVersion: ScorecardVersionRecord | null;
   reviews: HumanReviewRecord[];
   notes: Array<{ note: ReviewNoteRecord; versions: ReviewNoteVersionRecord[] }>;
+  assignments: ReviewAssignmentRecord[];
+  interviewReviews: InterviewProgressionReviewRecord[];
+  profileNames: Record<string, string>;
 }
 
 export function ApplicationReviewPanel({
@@ -32,44 +40,181 @@ export function ApplicationReviewPanel({
   approvedVersion,
   reviews,
   notes,
+  assignments,
+  interviewReviews,
+  profileNames,
 }: ApplicationReviewPanelProps) {
   const canDecide = viewerRole === "ADMIN" || viewerRole === "HIRING_MANAGER";
   const canWriteNote = viewerRole === "ADMIN" || viewerRole === "RECRUITER";
   const currentReview = reviews[0] ?? null;
+  const activeAssignment = assignments.find((assignment) => assignment.status === "ACTIVE") ?? null;
+  const currentInterviewReview = interviewReviews[0] ?? null;
 
   return (
-    <div className="review-grid">
-      <section className="panel" aria-labelledby="human-decision-title">
-        <p className="eyebrow">Human-only decision</p>
-        <h2 id="human-decision-title">최종 결정</h2>
-        <p className="section-copy">
-          AI와 Recruiter 의견은 결정을 대신하지 않습니다. 모든 최초·변경 결정에는 사유가 필요합니다.
-        </p>
-        {currentReview ? (
-          <DecisionHistory reviews={reviews} />
-        ) : (
-          <p className="empty-copy">아직 저장된 최종 결정이 없습니다.</p>
-        )}
-        {canDecide ? (
-          <DecisionForm applicationId={applicationId} approvedVersion={approvedVersion} />
-        ) : (
-          <p className="info-banner">Recruiter는 최종 결정을 저장할 수 없습니다.</p>
-        )}
-      </section>
+    <div className="review-workflow-stack">
+      <div className="review-grid">
+        <section className="panel" aria-labelledby="manager-request-title">
+          <p className="eyebrow">Recruiter routing</p>
+          <h2 id="manager-request-title">Hiring Manager 검토 요청</h2>
+          <p className="section-copy">
+            검토 요청은 후보자를 인터뷰로 이동시키거나 최종 결정을 만들지 않습니다.
+          </p>
+          {activeAssignment ? (
+            <div className="history-item">
+              <strong>검토 요청됨</strong>
+              <span>{profileNames[activeAssignment.assigned_to] ?? "Assigned Hiring Manager"}</span>
+              {activeAssignment.request_note ? <p>{activeAssignment.request_note}</p> : null}
+            </div>
+          ) : canWriteNote ? (
+            <ReviewRequestForm applicationId={applicationId} />
+          ) : (
+            <p className="empty-copy">아직 Hiring Manager 검토 요청이 없습니다.</p>
+          )}
+        </section>
 
-      <section className="panel" aria-labelledby="recruiter-note-title">
-        <p className="eyebrow">Recruiter working notes</p>
-        <h2 id="recruiter-note-title">임시 의견과 이력</h2>
-        <p className="section-copy">
-          의견은 최종 결정과 분리됩니다. 변경·삭제·복구 이력은 유지됩니다.
-        </p>
-        {canWriteNote ? <CreateNoteForm applicationId={applicationId} /> : null}
-        {notes.length === 0 ? (
-          <p className="empty-copy">표시할 임시 의견이 없습니다.</p>
-        ) : (
-          <NoteHistory applicationId={applicationId} notes={notes} canManage={canWriteNote} />
-        )}
-      </section>
+        <section className="panel" aria-labelledby="interview-progression-title">
+          <p className="eyebrow">Human interview gate</p>
+          <h2 id="interview-progression-title">인터뷰 진행 판단</h2>
+          <p className="section-copy">
+            배정된 Hiring Manager가 근거를 검토한 뒤 사유와 함께 기록합니다.
+          </p>
+          {interviewReviews.length > 0 ? (
+            <InterviewProgressionHistory reviews={interviewReviews} profileNames={profileNames} />
+          ) : (
+            <p className="empty-copy">아직 저장된 인터뷰 진행 판단이 없습니다.</p>
+          )}
+          {viewerRole === "HIRING_MANAGER" && activeAssignment && approvedVersion ? (
+            <InterviewProgressionForm
+              applicationId={applicationId}
+              scorecardVersionId={approvedVersion.id}
+            />
+          ) : (
+            <p className="info-banner">
+              활성 검토 요청을 받은 Hiring Manager만 저장할 수 있습니다.
+            </p>
+          )}
+        </section>
+      </div>
+      <div className="review-grid">
+        <section className="panel" aria-labelledby="human-decision-title">
+          <p className="eyebrow">Human-only decision</p>
+          <h2 id="human-decision-title">최종 결정</h2>
+          <p className="section-copy">
+            AI와 Recruiter 의견은 결정을 대신하지 않습니다. 모든 최초·변경 결정에는 사유가
+            필요합니다.
+          </p>
+          {currentReview ? (
+            <DecisionHistory reviews={reviews} profileNames={profileNames} />
+          ) : (
+            <p className="empty-copy">아직 저장된 최종 결정이 없습니다.</p>
+          )}
+          {canDecide &&
+          (viewerRole === "ADMIN" || currentInterviewReview?.outcome === "INTERVIEW") ? (
+            <DecisionForm applicationId={applicationId} approvedVersion={approvedVersion} />
+          ) : (
+            <p className="info-banner">
+              최종 결정은 인터뷰 진행 판단과 분리됩니다. Hiring Manager는 INTERVIEW 기록 후, Admin은
+              운영 권한으로 저장할 수 있습니다.
+            </p>
+          )}
+        </section>
+
+        <section className="panel" aria-labelledby="recruiter-note-title">
+          <p className="eyebrow">Recruiter working notes</p>
+          <h2 id="recruiter-note-title">임시 의견과 이력</h2>
+          <p className="section-copy">
+            의견은 최종 결정과 분리됩니다. 변경·삭제·복구 이력은 유지됩니다.
+          </p>
+          {canWriteNote ? <CreateNoteForm applicationId={applicationId} /> : null}
+          {notes.length === 0 ? (
+            <p className="empty-copy">표시할 임시 의견이 없습니다.</p>
+          ) : (
+            <NoteHistory applicationId={applicationId} notes={notes} canManage={canWriteNote} />
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function ReviewRequestForm({ applicationId }: { applicationId: string }) {
+  const [state, formAction, pending] = useActionState(
+    requestHiringManagerReviewAction,
+    initialReviewActionState,
+  );
+  return (
+    <form action={formAction} className="scorecard-workflow-form compact-form">
+      <input type="hidden" name="applicationId" value={applicationId} />
+      <label>
+        요청 메모 (선택)
+        <textarea name="note" maxLength={2000} disabled={pending} />
+      </label>
+      <button className="button button-primary" type="submit" disabled={pending}>
+        {pending ? "요청 중…" : "Hiring Manager 검토 요청"}
+      </button>
+      <ActionMessage state={state} />
+    </form>
+  );
+}
+
+function InterviewProgressionForm({
+  applicationId,
+  scorecardVersionId,
+}: {
+  applicationId: string;
+  scorecardVersionId: string;
+}) {
+  const [state, formAction, pending] = useActionState(
+    recordInterviewProgressionAction,
+    initialReviewActionState,
+  );
+  return (
+    <form action={formAction} className="scorecard-workflow-form compact-form">
+      <input type="hidden" name="applicationId" value={applicationId} />
+      <input type="hidden" name="scorecardVersionId" value={scorecardVersionId} />
+      <label>
+        진행 판단
+        <select name="outcome" required defaultValue="">
+          <option value="" disabled>
+            선택하세요
+          </option>
+          <option value="INTERVIEW">인터뷰 진행</option>
+          <option value="HOLD">보류</option>
+          <option value="MORE_INFORMATION_REQUIRED">추가 정보 요청</option>
+        </select>
+      </label>
+      <label>
+        판단 사유
+        <textarea name="reason" required minLength={1} maxLength={2000} disabled={pending} />
+      </label>
+      <button className="button button-primary" type="submit" disabled={pending}>
+        {pending ? "저장 중…" : "인터뷰 진행 판단 저장"}
+      </button>
+      <ActionMessage state={state} />
+    </form>
+  );
+}
+
+function InterviewProgressionHistory({
+  reviews,
+  profileNames,
+}: {
+  reviews: InterviewProgressionReviewRecord[];
+  profileNames: Record<string, string>;
+}) {
+  return (
+    <div className="history-list">
+      {reviews.map((review, index) => (
+        <article className="history-item" key={review.id}>
+          <strong>
+            {index === 0 ? "현재 판단" : "이전 판단"}: {interviewLabel(review.outcome)}
+          </strong>
+          <p>{review.reason}</p>
+          <span>
+            {profileNames[review.reviewer_id] ?? "Hiring Manager"} · {formatTime(review.created_at)}
+          </span>
+        </article>
+      ))}
     </div>
   );
 }
@@ -88,7 +233,7 @@ function DecisionForm({
   if (!approvedVersion)
     return (
       <p className="form-alert form-alert-warning" role="status">
-        승인된 Scorecard가 아직 없어 최종 결정을 저장할 수 없습니다.
+        승인된 지원서 검토 기준이 아직 없어 최종 결정을 저장할 수 없습니다.
       </p>
     );
   return (
@@ -265,7 +410,13 @@ function NoteManageForm({
   );
 }
 
-function DecisionHistory({ reviews }: { reviews: HumanReviewRecord[] }) {
+function DecisionHistory({
+  reviews,
+  profileNames,
+}: {
+  reviews: HumanReviewRecord[];
+  profileNames: Record<string, string>;
+}) {
   return (
     <div className="history-list">
       {reviews.map((review, index) => (
@@ -277,9 +428,29 @@ function DecisionHistory({ reviews }: { reviews: HumanReviewRecord[] }) {
             {review.reason_code} · 확신도 {review.confidence}
           </p>
           <p>{review.reason_detail}</p>
+          <span>
+            {profileNames[review.reviewer_id] ?? "사용자"} · {formatTime(review.created_at)} · 검토
+            기준 {review.scorecard_version_id.slice(0, 8)}
+          </span>
         </article>
       ))}
     </div>
+  );
+}
+function interviewLabel(value: string) {
+  return (
+    (
+      {
+        INTERVIEW: "인터뷰 진행",
+        HOLD: "보류",
+        MORE_INFORMATION_REQUIRED: "추가 정보 요청",
+      } as Record<string, string>
+    )[value] ?? value
+  );
+}
+function formatTime(value: string) {
+  return new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short" }).format(
+    new Date(value),
   );
 }
 function ActionMessage({
@@ -292,7 +463,7 @@ function ActionMessage({
       className={`form-alert ${state.status === "success" ? "form-alert-success" : "form-alert-error"}`}
       role={state.status === "error" ? "alert" : "status"}
     >
-      {state.message}
+      {visibleCopy(state.message ?? "")}
     </p>
   );
 }

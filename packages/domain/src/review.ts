@@ -6,6 +6,27 @@ const uuidSchema = z
 
 export const humanDecisionSchema = z.enum(["PROCEED", "HOLD", "DO_NOT_PROCEED"]);
 export const reviewConfidenceSchema = z.enum(["HIGH", "MEDIUM", "LOW"]);
+export const interviewProgressionOutcomeSchema = z.enum([
+  "INTERVIEW",
+  "HOLD",
+  "MORE_INFORMATION_REQUIRED",
+]);
+
+export const requestHiringManagerReviewInputSchema = z
+  .object({
+    applicationId: uuidSchema,
+    note: z.string().trim().min(1).max(2_000).nullable().optional(),
+  })
+  .strict();
+
+export const recordInterviewProgressionInputSchema = z
+  .object({
+    applicationId: uuidSchema,
+    scorecardVersionId: uuidSchema,
+    outcome: interviewProgressionOutcomeSchema,
+    reason: z.string().trim().min(1).max(2_000),
+  })
+  .strict();
 
 export const createHumanReviewInputSchema = z
   .object({
@@ -31,6 +52,9 @@ export const setReviewNoteDeletedInputSchema = z
 
 export type HumanDecision = z.infer<typeof humanDecisionSchema>;
 export type ReviewConfidence = z.infer<typeof reviewConfidenceSchema>;
+export type InterviewProgressionOutcome = z.infer<typeof interviewProgressionOutcomeSchema>;
+export type RequestHiringManagerReviewInput = z.infer<typeof requestHiringManagerReviewInputSchema>;
+export type RecordInterviewProgressionInput = z.infer<typeof recordInterviewProgressionInputSchema>;
 export type CreateHumanReviewInput = z.infer<typeof createHumanReviewInputSchema>;
 export type CreateReviewNoteInput = z.infer<typeof createReviewNoteInputSchema>;
 export type UpdateReviewNoteInput = z.infer<typeof updateReviewNoteInputSchema>;
@@ -47,6 +71,43 @@ export interface HumanReviewRecord {
   confidence: ReviewConfidence;
   note: string | null;
   supersedes_review_id: string | null;
+  created_at: string;
+}
+
+export interface ReviewAssignmentRecord {
+  id: string;
+  application_id: string;
+  assigned_to: string;
+  assigned_by: string;
+  request_note: string | null;
+  status: "ACTIVE" | "COMPLETED" | "CANCELLED";
+  created_at: string;
+  completed_at: string | null;
+}
+
+export interface InterviewProgressionReviewRecord {
+  id: string;
+  application_id: string;
+  scorecard_version_id: string;
+  reviewer_id: string;
+  outcome: InterviewProgressionOutcome;
+  reason: string;
+  supersedes_review_id: string | null;
+  created_at: string;
+}
+
+export interface AuditEventRecord {
+  id: string;
+  event_type: string;
+  actor_type: "USER" | "SYSTEM";
+  actor_id: string | null;
+  aggregate_type: string;
+  aggregate_id: string;
+  safe_metadata: Record<string, unknown>;
+  before_data: Record<string, unknown> | null;
+  after_data: Record<string, unknown> | null;
+  source: string;
+  version_ref: string | null;
   created_at: string;
 }
 

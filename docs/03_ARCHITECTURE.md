@@ -144,6 +144,24 @@ Package and service versions must be verified and pinned during scaffolding.
 13. Audit event is appended.
 ```
 
+The preceding business workflow is enforced at the web/domain boundary:
+
+```text
+Hiring Manager creates Requisition + screening criteria
+→ Requisition Approver approves or returns it
+→ Recruiter publishes the approved posting
+→ synthetic candidate submits a PDF
+→ worker produces validated evidence
+→ Recruiter requests Hiring Manager review
+→ Hiring Manager records interview-progression outcome
+→ authorized human later records final hiring decision
+```
+
+Requisition approval, posting, processing, Recruiter review request, Hiring
+Manager interview-progression outcome, and final human decision are separate
+state machines. `ADMIN` operates the system but is not a requisition business
+approver.
+
 ## 7. AI boundary
 
 AI is used for two bounded capabilities:

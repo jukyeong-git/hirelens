@@ -2,6 +2,14 @@
 
 This document defines the conceptual P0 model. SQL migrations remain the executable source of truth once implemented.
 
+## Terminology
+
+The versioned evaluation-policy aggregate is called **Review Framework** in the
+product and `지원서 검토 기준` in the user interface. Existing schema names such
+as `scorecard_versions` and `criteria` are legacy implementation identifiers;
+they retain the same Review Framework meaning until a separately approved
+forward-only compatibility migration replaces them.
+
 ## 1. Core enums
 
 ### Roles
@@ -20,7 +28,6 @@ DRAFT
 PENDING_APPROVAL
 APPROVED
 RETURNED
-CLOSED
 ```
 
 ### Posting status
@@ -31,7 +38,7 @@ PUBLISHED
 CLOSED
 ```
 
-### Scorecard status
+### Review Framework status (`scorecard_status` legacy enum)
 
 ```text
 DRAFT
@@ -113,6 +120,10 @@ Hiring Manager profiles for assignment, and authorized Job participants can read
 the other participant profile needed to render the list. Browser access remains
 publishable-key plus authenticated-session only.
 
+For HL-025, a Hiring Manager may read the display name and role of
+`REQUISITION_APPROVER` profiles solely to designate an approver. This does not
+grant access to any requisition, scorecard, candidate, resume, or evidence data.
+
 ### `jobs`
 
 - `id`
@@ -123,6 +134,7 @@ publishable-key plus authenticated-session only.
 - `recruiter_id`
 - `hiring_manager_id`
 - `requisition_approver_id`
+- `is_synthetic_demo` (explicit public-demo classification)
 - `submitted_at`
 - `approval_reason`
 - `approved_or_returned_at`
@@ -130,9 +142,66 @@ publishable-key plus authenticated-session only.
 - `updated_at`
 
 `jobs` is the implementation's current name for the Job Requisition aggregate.
-The requisition, screening-criteria, and posting states are independent. A
-future migration adds a distinct posting aggregate or equivalent fields without
-overloading `requisition_status`.
+The requisition, screening-criteria, and posting states are independent.
+
+### `job_postings`
+
+- `id`
+- `job_id` (one posting aggregate per Job Requisition in P0)
+- `status` (`DRAFT`, `PUBLISHED`, `CLOSED`)
+- `public_slug` (opaque, immutable public URL identifier)
+- `public_title`, `public_summary`
+- `public_responsibilities`, `public_requirements`
+- `public_location`, `public_employment_type`
+- `created_by`
+- `published_by`, `published_at`
+- `closed_by`, `closed_at`
+- `created_at`, `updated_at`
+
+The assigned Recruiter creates, publishes, and closes the posting; Admin has an
+operational override. Posting is never a Requisition approval action. A posting
+may publish only after its Requisition and an immutable Review Framework version
+are approved. `CLOSED` is terminal in P0. Only Jobs explicitly classified as
+synthetic demo data can be published to the public projection. There is no anonymous table access in
+HL-027. The public fields are candidate-facing content and must not copy the
+internal `raw_job_description` implicitly. HL-028 exposes only a separately
+approved narrow projection through `/careers/[slug]`; HL-029 owns candidate
+submission and private upload.
+
+### `job_posting_status_history`
+
+Each status transition records `actor_id`, `actor_role`, `prior_status`,
+`new_status`, and `created_at` in an append-only history. Safe audit events
+retain IDs and state changes only, with no job-description, candidate, resume,
+or free-text content.
+
+### `requisition_status_history`
+
+- `id`
+- `job_id`
+- `actor_id`
+- `actor_role`
+- `prior_status`
+- `new_status`
+- `reason`
+- `created_at`
+
+This is an append-only business-approval history. Only the assigned Hiring
+Manager may append `DRAFT` or `RETURNED` to `PENDING_APPROVAL`; only the
+designated `REQUISITION_APPROVER` may append `PENDING_APPROVAL` to `APPROVED`
+or `RETURNED`, with a bounded human-written reason. Self-approval is prohibited;
+the Hiring Manager may change the approver only in `DRAFT` or `RETURNED`, and
+may resubmit only after return. It is separate from
+Scorecard approval history and does not grant the approver scorecard,
+application, resume, or evidence access.
+
+Approver designation or replacement is recorded separately as an append-only
+job audit event with the assigning actor and prior/new approver IDs. A former
+approver may retain read access only to status-history rows they personally
+acted on; this does not restore access to the requisition, scorecard, or
+candidate data. Submission, approval, and return create additional safe audit
+events containing only the status transition; the free-text business reason is
+not duplicated into `audit_events`.
 
 ### `scorecard_versions`
 
@@ -186,11 +255,17 @@ boundary. `INTERVIEW_ONLY` and `HUMAN_ONLY` criteria cannot be marked as
 resume-assessable. A criterion marked resume-assessable must include accepted
 evidence.
 
-For HL-021, Recruiters and Admins request a draft through the atomic
-`create_scorecard_draft` RPC. Direct application writes to scorecard versions
-and criteria are revoked. Admin and assigned Job participants may read the
-result through RLS; Hiring Manager approval and immutable edit/version UI are
-implemented by HL-023.
+For the initial Review Framework version, only the assigned Hiring Manager or
+an Admin may use the atomic `create_scorecard_draft` RPC. They may save either
+a structured manual draft or an AI proposal that they have reviewed and edited;
+an AI generation request itself never calls this RPC. Manual snapshots use the
+explicit legacy metadata sentinels `human-authored`,
+`review-framework-manual-v1`, and `HUMAN_AUTHORED`; a saved AI-assisted draft
+retains the authenticated generation's actual model, prompt, and schema
+versions. Direct application writes to scorecard versions and criteria are
+revoked. Recruiters and other assigned participants may read the result through
+RLS but cannot create or save this initial version. The RPC validates the full
+structured draft contract again at the database boundary.
 
 For HL-022, only the assigned Hiring Manager or Admin may resolve a non-`CLEAR`
 criterion through the `review_scorecard_ambiguity` RPC. A clarification changes
@@ -230,6 +305,27 @@ supersession.
 
 For P0, avoid duplicating raw name/email fields unless required for the demo. Use a synthetic label.
 
+### Evidence processing additions
+
+`processing_runs` advances independently from the human workflow through
+`QUEUED → EXTRACTING → ANALYZING → VALIDATING → COMPLETED`, with explicit
+`RETRY_PENDING`, `NEEDS_OCR`, `FAILED`, and `QUARANTINED` alternatives.
+Its idempotency key binds application, file, approved Review Framework version,
+and pipeline version. It stores model/prompt/schema identifiers, bounded token
+usage, estimated micro-USD cost, and a safe error category without raw resume
+text.
+
+`evidence_items` stores one criterion result and zero or more source rows.
+`NOT_FOUND` and `HUMAN_ONLY` use a source-free row. Evidence-bearing statuses
+retain the exact quote, source page, quote hash, and page hash. Browser roles
+have read-only RLS access through the assigned application; only worker RPCs
+can persist validated rows.
+
+`interview_progression_reviews` is append-only and distinct from
+`human_reviews`. A Recruiter review request creates an active
+`review_assignments` row; only the assigned Hiring Manager may append
+`INTERVIEW`, `HOLD`, or `MORE_INFORMATION_REQUIRED` with a reason.
+
 ### `applications`
 
 - `id`
@@ -240,7 +336,10 @@ For P0, avoid duplicating raw name/email fields unless required for the demo. Us
 - `workflow_state`
 - `created_at`
 
-Invariant: one candidate may have one application per job in the demo. Production duplicate resolution is deferred.
+Invariant: one candidate may have one application per job in the demo. Public
+candidate submission uses the source value `PUBLIC_POSTING`; it creates a
+synthetic candidate label server-side and does not retain candidate identity
+fields. Production duplicate resolution is deferred.
 
 ### `resume_files`
 
@@ -251,6 +350,20 @@ Invariant: one candidate may have one application per job in the demo. Productio
 - `mime_type`
 - `byte_size`
 - `sha256`
+- `synthetic_or_anonymized_attested` (nullable legacy history; new intake does not request this attestation)
+- `attested_by` (nullable legacy history)
+- `attested_at` (nullable legacy history)
+
+HL-029 derives the opaque Storage path from the published posting's internal
+Job ID and generated application/file IDs in a server-only RPC. Anonymous
+users receive no direct table or Storage grants; the web server writes the
+private object using its secret key and returns no application, file, path, or
+processing identifiers.
+
+New intake does not ask for, infer, or persist a real-versus-test content
+classification. Existing synthetic attestation values remain historical and
+must not be rewritten or treated as a classification for later files.
+
 - `intake_status`
 - `created_at`
 
@@ -433,21 +546,21 @@ Add indexes based on actual query plans, not only this list.
 
 ## 5. RLS access matrix
 
-| Resource | Admin | Recruiter | Hiring manager | Requisition approver |
-| --- | --- | --- | --- | --- |
-| Requisitions | all demo jobs; no business approval | assigned | create/read assigned | read; approve/return only designated requisitions |
-| Scorecards | all | read/draft | read/edit/approve assigned | no access unless also assigned another role |
-| Applications | all | assigned job | assigned job | no access by role alone |
-| Resume files/objects | all assigned demo jobs | assigned job | assigned job | no access by role alone |
-| Resume pages | all | assigned job | assigned job | no access by role alone |
-| Evidence | all | assigned job | assigned job | no access by role alone |
-| Review requests | all read | create/read assigned job | read/complete when assigned | no access by role alone |
-| Interview-progression outcomes | read | read assigned job | create/read/change when assigned | no access by role alone |
-| Human reviews | create/read/change | read only | read/create/change when assigned | no access by role alone |
-| Recruiter notes | create/read/edit/delete/restore | own create/read/edit/delete/restore | assigned active notes read | no access by role alone |
-| Notifications | all read; own read receipt | own read; own read receipt | own read; own read receipt | own read; own read receipt |
-| Audit | read | assigned aggregate read | assigned aggregate read | designated requisition read |
-| Audit update/delete | never | never | never | never |
+| Resource                       | Admin                               | Recruiter                           | Hiring manager                    | Requisition approver                                    |
+| ------------------------------ | ----------------------------------- | ----------------------------------- | --------------------------------- | ------------------------------------------------------- |
+| Requisitions                   | all demo jobs; no business approval | assigned                            | create/read assigned              | read; approve/return only designated requisitions       |
+| Scorecards                     | all                                 | read assigned                       | create/read/edit/approve assigned | no access unless also assigned another role             |
+| Applications                   | all                                 | assigned job                        | assigned job                      | no access by role alone                                 |
+| Resume files/objects           | all assigned demo jobs              | assigned job                        | assigned job                      | no access by role alone                                 |
+| Resume pages                   | all                                 | assigned job                        | assigned job                      | no access by role alone                                 |
+| Evidence                       | all                                 | assigned job                        | assigned job                      | no access by role alone                                 |
+| Review requests                | all read                            | create/read assigned job            | read/complete when assigned       | no access by role alone                                 |
+| Interview-progression outcomes | read                                | read assigned job                   | create/read/change when assigned  | no access by role alone                                 |
+| Human reviews                  | create/read/change                  | read only                           | read/create/change when assigned  | no access by role alone                                 |
+| Recruiter notes                | create/read/edit/delete/restore     | own create/read/edit/delete/restore | assigned active notes read        | no access by role alone                                 |
+| Notifications                  | all read; own read receipt          | own read; own read receipt          | own read; own read receipt        | own read; own read receipt                              |
+| Audit                          | read                                | assigned aggregate read             | assigned aggregate read           | no access by role alone; use requisition status history |
+| Audit update/delete            | never                               | never                               | never                             | never                                                   |
 
 Server-side secret access does not replace user authorization. Privileged server operations must still verify the authenticated user or system task.
 

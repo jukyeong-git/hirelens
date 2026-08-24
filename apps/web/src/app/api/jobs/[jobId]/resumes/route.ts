@@ -8,7 +8,6 @@ import {
   SupabaseRestError,
   type SupabaseRestClient,
 } from "@hirelens/database";
-
 import { getAuthenticatedViewer } from "../../../../../lib/supabase-server";
 
 const maximumResumeBytes = 10_485_760;
@@ -26,23 +25,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ job
     return Response.json({ error: "Job을 찾을 수 없거나 접근할 수 없습니다." }, { status: 404 });
 
   const formData = await request.formData();
-  const attested = formData.get("syntheticOrAnonymizedAttested") === "true";
   const files = formData.getAll("files").filter((value): value is File => value instanceof File);
   if (!files.length) return Response.json({ error: "업로드할 PDF를 선택하세요." }, { status: 400 });
 
   const results = [];
   for (const file of files) {
-    results.push(await uploadOneResume(client, job.id, file, attested));
+    results.push(await uploadOneResume(client, job.id, file));
   }
   return Response.json({ results });
 }
 
-async function uploadOneResume(
-  client: SupabaseRestClient,
-  jobId: string,
-  file: File,
-  syntheticOrAnonymizedAttested: boolean,
-) {
+async function uploadOneResume(client: SupabaseRestClient, jobId: string, file: File) {
   const validationError = await validateResumeFile(file);
   if (validationError)
     return { filename: file.name, status: "error" as const, message: validationError };
@@ -53,14 +46,6 @@ async function uploadOneResume(
   const storagePath = `${jobId}/${applicationId}/${resumeFileId}.pdf`;
   const bytes = Buffer.from(await file.arrayBuffer());
   const sha256 = createHash("sha256").update(bytes).digest("hex");
-
-  if (!syntheticOrAnonymizedAttested) {
-    return {
-      filename: file.name,
-      status: "error" as const,
-      message: "합성 또는 익명화된 데모 자료임을 확인해야 업로드할 수 있습니다.",
-    };
-  }
 
   try {
     await createResumeUploadReservation(client, {
@@ -73,7 +58,6 @@ async function uploadOneResume(
       mimeType: "application/pdf",
       byteSize: file.size,
       sha256,
-      syntheticOrAnonymizedAttested: true,
     });
   } catch (error) {
     return { filename: file.name, status: "error" as const, message: uploadErrorMessage(error) };
@@ -110,7 +94,7 @@ async function validateResumeFile(file: File): Promise<string | null> {
     return "PDF 파일만 업로드할 수 있습니다.";
   }
   if (file.size === 0 || file.size > maximumResumeBytes) {
-    return "파일은 1바이트 이상, 데모 기술 한도 10 MiB 이하여야 합니다. 고객 정책은 TBD입니다.";
+    return "파일 크기: 1바이트 이상, 10 MiB 이하 · 고객 정책 TBD";
   }
   const header = new TextDecoder().decode(await file.slice(0, 5).arrayBuffer());
   return header === "%PDF-" ? null : "유효한 PDF 서명(%PDF-)을 찾지 못했습니다.";

@@ -1,8 +1,8 @@
 import type {
   CancelResumeUploadReservationInput,
   CreateResumeUploadReservationInput,
+  PublicResumeSubmissionInput,
   FinalizeUploadedResumeInput,
-  CompleteResumeExtractionInput,
   ResumeFileRecord,
   ResumeProcessingRunRecord,
 } from "@hirelens/domain";
@@ -13,6 +13,7 @@ const resumeFileSelect =
   "id,application_id,storage_path,original_filename,mime_type,byte_size,sha256,intake_status,synthetic_or_anonymized_attested,attested_by,attested_at,created_at";
 
 export type CreateResumeUploadReservationRequest = CreateResumeUploadReservationInput;
+export type PublicResumeSubmissionRequest = PublicResumeSubmissionInput;
 
 export async function createResumeUploadReservation(
   client: SupabaseRestClient,
@@ -31,78 +32,49 @@ export async function createResumeUploadReservation(
       mime_type: input.mimeType,
       byte_size: input.byteSize,
       sha256: input.sha256,
-      synthetic_or_anonymized_attested: input.syntheticOrAnonymizedAttested,
     }),
   });
 }
 
-export interface ClaimedResumeExtractionRun {
-  processing_run_id: string;
-  resume_file_id: string;
-  storage_path: string;
-  attempt_count: number;
-}
-
-export async function claimResumeExtractionRun(
+export async function createPublicResumeSubmission(
   client: SupabaseRestClient,
-  processingRunId: string,
-): Promise<ClaimedResumeExtractionRun | null> {
-  const result = await client.request<ClaimedResumeExtractionRun[]>(
-    "/rest/v1/rpc/claim_resume_extraction_run",
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ target_processing_run_id: processingRunId }),
-    },
-  );
-  return result[0] ?? null;
-}
-
-export async function completeResumeExtraction(
-  client: SupabaseRestClient,
-  input: CompleteResumeExtractionInput,
-): Promise<void> {
-  await client.request<unknown>("/rest/v1/rpc/complete_resume_extraction", {
+  input: PublicResumeSubmissionRequest,
+): Promise<string> {
+  return client.request<string>("/rest/v1/rpc/create_public_resume_submission", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      target_processing_run_id: input.processingRunId,
-      extracted_pages: input.pages.map((page) => ({
-        page_number: page.pageNumber,
-        raw_text: page.rawText,
-        normalized_text: page.normalizedText,
-        raw_text_sha256: page.rawTextSha256,
-        normalized_text_sha256: page.normalizedTextSha256,
-      })),
+      target_public_slug: input.publicSlug,
+      candidate_id: input.candidateId,
+      application_id: input.applicationId,
+      resume_file_id: input.resumeFileId,
+      original_filename: input.originalFilename,
+      mime_type: input.mimeType,
+      byte_size: input.byteSize,
+      sha256: input.sha256,
     }),
   });
 }
 
-export async function markResumeExtractionNeedsOcr(
+export async function finalizePublicResumeSubmission(
   client: SupabaseRestClient,
-  processingRunId: string,
+  resumeFileId: string,
 ): Promise<void> {
-  await client.request<unknown>("/rest/v1/rpc/mark_resume_extraction_needs_ocr", {
+  await client.request<unknown>("/rest/v1/rpc/finalize_public_resume_submission", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ target_processing_run_id: processingRunId }),
+    body: JSON.stringify({ target_resume_file_id: resumeFileId }),
   });
 }
 
-export async function failResumeExtraction(
+export async function cancelPublicResumeSubmission(
   client: SupabaseRestClient,
-  processingRunId: string,
-  errorCategory: string,
-  retryable: boolean,
+  resumeFileId: string,
 ): Promise<void> {
-  await client.request<unknown>("/rest/v1/rpc/fail_resume_extraction", {
+  await client.request<unknown>("/rest/v1/rpc/cancel_public_resume_submission", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      target_processing_run_id: processingRunId,
-      failure_category: errorCategory,
-      is_retryable: retryable,
-    }),
+    body: JSON.stringify({ target_resume_file_id: resumeFileId }),
   });
 }
 
@@ -112,7 +84,7 @@ export async function getResumeProcessingRun(
 ): Promise<ResumeProcessingRunRecord | null> {
   const params = new URLSearchParams({
     select:
-      "id,application_id,resume_file_id,scorecard_version_id,pipeline_version,status,attempt_count,error_category,created_at,completed_at",
+      "id,application_id,resume_file_id,scorecard_version_id,pipeline_version,prompt_version,schema_version,model_id,input_tokens,output_tokens,total_tokens,estimated_cost_microusd,analysis_duration_ms,status,attempt_count,error_category,created_at,completed_at",
     id: `eq.${processingRunId}`,
     limit: "1",
   });
@@ -128,9 +100,9 @@ export async function listResumeProcessingRunsForApplication(
 ): Promise<ResumeProcessingRunRecord[]> {
   const params = new URLSearchParams({
     select:
-      "id,application_id,resume_file_id,scorecard_version_id,pipeline_version,status,attempt_count,error_category,created_at,completed_at",
+      "id,application_id,resume_file_id,scorecard_version_id,pipeline_version,prompt_version,schema_version,model_id,input_tokens,output_tokens,total_tokens,estimated_cost_microusd,analysis_duration_ms,status,attempt_count,error_category,created_at,completed_at",
     application_id: `eq.${applicationId}`,
-    order: "created_at.desc",
+    order: "created_at.desc,id.desc",
   });
   return client.request<ResumeProcessingRunRecord[]>(
     `/rest/v1/processing_runs?${params.toString()}`,

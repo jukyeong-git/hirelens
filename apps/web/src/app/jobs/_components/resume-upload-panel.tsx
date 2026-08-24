@@ -2,6 +2,8 @@
 
 import { useRef, useState } from "react";
 
+import { visibleCopy } from "../../_components/visible-copy";
+
 interface UploadResult {
   filename: string;
   status: "success" | "error";
@@ -26,17 +28,6 @@ export function ResumeUploadPanel({ jobId, enabled }: { jobId: string; enabled: 
     setUploading(true);
     setResults([]);
     const data = new FormData();
-    if (!event.currentTarget.syntheticOrAnonymizedAttested.checked) {
-      setResults([
-        {
-          filename: "업로드",
-          status: "error",
-          message: "합성 또는 익명화된 데모 자료임을 확인하세요.",
-        },
-      ]);
-      return;
-    }
-    data.append("syntheticOrAnonymizedAttested", "true");
     files.forEach((file) => data.append("files", file));
     try {
       const response = await fetch(`/api/jobs/${jobId}/resumes`, { method: "POST", body: data });
@@ -46,7 +37,7 @@ export function ResumeUploadPanel({ jobId, enabled }: { jobId: string; enabled: 
           {
             filename: "업로드",
             status: "error",
-            message: payload.error ?? "업로드에 실패했습니다.",
+            message: visibleCopy(payload.error ?? "업로드에 실패했습니다."),
           },
         ],
       );
@@ -64,18 +55,14 @@ export function ResumeUploadPanel({ jobId, enabled }: { jobId: string; enabled: 
   return (
     <section className="panel" aria-labelledby="resume-upload-title">
       <div className="section-heading">
-        <p className="eyebrow">Resume intake · Phase 3</p>
-        <h2 id="resume-upload-title">합성 PDF 이력서 접수</h2>
+        <p className="eyebrow">Resume intake</p>
+        <h2 id="resume-upload-title">PDF 이력서 접수</h2>
       </div>
-      <p className="section-copy">
-        여러 PDF를 선택할 수 있습니다. 업로드가 완료되면 상태는{" "}
-        <strong>UPLOADED — 처리가 아직 시작되지 않음</strong>으로 표시됩니다. 데모 기술 한도는
-        파일당 10 MiB이며 고객 정책은 TBD입니다.
-      </p>
+      <p className="section-copy">PDF 다중 선택 · 파일당 10 MiB · 업로드 후 처리 대기</p>
       {enabled ? (
         <form className="scorecard-workflow-form" onSubmit={submit}>
           <label>
-            합성 PDF 이력서
+            PDF 이력서
             <input
               ref={inputRef}
               name="files"
@@ -85,23 +72,14 @@ export function ResumeUploadPanel({ jobId, enabled }: { jobId: string; enabled: 
               disabled={uploading}
             />
           </label>
-          <label>
-            <input
-              name="syntheticOrAnonymizedAttested"
-              type="checkbox"
-              required
-              disabled={uploading}
-            />
-            업로드 파일은 합성 또는 명시적으로 익명화된 데모 자료이며 실제 지원자 자료가 아닙니다.
-          </label>
           <button className="button button-primary" type="submit" disabled={uploading}>
             {uploading ? "파일별 업로드 중…" : "선택한 PDF 업로드"}
           </button>
         </form>
       ) : (
         <p className="form-alert form-alert-warning" role="status">
-          승인된 Scorecard가 있는 ‘접수 준비’ Job에서만 업로드할 수 있습니다. 현재는 파일을 저장하지
-          않았습니다.
+          승인된 지원서 검토 기준이 있는 ‘접수 준비’ Job에서만 업로드할 수 있습니다. 현재는 파일을
+          저장하지 않았습니다.
         </p>
       )}
       {results.length ? (
@@ -115,7 +93,7 @@ export function ResumeUploadPanel({ jobId, enabled }: { jobId: string; enabled: 
               <span>
                 {result.status === "success"
                   ? "UPLOADED — 처리가 아직 시작되지 않음"
-                  : result.message}
+                  : visibleCopy(result.message ?? "업로드 실패")}
               </span>
             </div>
           ))}

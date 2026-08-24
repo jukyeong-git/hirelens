@@ -23,14 +23,19 @@ Avoid: full HRIS navigation, global fit scores, copied layouts or labels
 2. **Human action is unmistakable.** Approval, publication, and hiring
    decisions are clearly labeled as human actions. AI never appears to approve,
    publish, advance, reject, or hire.
-3. **One workflow state per concern.** Requisition, Posting, Scorecard,
+3. **One workflow state per concern.** Requisition, Posting, Review Framework,
    Processing, and Human Decision use separate labels and histories.
 4. **Operational density without visual overload.** Use concise rows, filters,
    counts, and progressive disclosure instead of dashboard decoration.
 5. **Every exception remains visible.** Processing failures, `NEEDS_OCR`,
    partial results, and blocked approvals belong in the normal workflow.
-6. **Synthetic-only public demo is obvious.** Candidate-facing screens state
-   that only synthetic or explicitly anonymized demo materials may be used.
+6. **Intake policy is neutral.** Candidate-facing screens accept technically
+   valid PDFs without asking for or displaying a data classification. Product
+   UI does not use `Demo`, `demo`, or `데모` labels.
+7. **AI proposes; humans define the policy.** The internal concept is `Review
+Framework`; label the user-facing artifact `지원서 검토 기준`. The AI draft
+   action is explicit, never automatic, and the resulting criteria remain a
+   draft until a human approves them.
 
 ## 3. Information architecture
 
@@ -49,35 +54,50 @@ HireLens
 ├─ Requisitions
 ├─ Applications
 ├─ Processing issues              (Admin / responsible Recruiter)
-└─ Demo administration            (Admin)
+└─ Test administration            (Admin)
 ```
 
-The default landing page is role-aware rather than a generic dashboard:
+The internal `/jobs` landing page is role-aware rather than a generic dashboard.
+The product root `/` redirects to `/careers` so published roles are visible
+first; internal users enter their role workspace from the careers header.
 
 - **Hiring Manager:** requisitions awaiting action, Scorecards needing approval,
   assigned candidate reviews.
 - **Recruiter:** postings to prepare/publish, submitted applications awaiting
   processing or triage, review requests awaiting response.
-- **Admin:** failed processing, access and demo controls.
+- **Admin:** failed processing, access and test-data controls.
 - **Requisition Approver:** requisitions awaiting business approval or return.
 
 ### Public candidate route
 
-Use a deliberately separate, minimal route such as `/careers/[slug]`:
+Use a deliberately separate, minimal route such as `/careers/[slug]`.
+HL-028 provides the public posting. HL-029 provides the
+submission form and private server-owned upload transaction:
 
 ```text
-Company / HireLens Demo
+Company / HireLens Careers
 Job title · location · employment type
 Role summary and responsibilities
-What to submit
-Synthetic-demo-data notice
-PDF upload form
-Submit application
+Candidate preview and public URL
 ```
 
-Do not expose internal navigation, candidate counts, reviewer names, processing
-states, or a login requirement. The confirmation page should say only that the
-synthetic demo submission was received; it must not reveal an application ID.
+The public route must not expose internal navigation, candidate counts,
+reviewer names, processing states, requisition text, or a login requirement.
+The HL-029 submission receipt says only that the synthetic test submission was
+received and must not reveal an application ID. The form requires a
+facilitator-provided test access code; this code is verified only on the server
+and is never embedded in the public page.
+
+### Copy density
+
+- Use Korean nouns, status labels, and result-oriented action labels in the UI.
+- Remove ticket IDs, decorative English eyebrow text, and explanatory prose
+  when the same meaning is already conveyed by the heading, field label, state,
+  or disabled control.
+- Keep complete sentences only for safety, authorization, validation, error,
+  and AI-versus-human responsibility boundaries.
+- Do not ask users to classify uploaded content. Keep the distinction between
+  live OpenAI results and preprocessed synthetic results.
 
 ## 4. Core workspace patterns
 
@@ -132,10 +152,10 @@ submissions without hiding existing internal applications.
 
 Use a dense, sortable operational table rather than cards as the default.
 
-| Candidate label | Processing | Evidence | Review owner | Human decision | Updated |
-| --- | --- | --- | --- | --- | --- |
-| Synthetic candidate A | Ready | 3 supported, 1 interview-only | Mina | — | 4m ago |
-| Synthetic candidate B | Needs OCR | Not available | Unassigned | — | 12m ago |
+| Candidate label       | Processing | Evidence                      | Review owner | Human decision | Updated |
+| --------------------- | ---------- | ----------------------------- | ------------ | -------------- | ------- |
+| Synthetic candidate A | Ready      | 3 supported, 1 interview-only | Mina         | —              | 4m ago  |
+| Synthetic candidate B | Needs OCR  | Not available                 | Unassigned   | —              | 12m ago |
 
 Required filters: processing state, evidence state, assigned reviewer, and
 human decision state. Do not sort by an AI-generated overall fit score.
@@ -172,14 +192,14 @@ The visual order is mandatory:
 Use a pill only as a compact supplement. Every status must also have visible
 text and an icon. Do not merge these dimensions:
 
-| Dimension | Example states | UI treatment |
-| --- | --- | --- |
-| Requisition | Draft, pending approval, approved, returned | Header state + next action for the Requisition Approver |
-| Posting | Draft, published, closed | Header state + public URL action |
-| Scorecard | Draft, approved, superseded | Version badge and history |
-| Processing | Queued, extracting, completed, needs OCR, failed | Table column + details |
-| Evidence | Supported, partial, not found, contradicted, human-only | Criterion row |
-| Human decision | Proceed, hold, do not proceed | Explicit human-decision panel |
+| Dimension      | Example states                                          | UI treatment                                            |
+| -------------- | ------------------------------------------------------- | ------------------------------------------------------- |
+| Requisition    | Draft, pending approval, approved, returned             | Header state + next action for the Requisition Approver |
+| Posting        | Draft, published, closed                                | Header state + public URL action                        |
+| Scorecard      | Draft, approved, superseded                             | Version badge and history                               |
+| Processing     | Queued, extracting, completed, needs OCR, failed        | Table column + details                                  |
+| Evidence       | Supported, partial, not found, contradicted, human-only | Criterion row                                           |
+| Human decision | Proceed, hold, do not proceed                           | Explicit human-decision panel                           |
 
 For errors, distinguish:
 
@@ -226,13 +246,13 @@ For errors, distinguish:
 
 ## 9. Workday-inspired, not Workday-copied
 
-| Use the concept | Do not copy |
-| --- | --- |
-| Role-specific workspace and work queues | Workday navigation tree, visual chrome, or labels verbatim |
-| Requisition as the organizing record | Full position, compensation, and HRIS data model |
-| Clear approval and posting states | Dense configuration screens for every enterprise policy |
-| Operational application table | Candidate ranking or opaque talent scores |
-| Candidate-facing posting separate from internal workspace | Public exposure of review data or staff work queues |
+| Use the concept                                           | Do not copy                                                |
+| --------------------------------------------------------- | ---------------------------------------------------------- |
+| Role-specific workspace and work queues                   | Workday navigation tree, visual chrome, or labels verbatim |
+| Requisition as the organizing record                      | Full position, compensation, and HRIS data model           |
+| Clear approval and posting states                         | Dense configuration screens for every enterprise policy    |
+| Operational application table                             | Candidate ranking or opaque talent scores                  |
+| Candidate-facing posting separate from internal workspace | Public exposure of review data or staff work queues        |
 
 Workday references for the underlying concepts: [job requisition setup](https://doc.workday.com/admin-guide/en-us/human-capital-management/recruiting/job-requisitions-for-recruiting/fsn1558961997264.html) and [job requisition creation](https://doc.workday.com/admin-guide/en-us/human-capital-management/staffing/job-requisitions/dan1370797162029.html).
 
