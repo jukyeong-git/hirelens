@@ -43,7 +43,8 @@ The provided challenge document is confidential and must not be committed to the
 
 ### Authentication and authorization
 
-- authenticated access only,
+- authenticated access for all internal application, review, decision, and administration routes,
+- unauthenticated access only to a narrow published-posting projection and the synthetic/anonymized public submission endpoint,
 - explicit roles,
 - server-side authorization on every write,
 - RLS default deny,
@@ -66,6 +67,14 @@ The provided challenge document is confidential and must not be committed to the
 - file type and size validation,
 - no public CDN caching,
 - deletion workflow for file and derived artifacts.
+
+### Synthetic public submission
+
+- published posting and public submission routes accept only synthetic or explicitly anonymized demo data;
+- the form requires an explicit attestation and must not request real contact details for the demo;
+- submission uses a dedicated server-side transaction, not anonymous access to internal upload RPCs, database tables, or Storage policies;
+- public responses never disclose candidate, application, Storage, signed URL, queue, or processing identifiers;
+- actual applicant data, real privacy notices, retention/deletion/withdrawal workflows, and abuse-control operations remain pilot prerequisites.
 
 ### Model requests
 
@@ -106,7 +115,7 @@ Audit records store actions and references, not raw personal content.
 
 At minimum prove:
 
-- unauthenticated users cannot read any job or resume,
+- unauthenticated users can read only the narrow projection of a published posting and cannot read any resume or internal job/application data,
 - a hiring manager cannot read an unassigned job,
 - a recruiter cannot approve a scorecard unless explicitly authorized,
 - a worker cannot create human review rows,

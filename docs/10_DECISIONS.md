@@ -622,3 +622,165 @@ needs an immutable history while a replacement is prepared.
   processing run.
 - A broader criterion editor or explicit criterion exclusion control can be
   added to a revision without changing approved history.
+
+## ADR-019 — HireLens is the evidence-review module in the target process
+
+- Status: Accepted
+- Date: 2026-08-24
+- Decision owner: Product team
+- Refines: ADR-003, ADR-005, ADR-011
+
+### Context
+
+The Builderthon Judgment Track asks for relief from review-coverage, evidence,
+feedback, and decision-record bottlenecks. It does not require recreating the
+full enterprise ATS process of requisition approval, job posting, candidate
+communication, scheduling, offer, or HRIS administration.
+
+### Decision
+
+HireLens owns the evidence-review portion of the target operating process:
+approved Scorecard policy, application evidence processing, Recruiter triage,
+reasoned human judgment, and minimal append-only change history. An enterprise ATS or the
+manual synthetic-demo flow owns the upstream job/application intake. A future
+external integration may receive a human-approved downstream status.
+
+The full process and its gates are defined in
+`docs/12_TARGET_OPERATING_PROCESS.md`. Candidate self-service apply and public
+job posting are not implied by this decision and remain separate scope
+decisions.
+
+### Consequences
+
+- P0 can demonstrate the Judgment Track outcome without claiming to be a
+  system of record for requisitions, postings, candidate messaging, scheduling,
+  offers, or HRIS.
+- Current Recruiter Job creation and managed synthetic PDF upload are manual
+  demo adapters, not the enterprise operating claim.
+- Future integration work must define source-of-truth identifiers, status
+  handoff, and conflict resolution before code is added.
+
+### Open follow-up
+
+- Decide whether the first production-style intake adapter is an external ATS
+  import or a candidate self-service application.
+
+## ADR-020 — Remove the SCIM-style audit contract from P0
+
+- Status: Accepted
+- Date: 2026-08-24
+- Decision owner: Product team
+- Supersedes: The SCIM-style event-shape portion of ADR-007
+
+### Context
+
+The minimal Judgment Track process needs attributable human decisions,
+Scorecard approvals, and processing history. It does not need a SCIM-like
+actor/action/target/result audit protocol or its further schema expansion.
+
+### Decision
+
+P0 retains minimal append-only change history for material workflow actions,
+including a decision's actor, timestamp, required reason, and prior value when
+changed. Audit storage remains protected from application update and delete
+paths.
+
+SCIM-style audit event fields, their complete event-coverage requirement, and
+any work to expose or extend a SCIM-like audit log are removed from P0 scope.
+Existing database fields remain in place as legacy implementation detail; they
+are not a required P0 user-facing contract and will not be removed through a
+destructive rewrite.
+
+### Consequences
+
+- The product retains decision accountability without presenting itself as a
+  SCIM/audit platform.
+- Future changes need only record the minimal change history needed by the
+  workflow, privacy, and human-decision invariants.
+- Removing stored legacy fields, if ever desired, requires a separately
+  approved migration and retention decision.
+
+## ADR-021 — Synthetic-only requisition, posting, and candidate intake in P0
+
+- Status: Accepted
+- Date: 2026-08-24
+- Decision owner: Product team
+- Supersedes: The upstream-boundary portion of ADR-019
+
+### Context
+
+The demo needs to show the full path from an approved opening to a submitted
+resume, while preserving the synthetic-data-only policy. Candidate direct
+submission should demonstrate the product workflow without turning the demo
+into a real applicant-data service.
+
+### Decision
+
+P0 includes a minimal Job Requisition workflow, internal Job Posting, and
+account-free candidate submission:
+
+- the Hiring Manager creates a requisition;
+- the Admin approves or returns it with a required reason;
+- the assigned Recruiter publishes or closes a posting only after requisition
+  approval and Scorecard approval;
+- anonymous candidates may submit only synthetic or explicitly anonymized
+  demo data, after an explicit attestation; and
+- a new narrow server-side submission path creates private resume storage and
+  an internal application without revealing internal identifiers.
+
+The existing internal Recruiter/Admin batch upload remains a demo-operations
+path. HireLens does not accept real applicant data, send candidate messages,
+post to external job boards, schedule interviews, make offers, or perform
+budget/HRIS approval in P0.
+
+### Consequences
+
+- Requisition, Posting, Scorecard, Processing, and Decision states must remain
+  separate state machines.
+- Existing internal upload RPCs and Storage RLS must not be made anonymous.
+- Public posting routes require narrow projections and dedicated RLS/E2E tests.
+- A later real-data pilot needs separate privacy, retention, deletion,
+  withdrawal, abuse-control, and operational approvals.
+
+## ADR-022 — Business-owned requisition approval and Hiring Manager interview gate
+
+- Status: Accepted
+- Date: 2026-08-24
+- Decision owner: Product team
+- Supersedes: the Job-authoring portion of ADR-011 and the requisition-approval
+  portion of ADR-021
+
+### Context
+
+HireLens needs a workflow consistent with normal ATS accountability without
+turning a system administrator into a business approver or letting an AI make
+an interview decision. Recruiter triage should prepare a decision, not replace
+the Hiring Manager's role-specific review.
+
+### Decision
+
+- The Hiring Manager creates the Job Requisition and the initial versioned
+  screening criteria (currently called Scorecard in implementation).
+- A designated `REQUISITION_APPROVER`, such as an organizational leader,
+  budget owner, or HRBP, approves or returns the submitted requisition with a
+  required reason. `ADMIN` is not in this business-approval path.
+- The Recruiter prepares and publishes the posting after requisition and
+  screening-criteria approval, performs evidence-based triage, and can request
+  a Hiring Manager review.
+- The assigned Hiring Manager alone records the resulting interview-progression
+  outcome: `INTERVIEW`, `HOLD`, or `MORE_INFORMATION_REQUIRED`, with a required
+  reason. This outcome is separate from the final human hiring decision.
+- AI and worker identities may provide validated criterion-level evidence only;
+  they cannot request, approve, imply, or save an interview outcome.
+- Candidate email and interview scheduling remain P1. In P0 a Recruiter may
+  only see the authorized handoff state.
+
+### Consequences
+
+- Add the `REQUISITION_APPROVER` role, requisition-approval state machine, and
+  authorization/RLS tests in the requisition slice.
+- Preserve separate state histories for requisition approval, screening
+  criteria, processing, Hiring Manager interview-progression review, and final
+  human decision.
+- The UI must label the AI evidence, Recruiter review request, and Hiring
+  Manager outcome separately so a user cannot mistake one for another.

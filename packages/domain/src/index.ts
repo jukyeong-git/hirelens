@@ -49,6 +49,30 @@ export type {
   NotificationEventType,
   NotificationRecord,
 } from "./notification";
+export {
+  cancelResumeUploadReservationInputSchema,
+  createResumeUploadReservationInputSchema,
+  finalizeUploadedResumeInputSchema,
+  resumeIntakeStatusSchema,
+  processingRunStatusSchema,
+  processingErrorCategorySchema,
+  resumePdfMimeTypeSchema,
+  resumeSha256Schema,
+  extractedResumePageSchema,
+  completeResumeExtractionInputSchema,
+} from "./resume";
+export type {
+  CancelResumeUploadReservationInput,
+  CreateResumeUploadReservationInput,
+  FinalizeUploadedResumeInput,
+  ResumeFileRecord,
+  ResumeIntakeStatus,
+  ProcessingRunStatus,
+  ProcessingErrorCategory,
+  ResumeProcessingRunRecord,
+  ExtractedResumePage,
+  CompleteResumeExtractionInput,
+} from "./resume";
 export type {
   AmbiguityResolution,
   AmbiguityStatus,

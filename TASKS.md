@@ -26,7 +26,8 @@ This is the execution checklist. Product behavior is defined in `docs/01_PRD.md`
 - [x] Add RLS policies and denial tests.
 - [x] Add private `resumes` storage bucket.
 - [x] Add append-only `audit_events`.
-- [x] Add SCIM-style audit event fields and coverage for all material state-changing actions.
+- [x] Add SCIM-style audit event fields and coverage for all material state-changing actions (legacy implementation; no longer an active P0 requirement).
+- [x] Retain minimal append-only change history without expanding the SCIM-style audit schema.
 - [x] Enforce that audit events cannot be updated or deleted by any application role, including Admin.
 - [x] Add versioned Recruiter review notes with soft delete and restore history.
 - [x] Add internal notifications and role-based recipients; processing failures notify Admin only in P0 (the failure producer is completed with the Phase 3 bounded-retry worker).
@@ -34,6 +35,10 @@ This is the execution checklist. Product behavior is defined in `docs/01_PRD.md`
 
 ## Phase 2 — Job and scorecard
 
+- [ ] Add `REQUISITION_APPROVER` role, Job Requisition state, Hiring Manager draft with screening criteria, designated business approval/return, and minimal change history.
+- [ ] Add Job Posting draft/publish/close state gated by requisition and Scorecard approval.
+- [ ] Add public synthetic-only careers posting route and anonymous submission form with private server-side upload flow.
+- [ ] Add public-route/RLS/E2E tests for posting visibility, submission denial, and no internal-data leakage.
 - [x] Create job form and list.
 - [x] Create scorecard draft schema.
 - [x] Implement ambiguous phrase detection.
@@ -46,9 +51,9 @@ This is the execution checklist. Product behavior is defined in `docs/01_PRD.md`
 
 ## Phase 3 — Resume intake and processing
 
-- [ ] Add multi-PDF upload.
+- [x] Add multi-PDF upload to private Storage for approved, intake-ready Jobs.
 - [x] Add the synthetic Candidate, Application, and Hiring Manager review-assignment foundation used by the Phase 1 review workflow.
-- [ ] Add per-file status and progress.
+- [x] Add per-file `UPLOADED` status and batch upload completion/error feedback.
 - [ ] Extract page text using PDF.js.
 - [ ] Store page text and normalized text hashes.
 - [ ] Mark image-only PDFs as `NEEDS_OCR`.
@@ -74,6 +79,8 @@ This is the execution checklist. Product behavior is defined in `docs/01_PRD.md`
 
 - [ ] Build evidence-first candidate list.
 - [ ] Build split-view candidate detail page.
+- [ ] Let a Recruiter request Hiring Manager review without creating an interview or hiring decision.
+- [ ] Let only the assigned Hiring Manager record `INTERVIEW`, `HOLD`, or `MORE_INFORMATION_REQUIRED` with a reason; retain its history separately from the final human decision.
 - [ ] Build 60-second review card.
 - [ ] Require a reason for every initial decision and decision change.
 - [ ] Allow decision writes for authenticated `HIRING_MANAGER` and `ADMIN`; deny Recruiter, AI, and worker identities.

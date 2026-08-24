@@ -9,6 +9,7 @@ import {
 
 import { LoginForm } from "../_components/login-form";
 import { ScorecardDraftPanel } from "../_components/scorecard-draft-panel";
+import { ResumeUploadPanel } from "../_components/resume-upload-panel";
 import { signOutAction } from "../actions";
 import { getAuthenticatedViewer } from "../../../lib/supabase-server";
 
@@ -79,6 +80,15 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
 
       <ScorecardDraftPanel jobId={job.id} viewerRole={viewer.role} workspace={scorecardWorkspace} />
 
+      {viewer.role === "ADMIN" || viewer.role === "RECRUITER" ? (
+        <ResumeUploadPanel
+          jobId={job.id}
+          enabled={
+            job.status === "READY_FOR_INTAKE" && scorecardWorkspace.activeApprovedVersion !== null
+          }
+        />
+      ) : null}
+
       <section className="panel" aria-labelledby="applications-title">
         <div className="section-heading section-heading-inline">
           <div>
@@ -98,7 +108,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
                 href={`/applications/${application.id}`}
               >
                 <strong>{application.candidate?.demo_label ?? "Synthetic candidate"}</strong>
-                <span>처리 상태: {application.workflow_state} · 사람 검토 열기 →</span>
+                <span>지원서 흐름 상태: {application.workflow_state} · 사람 검토 열기 →</span>
               </Link>
             ))}
           </div>

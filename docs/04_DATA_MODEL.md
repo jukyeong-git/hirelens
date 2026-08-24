@@ -10,15 +10,25 @@ This document defines the conceptual P0 model. SQL migrations remain the executa
 ADMIN
 RECRUITER
 HIRING_MANAGER
+REQUISITION_APPROVER
 ```
 
-### Job status
+### Requisition status
 
 ```text
 DRAFT
-SCORECARD_PENDING_APPROVAL
-READY_FOR_INTAKE
-ARCHIVED
+PENDING_APPROVAL
+APPROVED
+RETURNED
+CLOSED
+```
+
+### Posting status
+
+```text
+DRAFT
+PUBLISHED
+CLOSED
 ```
 
 ### Scorecard status
@@ -71,6 +81,14 @@ HOLD
 DO_NOT_PROCEED
 ```
 
+### Hiring Manager review outcome
+
+```text
+INTERVIEW
+HOLD
+MORE_INFORMATION_REQUIRED
+```
+
 ### Review confidence
 
 ```text
@@ -101,11 +119,20 @@ publishable-key plus authenticated-session only.
 - `title`
 - `department`
 - `raw_job_description`
-- `status`
+- `requisition_status`
 - `recruiter_id`
 - `hiring_manager_id`
+- `requisition_approver_id`
+- `submitted_at`
+- `approval_reason`
+- `approved_or_returned_at`
 - `created_at`
 - `updated_at`
+
+`jobs` is the implementation's current name for the Job Requisition aggregate.
+The requisition, screening-criteria, and posting states are independent. A
+future migration adds a distinct posting aggregate or equivalent fields without
+overloading `requisition_status`.
 
 ### `scorecard_versions`
 
@@ -224,9 +251,16 @@ Invariant: one candidate may have one application per job in the demo. Productio
 - `mime_type`
 - `byte_size`
 - `sha256`
+- `intake_status`
 - `created_at`
 
 Storage path uses opaque IDs. Do not embed names or emails.
+
+For the first intake slice, `intake_status` is `UPLOADED` only: the object and
+durable metadata exist, but queueing, PDF extraction, and AI processing have
+not started. The existing 10 MiB bucket limit is a demo technical limit;
+customer file-size policy remains TBD. Original filenames are restricted
+application metadata and never copied into audit payloads.
 
 ### `resume_pages`
 
@@ -294,9 +328,27 @@ Rules:
 - `completed_at`
 
 For the initial demo, a Hiring Manager needs an active assignment for the
-application and must also be the Job's assigned Hiring Manager to save a human
-decision. Admin may act across all demo data. Recruiters do not create or
-change human decisions.
+application and must also be the Job's assigned Hiring Manager to write an
+interview-progression outcome. Recruiters can create the review assignment but
+cannot write an outcome or a human hiring decision. Admin may inspect all demo
+data, but does not participate in requisition business approval or write a
+Hiring Manager interview-progression outcome.
+
+### `hiring_manager_review_outcomes`
+
+- `id`
+- `application_id`
+- `review_assignment_id`
+- `hiring_manager_id`
+- `outcome` (`INTERVIEW`, `HOLD`, or `MORE_INFORMATION_REQUIRED`)
+- `reason_detail`
+- `created_at`
+- `supersedes_outcome_id`
+
+This append-only table records the Hiring Manager's decision about whether to
+start an interview. It is separate from `human_reviews`, which records the
+later human hiring decision. A change appends a row referencing the prior
+outcome.
 
 ### `human_reviews`
 
@@ -359,6 +411,8 @@ No update/delete path for application roles.
 Do not use one status field to represent both:
 
 - AI processing state, and
+- Recruiter review-request state,
+- Hiring Manager interview-progression outcome, and
 - human hiring decision.
 
 They are independent dimensions.
@@ -371,6 +425,7 @@ They are independent dimensions.
 - `processing_runs(status, created_at)`
 - `evidence_items(processing_run_id, criterion_id)`
 - `review_assignments(assigned_to, status, due_at)`
+- `hiring_manager_review_outcomes(application_id, created_at desc)`
 - `human_reviews(application_id, created_at desc)`
 - `audit_events(aggregate_type, aggregate_id, created_at)`
 
@@ -378,18 +433,21 @@ Add indexes based on actual query plans, not only this list.
 
 ## 5. RLS access matrix
 
-| Resource            | Admin         | Recruiter               | Hiring manager             |
-| ------------------- | ------------- | ----------------------- | -------------------------- |
-| Jobs                | all demo jobs | assigned/owned          | assigned                   |
-| Scorecards          | all           | read/draft              | read/edit/approve assigned |
-| Applications        | all           | assigned job            | assigned job               |
-| Resume pages        | all           | assigned job            | assigned job               |
-| Evidence            | all           | assigned job            | assigned job               |
-| Human reviews       | create/read/change | read only            | read/create/change when assigned |
-| Recruiter notes     | create/read/edit/delete/restore | own create/read/edit/delete/restore | assigned active notes read |
-| Notifications       | all read; own read receipt | own read; own read receipt | own read; own read receipt |
-| Audit               | read          | assigned aggregate read | assigned aggregate read    |
-| Audit update/delete | never         | never                   | never                      |
+| Resource | Admin | Recruiter | Hiring manager | Requisition approver |
+| --- | --- | --- | --- | --- |
+| Requisitions | all demo jobs; no business approval | assigned | create/read assigned | read; approve/return only designated requisitions |
+| Scorecards | all | read/draft | read/edit/approve assigned | no access unless also assigned another role |
+| Applications | all | assigned job | assigned job | no access by role alone |
+| Resume files/objects | all assigned demo jobs | assigned job | assigned job | no access by role alone |
+| Resume pages | all | assigned job | assigned job | no access by role alone |
+| Evidence | all | assigned job | assigned job | no access by role alone |
+| Review requests | all read | create/read assigned job | read/complete when assigned | no access by role alone |
+| Interview-progression outcomes | read | read assigned job | create/read/change when assigned | no access by role alone |
+| Human reviews | create/read/change | read only | read/create/change when assigned | no access by role alone |
+| Recruiter notes | create/read/edit/delete/restore | own create/read/edit/delete/restore | assigned active notes read | no access by role alone |
+| Notifications | all read; own read receipt | own read; own read receipt | own read; own read receipt | own read; own read receipt |
+| Audit | read | assigned aggregate read | assigned aggregate read | designated requisition read |
+| Audit update/delete | never | never | never | never |
 
 Server-side secret access does not replace user authorization. Privileged server operations must still verify the authenticated user or system task.
 

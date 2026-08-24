@@ -10,7 +10,7 @@ const environmentSchema = z.object({
   SUPABASE_SECRET_KEY: z.string().min(1).optional(),
   DATABASE_URL: z.string().min(1).optional(),
   RESUME_BUCKET: z.string().min(1).default("resumes"),
-  PROCESSING_QUEUE: z.string().min(1).default("resume-analysis"),
+  PROCESSING_QUEUE: z.literal("resume_analysis").default("resume_analysis"),
   OPENAI_API_KEY: z.string().min(1).optional(),
   OPENAI_MODEL: z.string().min(1).optional(),
   OPENAI_STORE: z.enum(["true", "false"]).default("false"),
@@ -19,7 +19,7 @@ const environmentSchema = z.object({
   AI_EVIDENCE_PROMPT_VERSION: z.string().min(1).default("evidence-v1"),
   AI_SCHEMA_VERSION: z.string().min(1).default("v1"),
   WORKER_CONCURRENCY: z.coerce.number().int().positive().default(3),
-  WORKER_MAX_ATTEMPTS: z.coerce.number().int().positive().default(3),
+  WORKER_MAX_ATTEMPTS: z.coerce.number().int().positive().max(2).default(2),
   WORKER_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(2000),
   SENTRY_DSN: z.string().url().optional(),
 });
