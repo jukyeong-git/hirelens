@@ -239,3 +239,22 @@ values
     '복잡한 장애나 설계 결정을 팀에 설명했던 상황을 설명해 주세요.',
     1
   );
+
+insert into public.candidates (id, demo_label)
+values ('40000000-0000-0000-0000-000000000001', 'Synthetic Backend Candidate');
+
+insert into public.applications (id, candidate_id, job_id, source, workflow_state)
+values (
+  '50000000-0000-0000-0000-000000000001',
+  '40000000-0000-0000-0000-000000000001',
+  '10000000-0000-0000-0000-000000000001',
+  'DEMO_SEED',
+  'NEW'
+);
+
+insert into public.review_assignments (application_id, assigned_to, assigned_by)
+values (
+  '50000000-0000-0000-0000-000000000001',
+  '00000000-0000-0000-0000-000000000003',
+  '00000000-0000-0000-0000-000000000001'
+);

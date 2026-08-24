@@ -11,6 +11,14 @@ Append-only record of user inputs and assistant outputs for this working directo
 - Summarize large tool output, build logs, binaries, and generated artifacts.
 - Do not rewrite or delete prior entries.
 
+## Input — 2026-08-24 00:00:00 +0800 (+08)
+
+You are the single write agent for Phase 1 backend/domain groundwork in `/Users/jukyeong.kim/.vscode/projects/hirelens`. You are not alone; preserve dirty work and do not revert others. Read AGENTS, Supabase AGENTS, PRD/data model/ADR014, and the Supabase safe-change skill. Own only the requested Phase 1 migration, domain/database review-note-notification modules and exports/tests, and database SQL tests. Do not edit web, docs, TASKS, existing migrations, seed, or records. Implement the supplied human-decision, recruiter-note, notification, RLS/RPC/audit/backfill contract; run narrow tests/typecheck if possible; return changed files and caveats.
+
+## Output — 2026-08-24 00:05:00 +0800 (+08)
+
+Implemented the requested Phase 1 migration, domain contracts/tests, database repositories/exports, and SQL authorization test within the assigned code scope. The migration adds minimal candidates/applications/assignments; append-only authorized human-decision events; versioned recruiter notes; idempotent recipient notifications; RLS, grants, indexes, secure RPCs, safe audit, and Alpha-only migration backfill. Domain/database typechecks and 31 Vitest tests passed; diff whitespace passed. Local Supabase reset and SQL integration tests could not run because Docker was unavailable.
+
 ## Input — 2026-08-23 23:14:40 +0800 (+08)
 
 HireLens HL-021의 AI 계약만 구현해줘. 너는 다른 에이전트와 같은 저장소를 공유하므로 기존 변경을 되돌리거나 다른 파일을 수정하지 말고, 소유 파일은 packages/ai/** 및 필요 시 packages/ai/package.json으로 제한해줘. strict Zod runtime schema와 OpenAI Responses API용 JSON Schema를 함께 정의하고, scorecard draft 전용 prompt/adapter contract를 추가해줘. 반드시 모델/prompt/schema 버전을 노출하고, draft-only를 보장하며 fit score, hiring decision, protected-trait inference 필드를 허용하지 않아야 해. source_phrase, ambiguity_note, ambiguity_status, suggested_interview_question, criterion type, evidence fields, resume_assessable을 계약에 포함해줘. 실제 API 호출은 입력으로 apiKey/model을 받아 server-only에서 사용할 수 있도록 하되 테스트는 네트워크 없이 실행 가능하게 만들어줘. 기존 패키지 스타일을 따르고, 패키지 단위 unit tests/fixture를 추가해줘. 파일을 수정한 뒤 변경 파일과 테스트 결과만 요약해줘.
@@ -1042,3 +1050,39 @@ HL-023 승인 및 버전 관리를 구현하고 공유 Alpha Supabase에 migrati
 ## Output — 2026-08-24 08:39:52 +0800 (+08)
 
 특별한 요청이 없으면 모든 일반 작업은 `develop`에만 커밋·푸시하고, `alpha`와 `main`은 사용자의 명시적인 병합 또는 브랜치 갱신 요청이 있을 때만 변경하도록 저장소 작업 규칙에 반영했다.
+
+## Input — 2026-08-24 08:41:33 +0800 (+08)
+
+그다음 진행이 필요한 작업은?
+
+## Output — 2026-08-24 08:41:33 +0800 (+08)
+
+다음 구현 우선순위는 Phase 3의 첫 수직 슬라이스인 이력서 다중 업로드·접수다. 현재 Job과 승인 Scorecard까지 완료되어 있으며, P0 데모 흐름은 후보자/이력서 접수에서 멈춘다. 이 슬라이스는 승인된 Scorecard가 있는 Job에 대해 Recruiter가 합성 텍스트 PDF를 여러 개 업로드하고, private Storage와 application/resume_file 레코드, 파일별 UPLOADED 상태, 타입·용량 검증, RLS, 감사 이벤트, 업로드 목록 UI를 만드는 범위다. 이후 페이지 텍스트 추출, idempotent queue/worker, OpenAI 근거 추출, 후보자 검토·결정 순서로 진행한다. 버전형 Recruiter 메모와 내부 알림은 각 단계에 연결되므로 업로드/처리 후에 구현하는 것이 효율적이며, Admin 결정 매트릭스는 Phase 5의 인간 결정 구현과 함께 닫는 것이 적절하다.
+
+## Input — 2026-08-24 08:43:00 +0800 (+08)
+
+페이즈 0, 1, 2 에 내용은 모두 클리어 한가?
+
+## Output — 2026-08-24 08:43:00 +0800 (+08)
+
+TASKS 기준으로 Phase 0과 Phase 2는 모두 완료다. Phase 1은 Admin의 최초/변경 인간 결정 권한 매트릭스, 버전형 Recruiter 임시 메모의 수정·삭제·복구 이력, 역할별 내부 알림(처리 최종 실패는 Admin 전용) 세 항목이 남아 있다. 이 셋은 각각 Phase 5의 인간 결정, 후보자 검토, Phase 3 처리 실패 흐름에 연결되므로 다음 Resume intake 구현과 병행하지 않고 해당 기능 단계에서 닫는 것이 적절하다.
+
+## Input — 2026-08-24 08:43:00 +0800 (+08)
+
+Phase 1 남은 항목을 진행하자.
+
+## Output — 2026-08-24 08:43:00 +0800 (+08)
+
+Phase 1 구현 전 문서 충돌과 의존성을 확인했다. PRD는 인간 결정 작성자를 Hiring Manager/Admin으로 제한하지만 데이터 모델 RLS 표에는 Recruiter가 human review를 생성할 수 있다고 되어 있어, 소스 충돌 규칙에 따라 이를 먼저 확정해야 한다. 또한 인간 결정과 Recruiter 메모는 아직 존재하지 않는 applications/review_assignments에 귀속되므로, Phase 1을 지금 완결하려면 최소 Candidate/Application/ReviewAssignment 기반을 Phase 3에서 선행 구현해야 한다. 권장안은 PRD 우선으로 Recruiter의 결정 작성 권한을 제거하고, 해당 최소 기반을 먼저 추가한 뒤 세 Phase 1 항목을 하나의 application-bound 수직 슬라이스로 구현하는 것이다. 사용자의 결정이 필요하다.
+
+## Input — 2026-08-24 08:43:00 +0800 (+08)
+
+응 권장안 대로 진행해줘.
+
+## Output — 2026-08-24 09:02:36 +0800 (+08)
+
+Phase 1의 남은 권한·Recruiter 임시 의견·내부 알림 기반을 구현했다. Recruiter는 최종 결정을 저장할 수 없고, 활성 배정을 가진 담당 Hiring Manager 또는 Admin만 승인된 Scorecard 버전에 연결된 사유 필수·append-only 결정을 생성/변경한다. Admin은 모든 지원서의 결정을 관리할 수 있다. Recruiter 의견은 버전 이력, 사유가 필요한 soft delete/restore, 접근권 상실 시 차단을 제공한다. Scorecard 초안은 담당 Hiring Manager에게 인앱 알림을 생성하며, 읽음 처리는 수신자만 할 수 있다. 처리 실패 알림의 실제 생산자는 Phase 3 bounded-retry worker에 연결하도록 명시했다.
+
+합성 Candidate/Application/ReviewAssignment 시드, 지원서 검토 UI, 최종 결정/임시 의견 이력 UI, 알림 UI, 문서와 TASKS, RLS/감사 pgTAP 및 E2E 계약을 갱신했다. 보안 검토에서 발견된 public audit RPC, 권한 상실 Recruiter 메모 접근, 상세 사유의 감사 로그 복사를 수정했다. 공유 Alpha Supabase에 migration `20260824000200_phase1_application_review_notes_notifications.sql`을 적용했고 remote migration history 및 schema lint를 확인했다.
+
+검증: lint, typecheck, unit 31개, format, build, remote migration dry-run/push, remote schema lint 통과. E2E 6개는 `DEMO_TEST_PASSWORD` 미설정으로 스킵되었고, `pnpm test:integration`은 Docker 기반 local Supabase가 실행 중이지 않아 수행하지 못했다. alpha/main은 변경하지 않고 develop에만 커밋·푸시한다.

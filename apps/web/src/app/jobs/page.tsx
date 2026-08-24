@@ -1,9 +1,9 @@
-import { listJobs, listProfiles } from "@hirelens/database";
+import { listJobs, listNotifications, listProfiles } from "@hirelens/database";
 
 import { JobCreateForm } from "./_components/job-create-form";
 import { JobList } from "./_components/job-list";
 import { LoginForm } from "./_components/login-form";
-import { signOutAction } from "./actions";
+import { markNotificationReadAction, signOutAction } from "./actions";
 import { getAuthenticatedViewer } from "../../lib/supabase-server";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +22,11 @@ export default async function JobsPage() {
   }
 
   const { client, viewer } = authenticated;
-  const [jobs, profiles] = await Promise.all([listJobs(client), listProfiles(client)]);
+  const [jobs, profiles, notifications] = await Promise.all([
+    listJobs(client),
+    listProfiles(client),
+    listNotifications(client),
+  ]);
   const profileById = new Map(profiles.map((profile) => [profile.id, profile.display_name]));
   const jobsWithNames = jobs.map((job) => ({
     ...job,
@@ -61,6 +65,38 @@ export default async function JobsPage() {
         </p>
       ) : null}
 
+      <section className="panel" aria-labelledby="notifications-title">
+        <div className="section-heading section-heading-inline">
+          <div>
+            <p className="eyebrow">In-app notifications</p>
+            <h2 id="notifications-title">업무 알림</h2>
+          </div>
+          <span className="count-label">
+            {notifications.filter((notification) => !notification.read_at).length}개 읽지 않음
+          </span>
+        </div>
+        {notifications.length === 0 ? (
+          <p className="section-copy">현재 알림이 없습니다.</p>
+        ) : (
+          <div className="history-list">
+            {notifications.slice(0, 5).map((notification) => (
+              <article key={notification.id} className="history-item">
+                <strong>{notificationLabel(notification.event_type)}</strong>
+                <p>{notification.read_at ? "읽음" : "읽지 않음"}</p>
+                {!notification.read_at && notification.recipient_id === viewer.id ? (
+                  <form action={markNotificationReadAction}>
+                    <input type="hidden" name="notificationId" value={notification.id} />
+                    <button className="button button-quiet" type="submit">
+                      읽음으로 표시
+                    </button>
+                  </form>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
       {viewer.role === "ADMIN" || viewer.role === "RECRUITER" ? (
         <JobCreateForm viewerId={viewer.id} viewerRole={viewer.role} profiles={profiles} />
       ) : (
@@ -72,5 +108,17 @@ export default async function JobsPage() {
 
       <JobList jobs={jobsWithNames} />
     </main>
+  );
+}
+
+function notificationLabel(eventType: string) {
+  return (
+    {
+      SCORECARD_APPROVAL_REQUEST: "Scorecard 승인 검토 요청",
+      REVIEW_ASSIGNMENT: "지원서 검토가 배정되었습니다",
+      PROCESSING_COMPLETED: "지원서 처리가 완료되었습니다",
+      PROCESSING_FAILED: "처리에 실패했습니다",
+      DECISION_FOLLOW_UP: "결정 후속 검토가 필요합니다",
+    }[eventType] ?? eventType
   );
 }

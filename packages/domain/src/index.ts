@@ -23,6 +23,32 @@ export {
   scorecardRevisionInputSchema,
   scorecardStatusSchema,
 } from "./scorecard";
+export {
+  createHumanReviewInputSchema,
+  createReviewNoteInputSchema,
+  humanDecisionSchema,
+  reviewConfidenceSchema,
+  setReviewNoteDeletedInputSchema,
+  updateReviewNoteInputSchema,
+} from "./review";
+export type {
+  CreateHumanReviewInput,
+  CreateReviewNoteInput,
+  HumanDecision,
+  HumanReviewRecord,
+  ReviewConfidence,
+  ReviewNoteRecord,
+  ReviewNoteVersionRecord,
+  ApplicationReviewRecord,
+  SetReviewNoteDeletedInput,
+  UpdateReviewNoteInput,
+} from "./review";
+export { markNotificationReadInputSchema, notificationEventTypeSchema } from "./notification";
+export type {
+  MarkNotificationReadInput,
+  NotificationEventType,
+  NotificationRecord,
+} from "./notification";
 export type {
   AmbiguityResolution,
   AmbiguityStatus,

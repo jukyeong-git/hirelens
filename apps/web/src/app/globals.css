@@ -162,6 +162,63 @@ h2 {
   padding: clamp(1.25rem, 3vw, 2rem);
 }
 
+.review-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.history-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.history-item {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1rem;
+  border: 1px solid #dce4ef;
+  border-radius: 0.65rem;
+  color: #304663;
+  background: #fbfcfe;
+}
+
+.history-item p {
+  margin: 0;
+  line-height: 1.55;
+}
+.application-link {
+  text-decoration: none;
+}
+.application-link:hover {
+  border-color: #8ab4ff;
+  background: #f2f6ff;
+}
+.version-label {
+  color: #526b90;
+  font-weight: 800;
+  font-size: 0.8rem;
+}
+.empty-copy {
+  color: #5f7089;
+  line-height: 1.6;
+}
+.compact-form {
+  margin-top: 1rem;
+}
+.note-manage {
+  display: grid;
+  gap: 0.75rem;
+}
+
+@media (max-width: 760px) {
+  .review-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .section-heading {
   display: grid;
   gap: 0.2rem;

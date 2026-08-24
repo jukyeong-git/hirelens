@@ -18,7 +18,13 @@ export interface AmbiguityReviewActionState {
   message?: string;
 }
 
+export interface ReviewActionState {
+  status: "idle" | "success" | "error";
+  message?: string;
+}
+
 export const initialAuthActionState: AuthActionState = { status: "idle" };
 export const initialJobActionState: JobActionState = { status: "idle" };
 export const initialScorecardActionState: ScorecardActionState = { status: "idle" };
 export const initialAmbiguityReviewActionState: AmbiguityReviewActionState = { status: "idle" };
+export const initialReviewActionState: ReviewActionState = { status: "idle" };

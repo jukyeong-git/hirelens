@@ -21,15 +21,15 @@ This is the execution checklist. Product behavior is defined in `docs/01_PRD.md`
 
 - [x] Create initial Supabase migrations.
 - [x] Add roles: `ADMIN`, `RECRUITER`, `HIRING_MANAGER`.
-- [ ] Add the full Admin permission matrix, including initial and changed human decisions.
+- [x] Add the full Admin permission matrix, including initial and changed human decisions.
 - [x] Add synthetic demo users.
 - [x] Add RLS policies and denial tests.
 - [x] Add private `resumes` storage bucket.
 - [x] Add append-only `audit_events`.
 - [x] Add SCIM-style audit event fields and coverage for all material state-changing actions.
 - [x] Enforce that audit events cannot be updated or deleted by any application role, including Admin.
-- [ ] Add versioned Recruiter review notes with soft delete and restore history.
-- [ ] Add internal notifications and role-based recipients; processing failures notify Admin only in P0.
+- [x] Add versioned Recruiter review notes with soft delete and restore history.
+- [x] Add internal notifications and role-based recipients; processing failures notify Admin only in P0 (the failure producer is completed with the Phase 3 bounded-retry worker).
 - [x] Add synthetic demo seed and reset command.
 
 ## Phase 2 — Job and scorecard
@@ -47,6 +47,7 @@ This is the execution checklist. Product behavior is defined in `docs/01_PRD.md`
 ## Phase 3 — Resume intake and processing
 
 - [ ] Add multi-PDF upload.
+- [x] Add the synthetic Candidate, Application, and Hiring Manager review-assignment foundation used by the Phase 1 review workflow.
 - [ ] Add per-file status and progress.
 - [ ] Extract page text using PDF.js.
 - [ ] Store page text and normalized text hashes.

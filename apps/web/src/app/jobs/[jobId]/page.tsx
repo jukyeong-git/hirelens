@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { getJobForScorecard, getScorecardWorkspaceForJob } from "@hirelens/database";
+import {
+  getJobForScorecard,
+  getScorecardWorkspaceForJob,
+  listApplicationsForJob,
+} from "@hirelens/database";
 
 import { LoginForm } from "../_components/login-form";
 import { ScorecardDraftPanel } from "../_components/scorecard-draft-panel";
@@ -31,7 +35,10 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
     notFound();
   }
 
-  const scorecardWorkspace = await getScorecardWorkspaceForJob(client, job.id);
+  const [scorecardWorkspace, applications] = await Promise.all([
+    getScorecardWorkspaceForJob(client, job.id),
+    listApplicationsForJob(client, job.id),
+  ]);
 
   return (
     <main className="app-shell">
@@ -71,6 +78,32 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
       </section>
 
       <ScorecardDraftPanel jobId={job.id} viewerRole={viewer.role} workspace={scorecardWorkspace} />
+
+      <section className="panel" aria-labelledby="applications-title">
+        <div className="section-heading section-heading-inline">
+          <div>
+            <p className="eyebrow">Applications</p>
+            <h2 id="applications-title">검토 가능한 지원서</h2>
+          </div>
+          <span className="count-label">{applications.length}개</span>
+        </div>
+        {applications.length === 0 ? (
+          <p className="section-copy">아직 지원서가 없습니다.</p>
+        ) : (
+          <div className="history-list">
+            {applications.map((application) => (
+              <Link
+                className="history-item application-link"
+                key={application.id}
+                href={`/applications/${application.id}`}
+              >
+                <strong>{application.candidate?.demo_label ?? "Synthetic candidate"}</strong>
+                <span>처리 상태: {application.workflow_state} · 사람 검토 열기 →</span>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
     </main>
   );
 }
