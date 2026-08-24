@@ -8,10 +8,12 @@ import {
   listHumanReviews,
   listReviewNotes,
   listReviewNoteVersions,
+  listResumeProcessingRunsForApplication,
 } from "@hirelens/database";
 
 import { LoginForm } from "../../jobs/_components/login-form";
 import { ApplicationReviewPanel } from "../../jobs/_components/application-review-panel";
+import { ProcessingStatus } from "./processing-status";
 import { signOutAction } from "../../jobs/actions";
 import { getAuthenticatedViewer } from "../../../lib/supabase-server";
 
@@ -35,11 +37,12 @@ export default async function ApplicationReviewPage({
   const { client, viewer } = authenticated;
   const application = await getApplicationForReview(client, applicationId);
   if (!application) notFound();
-  const [job, workspace, reviews, notes] = await Promise.all([
+  const [job, workspace, reviews, notes, processingRuns] = await Promise.all([
     getJobForScorecard(client, application.job_id),
     getScorecardWorkspaceForJob(client, application.job_id),
     listHumanReviews(client, application.id),
     listReviewNotes(client, application.id),
+    listResumeProcessingRunsForApplication(client, application.id),
   ]);
   if (!job) notFound();
   const notesWithVersions = await Promise.all(
@@ -85,6 +88,7 @@ export default async function ApplicationReviewPage({
         reviews={reviews}
         notes={notesWithVersions}
       />
+      <ProcessingStatus runs={processingRuns} />
     </main>
   );
 }

@@ -1086,3 +1086,459 @@ Phase 1의 남은 권한·Recruiter 임시 의견·내부 알림 기반을 구�
 합성 Candidate/Application/ReviewAssignment 시드, 지원서 검토 UI, 최종 결정/임시 의견 이력 UI, 알림 UI, 문서와 TASKS, RLS/감사 pgTAP 및 E2E 계약을 갱신했다. 보안 검토에서 발견된 public audit RPC, 권한 상실 Recruiter 메모 접근, 상세 사유의 감사 로그 복사를 수정했다. 공유 Alpha Supabase에 migration `20260824000200_phase1_application_review_notes_notifications.sql`을 적용했고 remote migration history 및 schema lint를 확인했다.
 
 검증: lint, typecheck, unit 31개, format, build, remote migration dry-run/push, remote schema lint 통과. E2E 6개는 `DEMO_TEST_PASSWORD` 미설정으로 스킵되었고, `pnpm test:integration`은 Docker 기반 local Supabase가 실행 중이지 않아 수행하지 못했다. alpha/main은 변경하지 않고 develop에만 커밋·푸시한다.
+
+## Input — 2026-08-24 09:13:31 +0800 (+08)
+
+git 에 커밋/푸쉬는 매번 하지 말고 내가 요청할 때만 해줘.
+
+## Output — 2026-08-24 09:13:31 +0800 (+08)
+
+앞으로 Git 커밋과 푸시는 사용자가 명시적으로 요청할 때만 수행한다. 요청받은 경우에도 일반 작업은 `develop`에만 반영하며, `alpha`와 `main`은 별도의 명시적 요청 없이는 변경하지 않는다. 이 규칙을 AGENTS.md에 반영했다.
+
+## Input — 2026-08-24 09:13:55 +0800 (+08)
+
+그 다음 작업해야할 진행 사항은?
+
+## Output — 2026-08-24 09:13:55 +0800 (+08)
+
+다음 우선순위는 Phase 3의 첫 수직 슬라이스인 이력서 접수다. Recruiter가 승인된 Scorecard가 있는 Job에 합성 PDF 여러 개를 업로드하면 private Storage와 resume_files/application 기록을 만들고, 파일별 UPLOADED 상태와 진행 UI, 파일 형식·용량 검증, RLS, 안전한 감사 이벤트를 제공한다. 이후 PDF 텍스트 추출, 이미지 전용 PDF의 NEEDS_OCR 전이, idempotent queue/worker, 최대 한 번 재시도와 Admin 실패 알림, OpenAI 근거 추출 순으로 진행한다. 현재 사람 결정/Recruiter 의견/알림 기반은 마련됐지만, 실제 AI 근거·감사 타임라인은 이후 Phase 4~5 작업이다.
+
+## Input — 2026-08-24 09:14:21 +0800 (+08)
+
+진행 해줘.
+
+## Output — 2026-08-24 09:30:36 +0800 (+08)
+
+Phase 3의 첫 수직 슬라이스인 합성/익명화 PDF 이력서 접수를 구현했다. Recruiter/Admin은 승인된 Scorecard가 있고 READY_FOR_INTAKE 상태인 Job에서만 여러 PDF를 업로드할 수 있다. 업로드는 합성 또는 익명화 데모 자료라는 명시적 확인, PENDING_UPLOAD 예약, private Storage 객체 저장, UPLOADED 완료 처리 순서로 수행한다. 완료 파일은 삭제 권한으로 제거할 수 없고, 파일명·경로·원문은 감사 이벤트에 기록하지 않는다. 파일별 성공/실패 상태와 10 MiB 데모 기술 한도(TBD 고객 정책) 안내를 UI에 제공한다.
+
+보안 검토에서 발견된 Storage 직접 쓰기/삭제, 등록 전 객체 고아, 합성 데이터 오표시, application 감사 이벤트 RLS 문제를 예약/완료 RPC, 예약과 일치하는 Storage 정책, attestation, application aggregate 감사 RLS로 보완했다. Alpha Supabase에 migration `20260824000300_resume_intake_upload.sql`을 적용했다.
+
+검증: lint, typecheck, unit 33개, build, migration dry-run 및 원격 migration history 통과. local Docker Supabase가 실행 중이지 않아 pgTAP 통합 테스트를 실행하지 못했으며, E2E는 DEMO_TEST_PASSWORD 미설정 상태에서 스킵된다. 사용자 규칙에 따라 이번 변경은 Git 커밋/푸시하지 않았다.
+
+## Input — 2026-08-24 09:31:20 +0800 (+08)
+
+그 다음 진행해야 할 태스크는?
+
+## Output — 2026-08-24 09:31:20 +0800 (+08)
+
+다음 우선순위는 Phase 3의 PDF 텍스트 추출 수직 슬라이스다. UPLOADED 파일을 idempotent 작업으로 전환하고, private Storage에서 PDF.js로 페이지별 텍스트를 추출해 resume_pages의 원문·정규화 텍스트·해시를 저장한다. 이미지 전용 PDF는 NEEDS_OCR로 표시하고, UI에는 파일별 추출 상태와 재시도 가능한 오류를 표시한다. 이후 큐 중복 방지·bounded retry/Admin 실패 알림, OpenAI 근거 추출 순으로 진행한다.
+
+## Input — 2026-08-24 09:31:53 +0800 (+08)
+
+작업 진행해줘.
+
+## Output — 2026-08-24 09:31:53 +0800 (+08)
+
+PDF 텍스트 추출 작업을 시작하기 전, 추출 실행 주체와 처리 상태 계약이 아직 정해지지 않았음을 확인했다. 권장안은 다음 단계에서 큐/Worker를 함께 도입하고 Worker만 private Storage에서 파일을 읽어 추출하는 방식이다. 최소 상태는 UPLOADED → QUEUED → EXTRACTING → EXTRACTED / NEEDS_OCR / FAILED로 두고, SHA-256 raw/normalized hash와 페이지 경계를 저장한다. 이 선택은 Worker 권한, 중복 방지, 실패/재시도 설계에 영향을 주므로 사용자 결정을 기다린다.
+
+## Input — 2026-08-24 09:41:26 +0800 (+08)
+
+응 그렇게 진행 해줘.
+
+## Input — 2026-08-24 09:44:36 +0800 (+08)
+
+Alpha Supabase에서 Queue/PGMQ를 활성화 어떻게 하지?
+
+## Output — 2026-08-24 09:44:36 +0800 (+08)
+
+Supabase Dashboard에서 Alpha 프로젝트를 열고 Integrations의 Supabase Queues Postgres Module에서 pgmq extension을 활성화한다. 이어서 Queues 화면에서 resume_analysis 이름의 Basic Queue를 생성하고 RLS를 켠다. Worker가 Postgres connection string으로만 Queue를 읽을 경우 Data API 노출은 필요하지 않다. Dashboard에 모듈이 보이지 않으면 Database > Extensions에서 pgmq를 검색해 활성화하거나 SQL Editor에서 create extension if not exists pgmq;를 실행한다. 공식 Quickstart와 PGMQ extension 문서를 확인했다.
+
+## Input — 2026-08-24 09:48:00 +0800 (+08)
+
+확인 해줘.
+
+## Output — 2026-08-24 09:48:00 +0800 (+08)
+
+첨부 화면에서 `schema "pgmq" does not exist` 오류를 확인했다. Queue Dashboard는 열렸지만 pgmq extension이 아직 활성화되지 않은 상태다. Database > Extensions에서 pgmq를 Enable하거나 SQL Editor에서 `create extension if not exists pgmq;`를 실행한 뒤 Queues 화면을 새로고침해야 한다. 이후 `resume_analysis` Basic Queue를 RLS 활성화 상태로 생성한다.
+
+## Input — 2026-08-24 09:50:19 +0800 (+08)
+
+프로젝트의 Database connection string을 `.env.local`에 `DATABASE_URL`로 설정
+
+이 값은 어디서 찾지?
+
+## Output — 2026-08-24 09:50:19 +0800 (+08)
+
+Supabase Dashboard의 프로젝트 상단 Connect 버튼에서 Database connection string을 확인한다. 로컬 macOS 환경에서 long-running Worker 용도로는 Session pooler 문자열을 우선 사용하며, IPv6 또는 IPv4 add-on이 있으면 Direct connection도 가능하다. 비밀번호는 프로젝트 Database password이며, 문자열 전체를 `DATABASE_URL=[REDACTED]` 형식으로 .env.local에만 저장하고 채팅이나 Git에 넣지 않는다. 공식 Supabase database connection 문서를 확인했다.
+
+## Input — 2026-08-24 09:52:59 +0800 (+08)
+
+아래 모두 완료 된 것 같은데 확인 해줘.
+
+1. Alpha Supabase에서 Queue/PGMQ를 활성화
+2. 프로젝트의 Database connection string을 `.env.local`에 `DATABASE_URL`로 설정
+
+## Output — 2026-08-24 09:52:59 +0800 (+08)
+
+확인 완료. `.env.local`의 DATABASE_URL은 설정되어 있고, 해당 연결로 Alpha DB에 접속했다. pgmq extension과 pgmq schema가 모두 존재하며, `resume_analysis` 큐도 생성되어 있다. connection string이나 비밀번호는 출력하지 않았다.
+
+## Input — 2026-08-24 09:54:51 +0800 (+08)
+
+응 다음 태스크 진행해줘.
+
+## Output — 2026-08-24 09:54:51 +0800 (+08)
+
+큐/Worker/PDF.js 추출 수직 슬라이스 구현을 시작했다. PGMQ `resume_analysis` 큐와 DATABASE_URL의 연결을 확인한 뒤, upload finalize 시 durable processing run과 opaque task를 생성하고 Worker가 페이지 텍스트·해시를 저장하는 구조를 구현 중이다. 아직 보안/RLS 검토와 원격 migration 적용 전이므로 커밋·푸시·배포는 수행하지 않았다.
+
+## Input — 2026-08-24 10:18:58 +0800 (+08)
+
+다음 태스크 작업은?
+
+## Output — 2026-08-24 10:18:58 +0800 (+08)
+
+새 기능보다 현재 PDF 처리 수직 슬라이스의 마무리가 다음 작업이다. 남은 항목은 파일별 QUEUED/EXTRACTING/COMPLETED/NEEDS_OCR/FAILED 상태 UI, SQL RLS·중복 처리·Worker 결정 쓰기 차단 검증, 원격 migration 적용, security review다. 이 항목을 마무리하면 Phase 3의 이미지 전용 PDF NEEDS_OCR 및 페이지 텍스트/정규화 해시가 완료되고, 다음 새 기능은 bounded retry/dead-letter와 Admin 실패 알림이다.
+
+## Input — 2026-08-24 10:20:56 +0800 (+08)
+
+태스크 진행 해줘.
+
+## Output — 2026-08-24 10:20:56 +0800 (+08)
+
+PDF 처리 수직 슬라이스의 UI와 검증을 진행했다. application 상세 화면에 durable processing run 상태를 표시하고, Worker/PDF 패키지 lint 오류를 수정해 workspace typecheck를 통과했다. Alpha에 migration `20260824000400_resume_processing_queue.sql`을 적용해 processing_runs, resume_pages, PGMQ task 처리 계약을 생성했다. 기존 .env.local의 PROCESSING_QUEUE 및 WORKER_MAX_ATTEMPTS 값은 확정 계약과 달라 일회성 override(`resume_analysis`, `2`)로 migration을 적용했다. 사용자는 .env.local을 같은 값으로 갱신해야 Worker가 정상 기동된다. Git 커밋/푸시는 수행하지 않았다.
+
+## Output — 2026-08-24 09:41:26 +0800 (+08)
+
+큐/Worker 기반 PDF 추출 계획을 검토했다. 처리 수명주기는 processing_runs가 단독으로 소유하고, 파일 접수 상태와 분리한다. 표준 상태는 UPLOADED → QUEUED → EXTRACTING → COMPLETED / NEEDS_OCR / FAILED이며, 재시도는 PRD에 맞춰 최초 1회와 재시도 1회(총 2회)로 제한한다. Worker는 private Storage에서 opaque ID만 처리하며 사람 결정·AI 근거 판정 경로를 갖지 않는다.
+
+그러나 Alpha 환경의 DATABASE_URL이 설정되어 있지 않아 PGMQ/Supabase Queue 확장 사용 가능 여부를 확인할 수 없었다. Worker용 SUPABASE_SECRET_KEY와 PROCESSING_QUEUE 설정은 존재한다. Queue를 실제로 생성·검증하기 위해 Supabase Queue 기능을 활성화했는지 또는 프로젝트 Database connection string을 제공받아야 한다. 이 외부 상태가 확인되면 migration, worker, PDF.js 추출, 상태 UI를 이어서 구현한다.
+
+## Input — 2026-08-24 10:00:00 +0800 (+08)
+
+Implement Phase3 queue/worker/PDF extraction in /Users/jukyeong.kim/.vscode/projects/hirelens. Own migration 20260824000400, SQL tests 007, domain/database resume modules, packages/pdf, apps/worker, package dependency/lock only. Do not edit web/docs/TASKS/seed/records/old migrations. Preserve dirty intake work. Use PGMQ queue resume_analysis already enabled. Finalize upload triggers unique processing run+opaque task. Worker uses DATABASE_URL+secret, PDF.js; processing_runs owns QUEUED→EXTRACTING→COMPLETED|NEEDS_OCR|FAILED; pages raw/normalized sha256. One retry max total 2. Worker-only RPCs service_role; no human review/decision/audit direct. Tests. Return concise.
+
+## Output — 2026-08-24 10:01:00 +0800 (+08)
+
+Implemented Phase 3 queue/PDF extraction: migration 20260824000400, SQL test 007, worker PGMQ polling, private storage download with server secret, PDF.js page extraction and hashes, service-role-only state RPCs, and max-two-attempt retry handling. Finalization now atomically creates one QUEUED run and opaque queue task. No web, docs, TASKS, seed, or old migrations were edited. Verified PDF and worker typechecks, unit tests (34 passing), and diff whitespace. SQL clean reset/integration tests were not run in this turn.
+
+## Input — 2026-08-24 10:25:54 +0800 (+08)
+
+그 다음 작업은?
+
+## Output — 2026-08-24 10:25:54 +0800 (+08)
+
+다음은 새 기능을 추가하기보다 Phase 3 처리 경로를 실제 Alpha 환경에서 닫는 작업이다. 먼저 .env.local의 PROCESSING_QUEUE=resume_analysis, WORKER_MAX_ATTEMPTS=2를 확정한 뒤 Worker를 기동하고, 합성 텍스트 PDF가 COMPLETED 및 페이지 텍스트/해시 저장으로 끝나는지와 이미지 전용 PDF가 NEEDS_OCR로 끝나는지를 확인한다. 이어서 PGMQ 중복 전달이 결과를 중복 생성하지 않는지, 실패가 총 2회 뒤 FAILED 및 Admin 내부 알림으로 연결되는지, RLS와 서비스 역할 전용 RPC가 사람의 결정 쓰기를 허용하지 않는지를 검증한다. 이 마무리 뒤 Phase 4의 OpenAI 기반 기준별 근거 추출을 진행한다. TASKS.md의 Phase 3 체크박스는 구현 내용과 동기화가 필요하다.
+
+## Input — 2026-08-24 10:27:16 +0800 (+08)
+
+Worker 스모크 테스트 어떻게 해?
+
+## Output — 2026-08-24 10:27:16 +0800 (+08)
+
+Alpha Worker 스모크 테스트는 합성 텍스트 PDF 한 개를 업로드하고 processing run이 COMPLETED와 페이지 텍스트/해시 저장으로 끝나는지 확인하는 절차다. .env.local에 PROCESSING_QUEUE=resume_analysis와 WORKER_MAX_ATTEMPTS=2를 설정한 뒤, 터미널 A에서 pnpm dev:web, 터미널 B에서 pnpm dev:worker를 실행한다. Recruiter 또는 Admin으로 로그인해 READY_FOR_INTAKE 상태와 승인된 Scorecard가 있는 Job에서 합성 또는 익명화된 PDF만 업로드하고, 생성된 Application 상세에서 처리 상태를 새로고침해 확인한다. 이미지 전용 PDF는 NEEDS_OCR가 기대 결과다. Worker는 처리 완료 로그를 출력하지 않으므로 상태 화면이 주된 확인 지점이다. .env.example에는 이전 queue 이름과 재시도 값이 남아 있어 현재 런타임 계약과 불일치하며, 후속 변경으로 동기화해야 한다.
+
+## Input — 2026-08-24 10:58:27 +0800 (+08)
+
+테스트를 위해 필요한 계정 정보는?
+
+## Output — 2026-08-24 10:58:27 +0800 (+08)
+
+합성 데모 계정은 recruiter@demo.hirelens.example, hiring-manager@demo.hirelens.example, admin@demo.hirelens.example이며, 각 역할은 Recruiter, Hiring Manager, Admin이다. 공통 합성 데모 비밀번호는 [REDACTED]이며 supabase/seed.sql에만 정의되어 있다. Worker 업로드 스모크 테스트는 Recruiter 또는 Admin 계정을 사용한다.
+
+## Input — 2026-08-24 11:05:15 +0800 (+08)
+
+이 화면에서 어디로 이동해야 하지?
+
+## Output — 2026-08-24 11:05:15 +0800 (+08)
+
+화면을 아래로 내려 Openings의 기존 Job 목록에서 Backend Engineer를 연다. 현재 시드 Job은 DRAFT Scorecard이므로 Recruiter 계정으로는 업로드할 수 없다. 로그아웃 후 Hiring Manager 또는 Admin으로 같은 Job을 열어, 필요하면 모호한 표현 검토를 해소하고 사유를 입력한 뒤 v1 승인 버튼으로 Scorecard를 승인한다. Job 상태가 READY_FOR_INTAKE가 되면 Recruiter 또는 Admin으로 다시 로그인해 같은 Job의 합성 PDF 이력서 접수 영역으로 이동한다.
+
+## Input — 2026-08-24 11:06:17 +0800 (+08)
+
+PDF 업로드를 위한 샘플을 제공해 줄수 있나?
+
+## Output — 2026-08-24 11:07:09 +0800 (+08)
+
+합성 백엔드 엔지니어 이력서 PDF 샘플 생성을 준비했으나, PDF 생성 절차에서 필수인 container_tools/mark_artifact_operation_started.mjs가 현재 작업 환경과 조사한 시스템 경로 어디에도 존재하지 않아 생성 명령을 시작할 수 없었다. 실제 개인정보나 비밀값을 포함하지 않는 텍스트 PDF를 생성하고 렌더링 검증해야 하나, 필수 도구가 복구되거나 제공된 뒤에만 진행할 수 있다.
+
+## Input — 2026-08-24 11:09:12 +0800 (+08)
+
+내용만 알려주면 내가 워드파일에 붙여넣어서 PDF 파일 만들면 되지 않을까?
+
+## Output — 2026-08-24 11:09:12 +0800 (+08)
+
+가능하다. Word에 합성 백엔드 엔지니어 이력서 텍스트를 붙여 넣고 내보내기 또는 다른 이름으로 저장에서 PDF를 선택하면 된다. 텍스트 선택이 가능한 일반 PDF로 저장해야 Worker의 COMPLETED 경로를 검증할 수 있다. 제공한 샘플은 실제 개인정보 없이 운영 서비스, 배포, 장애 대응 근거를 포함한다.
+
+## Input — 2026-08-24 11:10:00 +0800 (+08)
+
+확인 해줘.
+
+## Output — 2026-08-24 11:10:00 +0800 (+08)
+
+확인 결과 .env.local에는 DATABASE_URL, SUPABASE_SECRET_KEY, NEXT_PUBLIC_SUPABASE_URL, PROCESSING_QUEUE, WORKER_MAX_ATTEMPTS가 모두 설정되어 있다. 오류 원인은 pnpm dev:worker가 tsx로 Worker를 직접 실행하여 .env.local을 자동 로드하지 않는 데 있다. 따라서 현재 Worker 프로세스에는 필수 환경 변수가 전달되지 않는다. Worker 실행 스크립트가 .env.local을 명시적으로 로드하도록 변경하면 해결된다. 값은 출력하거나 기록하지 않았다.
+
+## Input — 2026-08-24 11:12:19 +0800 (+08)
+
+지금 이렇게 터미널에 web 올렸느데 별도 터미널에 worker 올려야 하는거 맞지?
+
+## Output — 2026-08-24 11:12:19 +0800 (+08)
+
+맞다. pnpm dev:web는 브라우저 UI/API 서버이고, pnpm dev:worker는 Alpha PGMQ 메시지를 읽어 PDF를 처리하는 별도 장기 실행 프로세스이므로 다른 터미널에서 동시에 실행한다. 현재 Worker 실행 스크립트는 .env.local을 자동 로드하지 않아 먼저 그 보완이 필요하다.
+
+## Input — 2026-08-24 11:12:51 +0800 (+08)
+
+실행 스크립트 수정해줘.
+
+## Output — 2026-08-24 11:13:24 +0800 (+08)
+
+Worker dev/start 스크립트를 Node의 --env-file=../../.env.local 로더를 사용하도록 수정했고, .env.example도 현재 처리 계약(PROCESSING_QUEUE=resume_analysis, WORKER_MAX_ATTEMPTS=2)과 동기화했다. pnpm dev:worker를 실제로 실행해 Worker queue processing is running 로그를 확인한 뒤 테스트 프로세스를 종료했다. Worker typecheck와 git diff --check도 통과했다. Git 커밋과 푸시는 수행하지 않았다.
+
+## Input — 2026-08-24 13:00:52 +0800 (+08)
+
+`Hiring Manager` 또는 `Admin` 계정 알려줘
+
+## Output — 2026-08-24 13:00:52 +0800 (+08)
+
+Hiring Manager는 hiring-manager@demo.hirelens.example, Admin은 admin@demo.hirelens.example이며 공통 합성 데모 비밀번호는 [REDACTED]이다.
+
+## Input — 2026-08-24 13:02:47 +0800 (+08)
+
+`Hiring Manager` 들어와서 Scorecard 들어 왔는데 이 지금 프로세스가 무얼 뜻하는 거지?
+
+## Output — 2026-08-24 13:02:47 +0800 (+08)
+
+Scorecard 단계는 직무 설명을 이력서에서 확인할 수 있는 명시적 평가 기준으로 바꾸고, Hiring Manager가 이를 사람의 책임으로 검토·승인하는 게이트다. AI가 만든 초안은 최종 기준이 아니며, 모호하거나 이력서로 평가할 수 없는 표현은 Interview-only 또는 Human-only로 분리한다. Hiring Manager가 기준과 근거 요건을 확인하고 승인 사유를 남겨 v1을 승인하면 기준은 불변 버전이 되고 Job이 READY_FOR_INTAKE가 되어 PDF 업로드와 이후 근거 추출에 사용된다. 이는 후보자 합격/불합격 판단 단계가 아니다.
+
+## Input — 2026-08-24 13:04:29 +0800 (+08)
+
+근데 일반 적으로 Job 설명을 Hiring Manager가 리크루터에게 전달하지 않아? 그리고 리쿠르터는 단순 Job 공고 할 때 그 내용을 적는걸로 알고 있는데? 일반적인 프로세스가 어떻게 되지? Workday 에서의 프로세스는? 확인 해줘.
+
+## Output — 2026-08-24 13:04:29 +0800 (+08)
+
+일반적으로 Hiring Manager가 인력 수요, 업무 범위, 필수 요건, 성공 기준을 제안하고 Recruiter가 이를 공고 문안, 채널, 일정, 지원서 양식으로 운영한다. 다만 회사마다 권한과 승인 단계는 다르다. Workday Recruiting은 Job Requisition을 중심으로 구성 가능하며, Hiring Manager 같은 비전문 사용자에게 Start Job Requisition을 제공하거나 Recruiter가 requisition을 작성할 수 있다. Requisition은 기존 position 또는 job profile에서 정보를 채울 수 있고, 관리자에게는 Job Description을 보기 전용으로, Recruiter에게는 편집 가능하도록 설정할 수도 있다. 제출 뒤 테넌트별 승인 business process를 거쳐 Open requisition을 Job Posting template로 내외부 career site에 게시하며, Primary Recruiter가 requisition의 후보자 흐름을 운영한다. HireLens의 현재 Recruiter Job 생성은 데모 단순화이며, 실제 운영에 맞추려면 Hiring Manager가 Hiring Brief/requisition을 시작하고 Recruiter가 게시용 내용과 운영 항목을 정리하는 역할 분리가 더 자연스럽다. 공식 Workday 문서를 확인했다.
+
+## Input — 2026-08-24 13:13:16 +0800 (+08)
+
+지금 현재 프로젝트의 `Scorecard` 에서 어떤 역할을 하는거지?
+
+## Output — 2026-08-24 13:13:16 +0800 (+08)
+
+현재 HireLens의 Scorecard는 Job 공고가 아니라, 합성 이력서를 어떤 명시적 기준과 증거로 검토할지 정의하는 내부 평가 계약이다. Job 설명에서 초안을 만들고 각 기준의 정의, 필수/선호/면접 전용 구분, 이력서에서 허용되는 근거, 보조 근거, 확인 가능한 필드를 담는다. Hiring Manager 또는 Admin이 모호한 표현을 Interview-only 또는 Human-only로 분리하고 승인 사유와 함께 버전을 승인하면 해당 버전은 불변이 된다. 승인본만 PDF 처리와 이후 AI 근거 추출에 사용되며, 결과는 단일 적합도 점수나 합격/불합격이 아니라 기준별 근거, 원문 인용, 페이지, 불확실성, 후속 질문으로 표시되어 사람의 최종 결정을 지원한다.
+
+## Input — 2026-08-24 13:14:28 +0800 (+08)
+
+PDF 업로드 테스트 하는거 아녔어? 지금 `Scorecard` 가 필요하다고 설명한 기준은 뭐지?
+
+## Output — 2026-08-24 13:14:28 +0800 (+08)
+
+목표는 PDF 업로드 테스트가 맞다. 다만 현재 구현은 승인된 Scorecard가 없는 Job에서는 PDF 업로드를 허용하지 않는 게이트를 둔다. 업로드된 이력서를 나중에 어떤 기준과 근거로 처리했는지 추적할 수 있게 하려는 제품 불변조건이다. 시드된 Backend Engineer Job에는 초안 Scorecard가 있으므로 Hiring Manager 또는 Admin이 한 번 승인해 Job을 READY_FOR_INTAKE로 만들면 Recruiter 또는 Admin이 PDF 업로드를 진행할 수 있다. 이 단계는 후보자 평가가 아니라 업로드 테스트를 열기 위한 선행 상태 전이다.
+
+## Input — 2026-08-24 13:15:21 +0800 (+08)
+
+그럼 지금 이건 단순히 개발과정에서 있는 프로세스 중 하나 이고 나중에 최종 프로세스는 아닌거지?
+
+## Output — 2026-08-24 13:15:21 +0800 (+08)
+
+시드된 Backend Engineer 초안을 한 번 승인해 업로드를 여는 행위는 현재 개발·데모 준비 절차다. 그러나 Scorecard를 사람이 검토·승인하고 승인된 버전에만 이력서 처리를 연결하는 원칙 자체는 최종 제품에서도 유지할 핵심 프로세스다. 최종 흐름에서는 Hiring Manager가 채용 요청과 성공 기준을 시작하고 Recruiter가 공고·운영 정보를 정리한 뒤, Hiring Manager가 Scorecard를 승인한다. 현재처럼 테스트를 위해 이미 준비된 초안을 수동 승인하는 부분만 데모 특성이다.
+
+## Input — 2026-08-24 13:16:24 +0800 (+08)
+
+Workday 프로세스는 어떻게 되?
+
+## Output — 2026-08-24 13:16:24 +0800 (+08)
+
+Workday Recruiting의 표준 구성 단위는 Job Requisition이다. 일반적으로 Hiring Manager 또는 권한을 받은 담당자가 requisition을 시작하고, position 또는 job profile 기반 기본 정보와 채용 정보를 채우며 Primary Recruiter를 배정한다. 회사별 승인 Business Process를 통과해 requisition을 Open 상태로 만들고, Recruiter가 requisition의 Job Posting 탭에서 posting template과 채널을 선택해 내외부 career site 또는 채용 대행사에 게시한다. 지원자는 posting에 연결된 application template로 지원하고, Recruiter와 Hiring Manager는 requisition workspace에서 review, screen, assessment, interview, offer, hire 단계를 운영한다. Workday는 Hiring Manager의 간단한 Start Job Requisition 화면, recruiter의 description 편집 권한, template 기반 게시를 모두 구성 가능하게 제공하므로 정확한 순서와 권한은 테넌트 설정에 따라 달라진다. 공식 Workday 문서를 확인했다.
+
+## Input — 2026-08-24 13:20:03 +0800 (+08)
+
+HireLens 의 현재 계획된 프로세스는 어떻게 되지?
+
+## Output — 2026-08-24 13:20:03 +0800 (+08)
+
+HireLens는 Workday 전체를 대체하는 ATS가 아니라, Job이 준비된 뒤 증거 중심 이력서 검토와 사람의 판단을 보조하는 P0 흐름을 계획한다. 현재 계획은 Recruiter가 Job과 담당 Hiring Manager를 등록하고, Scorecard 초안을 만들며, Hiring Manager 또는 Admin이 모호한 기준을 Human-only 또는 Interview-only로 분리하고 사유와 함께 불변 Scorecard 버전을 승인한다. 승인 후 Job은 READY_FOR_INTAKE가 되고 Recruiter가 합성 PDF를 업로드한다. Storage 예약·완료 후 Worker가 큐에서 PDF를 읽어 페이지 텍스트와 해시를 저장하고, 이후 OpenAI가 승인된 기준별 근거 후보를 추출한다. 인용문·페이지·기준·모델·프롬프트 버전을 검증해 저장하며, Recruiter는 임시 의견을 남기고 Hiring Manager 또는 Admin만 사유를 남겨 최종 결정을 저장하거나 변경한다. 모든 중요 변경은 append-only audit로 남긴다. Slack, 이메일, 일정, 실제 ATS/HRIS 연동, OCR은 P1 이후다.
+
+## Input — 2026-08-24 13:22:53 +0800 (+08)
+
+지금 localhost:3000에 화면 띄웠는데 후보자는 이력서 업로드 어떻게 해?
+
+## Output — 2026-08-24 13:22:53 +0800 (+08)
+
+현재 P0에서는 후보자가 직접 로그인해 업로드하지 않는다. Recruiter 또는 Admin이 받은 합성 또는 명시적으로 익명화된 PDF를 대신 접수한다. Hiring Manager 또는 Admin이 Backend Engineer의 Scorecard를 승인해 Job을 READY_FOR_INTAKE로 만들고, Recruiter 또는 Admin으로 로그인해 Job 목록에서 같은 Job을 열면 합성 PDF 이력서 접수 영역이 활성화된다. PDF를 선택하고 합성/익명화 확인란을 체크해 업로드하면 후보자와 지원서가 자동으로 생성되고 Worker가 큐 처리한다. Worker를 별도 터미널에서 실행해야 하며, 상세 화면에서 상태가 COMPLETED 또는 NEEDS_OCR인지 확인한다.
+
+## Input — 2026-08-24 13:23:36 +0800 (+08)
+
+후보자는 원래 본인이 이력서를 업로드 하는게 맞는거 같은데?
+
+## Output — 2026-08-24 13:23:36 +0800 (+08)
+
+맞다. 실제 채용 공고 기준에서는 후보자가 공고 페이지의 지원 폼에서 본인 이력서를 직접 제출하는 것이 일반적이다. 현재 Recruiter 대리 업로드는 P0 데모에서 합성 데이터만 사용하고 public career site, 후보자 계정, 동의/고지, 연락처 처리, 스팸 방지, 지원 수정·철회, 이메일 확인을 범위 밖으로 둔 제한된 접수 방식이다. 최종 제품에서 후보자 직접 업로드를 채택하려면 public apply route, Job별 공개/비공개 상태, 무인증 업로드용 제한된 reservation endpoint와 Storage 정책, 개인정보 동의와 보존 고지, CAPTCHA/rate limit, 제출 확인 및 수정/철회 정책을 별도 제품 결정으로 확정해야 한다. 이 확장은 현재 P0 범위를 materially 변경하므로 사용자 결정 없이 구현하지 않는다.
+
+## Input — 2026-08-24 13:24:04 +0800 (+08)
+
+일단 이런것도 모두 P0 전체에 포함되어 있는거지?
+
+## Output — 2026-08-24 13:24:04 +0800 (+08)
+
+아니다. 현재 문서 기준 P0의 PDF batch upload는 Recruiter 또는 Admin이 관리 화면에서 접수하는 방식이고, 후보자 공개 지원 페이지와 직접 업로드는 포함되지 않는다. P0에는 Job, Scorecard 초안과 사람 승인, PDF batch upload, 페이지 텍스트 추출, 기준별 근거 추출, Recruiter/Hiring Manager 검토, 사람의 최종 결정, audit trail이 포함된다. 후보자 직접 지원에는 공개 경로, 개인정보·동의, 보안·스팸 방지라는 별도 제품 표면이 추가되므로 현재 P0 범위 밖이다. 사용자가 이를 이번 데모 P0에 포함시키길 원하면 PRD와 보안/데이터 모델/TASKS를 먼저 수정하고 우선순위를 재정해야 한다.
+
+## Input — 2026-08-24 13:26:49 +0800 (+08)
+
+지금 HireLens 에서 정의된 프로젝트의 범위가 어디까지 이지?
+
+## Output — 2026-08-24 13:26:49 +0800 (+08)
+
+현재 HireLens 범위는 demo-quality evidence-first hiring judgment support ATS다. P0의 시작점은 Recruiter/Admin이 Job을 만들고 Job 설명에서 Scorecard 초안을 생성하는 내부 운영 흐름이며, 공개 채용 공고나 후보자 self-service apply는 시작점에 포함되지 않는다. P0은 사람의 Scorecard 승인·불변 버전, Recruiter/Admin의 다중 텍스트 PDF 접수, private Storage/큐/Worker 기반 페이지 추출과 상태/재시도, OpenAI의 기준별 근거 추출과 인용문·페이지 검증, Recruiter/Hiring Manager 검토, Hiring Manager/Admin의 사유 필수 최종 결정, append-only audit, 합성 seed/reset, in-app 알림과 품질 게이트까지다. P1은 Slack, Calendar, candidate email, CSV, OCR, 운영 대시보드이고 P2는 실제 플랫폼 연동·템플릿·분석 등이다. 명시적 제외는 자동 합격/불합격, 전역 fit score, 보호특성/인격 분석, HRIS/급여/온보딩/오퍼, 실제 데이터 사용이다. 현재 TASKS의 Phase 3 이후 체크박스는 아직 구현·검증 중이므로 문서상 P0 범위와 현재 완료 상태는 구분해야 한다. 후보자 직접 업로드를 P0에 넣으려면 공개 지원 표면과 개인정보·보안 정책을 추가하는 범위 변경이 필요하다.
+
+## Input — 2026-08-24 13:28:03 +0800 (+08)
+
+기존에 빌더톤 멘토링 출제 문제를 기반으로 해결할 수 있는 방안 기준으로 제시 한거지?
+
+## Output — 2026-08-24 13:28:03 +0800 (+08)
+
+그렇다. HireLens의 문제 정의와 핵심 범위는 Builderthon Judgment Track 문제에서 제시된 대량 지원서 미검토, Recruiter 시간 부족, 느리고 근거 없는 Hiring Manager 피드백, 면접에서 드러나는 직무 불일치, 흩어진 결정 사유, AI에 최종 판단을 위임하지 말아야 한다는 요구를 해결하도록 도출했다. Job/Scorecard/Queue/Worker/권한/감사 등 구체적인 구현과 운영 선택은 문제 원문에 그대로 있던 요구가 아니라, 해당 문제를 데모에서 안전하고 검증 가능하게 풀기 위해 추가한 팀의 MVP 결정이다. 후보자 공개 지원은 원 문제의 핵심 병목 해결에 필수라고 정의하지 않아 현재 P0에는 넣지 않았다.
+
+## Input — 2026-08-24 13:29:01 +0800 (+08)
+
+일단은 근본 프로세스가 먼저 정의 되고 그 병목에 대한 문제를 해결 하는 방향으로 가야 할 것 같아.
+
+## Output — 2026-08-24 13:29:01 +0800 (+08)
+
+동의한다. 현재 기능 구현을 더 진행하기 전에 실제 채용의 시작부터 최종 결정까지의 기준 프로세스를 확정하고, HireLens가 어느 경계와 병목을 담당할지 재정의해야 한다. 권장 순서는 채용 요청과 승인, 공고 게시, 후보자 직접 지원, 접수·자격 확인, 증거 기반 서류 검토, Hiring Manager 판단, 인터뷰·오퍼/종료로 end-to-end 흐름을 정하고, 단계별 소유자·입력·출력·SLA·시스템 경계를 정의한 뒤, Builderthon 문제의 병목을 매핑해 P0/P1을 재분류하는 것이다. 현재 구현된 Scorecard·근거 추출·사람 결정·감사는 후보자 직접 지원과 ATS 연동 여부와 독립적으로 서류 검토 병목 해결 모듈로 유지할 수 있다.
+
+## Input — 2026-08-24 13:29:52 +0800 (+08)
+
+이게 일반적인 채용 프로스세인 것 같은데 맞나?
+
+1. 채용 요청 생성
+   Hiring Manager 또는 권한을 받은 담당자가 `Job Requisition`을 시작합니다. 기존 Position 또는 Job Profile의 정보를 자동으로 채울 수 있습니다.
+2. 채용 정보·담당자 설정
+   채용 인원, 근무지, 고용 형태, 목표 입사일, Job Description, Primary Recruiter 등을 지정합니다.
+3. 승인
+   예산, 조직장, HR 등 회사가 설정한 Business Process에 따라 승인을 받습니다. 이 순서와 승인자는 회사마다 다릅니다.
+4. 공고 게시
+   승인된 requisition을 기반으로 Recruiter가 Job Posting Template과 채널을 선택해 내부·외부 Career Site, 채용 에이전시 등에 게시합니다.
+5. 지원자 관리
+   지원자는 공고에 연결된 Application Template으로 지원합니다. Recruiter와 Hiring Manager는 requisition workspace에서 후보자를 `Review → Screen → Assessment → Interview → Offer → Hire` 단계로 관리합니다.
+
+## Output — 2026-08-24 13:29:52 +0800 (+08)
+
+맞다. 이는 Workday 용어를 사용한 일반적인 엔터프라이즈 ATS 채용 운영 흐름이다. 1~4는 requisition을 열고 게시하는 단계, 5는 후보자 파이프라인 단계다. 회사마다 승인자·채용 담당자·단계명·필수 평가 절차가 달라지며, 실제 운영에서는 공고 전후 sourcing/referral, 지원 접수와 자격 확인, 서류 검토, 인터뷰 일정·평가, 레퍼런스/백그라운드 체크, 오퍼 승인·서명, 입사 처리 또는 불합격 통지·데이터 보존/삭제가 추가될 수 있다. HireLens는 이 전체 과정 중 승인된 기준을 바탕으로 한 서류 검토와 근거 기록, Hiring Manager의 구조화된 판단을 맡는 모듈로 두는 것이 적합하다.
+
+## Input — 2026-08-24 13:35:00 +0800 (+08)
+
+일단 일반적인 엔터프라이즈 ATS 채용 프로세스 중에서 빌더톤 멘토링의 Judgment Track 문제에서 제시된 병목을 해결하기 위해 필요한 프로세스만 정의하자
+
+## Output — 2026-08-24 13:38:23 +0800 (+08)
+
+일반 ATS 전체를 복제하지 않는 최소 Judgment Track 운영 프로세스를 docs/12_TARGET_OPERATING_PROCESS.md에 정의하고, docs/10_DECISIONS.md에 ADR-019로 확정했다. HireLens의 경계는 승인된 Scorecard 정책, 지원서 증거 처리, Recruiter triage, 이유가 남는 Hiring Manager 판단, append-only audit이며, requisition 승인·공고 게시·후보자 커뮤니케이션·일정·오퍼·HRIS는 외부 ATS 또는 HR 프로세스의 책임으로 분리했다. P0은 외부 ATS 연동 전까지 synthetic manual intake로 이 경계를 증명한다. MANIFEST에도 문서를 등록했다. product_guardian과 code_mapper 검토를 반영했으며, git diff --check를 통과했다. 코드, DB, Git 커밋·푸시는 변경하지 않았다. 현재 Worker의 COMPLETED는 PDF 텍스트 추출 완료이지 AI evidence 분석 완료가 아니라는 구현 상태도 문서에 명시했다.
+
+## Input — 2026-08-24 13:40:36 +0800 (+08)
+
+SCIM 같은 감사로그는 이번 범위에서 제거하자.
+
+## Output — 2026-08-24 13:41:30 +0800 (+08)
+
+SCIM 형식만 P0 범위에서 제거했다. ADR-020으로 SCIM-style actor/action/target/result 계약, 전체 event-coverage 요구, 추가 노출·확장을 제외하고, 결정의 행위자·시각·필수 사유·변경 전 값처럼 판단 책임에 필요한 최소 append-only 변경 이력은 유지하도록 확정했다. 기존 audit 테이블·필드는 이미 적용된 migration이므로 삭제하지 않고 레거시 구현으로 남긴다. TASKS와 목표 운영 프로세스 문서도 이 경계에 맞게 수정했으며 git diff --check를 통과했다. Git 커밋·푸시는 수행하지 않았다.
+
+## Input — 2026-08-24 13:44:08 +0800 (+08)
+
+지금까지 HireLens 프로젝트에서 진행해야 할 프로세스가 무엇인지 한번 정리해서 설명 해줘
+
+## Output — 2026-08-24 13:44:08 +0800 (+08)
+
+HireLens의 확정된 목표는 전체 ATS를 만드는 것이 아니라, 접수된 지원서를 승인된 기준으로 검토하고 사람의 판단 근거를 남기는 evidence-review module이다. 운영 흐름은 외부 ATS 또는 P0 수동 demo intake로 Job/application context를 받음, Hiring Manager의 Scorecard 승인, Recruiter/Admin의 지원서 등록, Worker의 PDF 페이지 텍스트 추출과 예외 처리, 승인 기준별 AI 근거 추출과 quote/page 검증, Recruiter triage와 manager review 요청, Hiring Manager/Admin의 사유 필수 PROCEED/HOLD/DO_NOT_PROCEED 판단, 최소 append-only 변경 이력과 향후 ATS 상태 handoff 순서다. P0에는 requisition 승인, 공고 게시, 후보자 self-service apply, 후보자 메시지, 일정, 오퍼, HRIS, SCIM-style audit 확장이 포함되지 않는다. 프로젝트 실행은 (1) 이 운영 경계를 문서화한 상태, (2) Phase 3 Worker의 Alpha smoke/중복·실패·알림 검증, (3) Phase 4 OpenAI evidence runtime과 quarantine/AI eval, (4) Phase 5 evidence-first list/detail, assignment workflow, reasoned decision UI, (5) Phase 6 synthetic 20-resume demo, reset, E2E/privacy/deployment rehearsal 순서다. 현재 구현은 Scorecard, manual intake, PDF page extraction, notes, decision/audit 기반이 있고, AI evidence runtime과 end-to-end review routing은 남아 있다.
+
+## Input — 2026-08-24 13:45:27 +0800 (+08)
+
+Job Requisition 승인, 공고 게시, 후보자 직접 지원을 넣자.
+
+## Output — 2026-08-24 13:47:19 +0800 (+08)
+
+요청한 세 기능은 현재 P0의 internal synthetic intake 및 evidence-review-module 경계와 충돌한다. 기존 공개/실제 후보자 개인정보 금지 정책을 유지하려면 권장안은 P0에 Job Requisition 승인, 내부 공고 publish/close, 공개 careers 지원 화면을 추가하되 합성 데이터 전용으로 제한하는 것이다. Requisition은 Hiring Manager가 생성하고 Admin이 예외 승인하며, Recruiter는 공고 문안을 보완·게시한다. 공고는 requisition 승인과 Scorecard 승인 뒤에만 PUBLISHED가 되고, 후보자는 계정 없이 PDF와 합성 email/label, 필수 데모 자료 확인란으로 제출한다. 공개 요청은 새 server-side endpoint와 private Storage reservation/RPC를 사용하며 현재 내부 업로드 RPC/RLS는 공개하지 않는다. 실제 지원자 데이터를 받으려면 개인정보 고지/동의 문구, 데이터 controller와 연락처, 보존·삭제 및 철회 정책, rate limit/CAPTCHA, 중복·지원 상태 정책이 먼저 확정돼야 한다. 따라서 합성 전용 공개 데모로 할지 실제 지원도 허용할지 사용자 결정이 필요하다. 코드·DB·범위 문서는 아직 바꾸지 않았고, product_guardian과 code_mapper 검토를 완료했다.
+
+## Input — 2026-08-24 13:56:43 +0800 (+08)
+
+두개의 차이점은 뭐지?
+
+1. **합성 데이터 전용 공개 데모로 확장**
+2. **실제 지원자 데이터도 허용하는 파일럿으로 확장**
+
+## Output — 2026-08-24 13:56:43 +0800 (+08)
+
+합성 데이터 전용 공개 데모는 공개 careers 화면과 제출 흐름을 시연하지만 합성 이름·이메일·PDF만 받아 실제 개인정보 처리와 채용 운영을 하지 않는 방식이다. 기존 security policy를 유지할 수 있고, private Storage, 서버 제출 경로, requisition/공고 상태, 공개-route/RLS/E2E만 추가하면 된다. 실제 지원자 데이터 파일럿은 실제 이름·연락처·이력서를 수집·저장·AI 처리하는 운영 서비스가 된다. 따라서 개인정보 고지와 동의/법적 근거, controller와 문의처, 보존·삭제·철회·백업 정책, 접근 및 incident 운영, CAPTCHA/rate limit, 중복 지원과 후보자 상태, 이메일 확인과 후보자 커뮤니케이션을 확정하고 보안·법무·운영 검토를 거쳐야 한다. AI의 사람 결정 금지와 증거 검증은 두 경우 모두 동일하다. 권장 순서는 합성 데모로 제품 흐름을 검증한 뒤 별도 승인으로 실제 데이터 파일럿을 여는 것이다.
+
+## Input — 2026-08-24 13:57:43 +0800 (+08)
+
+합성 데이터 전용으로 하자.
+
+## Output — 2026-08-24 13:59:20 +0800 (+08)
+
+합성 데이터 전용 공개 데모 확장을 P0 결정으로 문서화했다. P0은 Hiring Manager의 Job Requisition 생성, Admin의 사유 필수 승인/반려, Recruiter의 requisition 및 Scorecard 승인 후 공고 publish/close, 계정 없는 Candidate의 합성/익명화 PDF 제출을 포함한다. 공개 제출은 새 전용 server-side 경로와 private Storage를 사용하며 현재 내부 업로드 RPC/RLS를 공개하지 않는다. 실제 개인정보·후보자 메시지·외부 job board·일정·오퍼·HRIS는 계속 범위 밖이다. PRD, user flows, security/privacy, target operating process, TASKS, ADR-021에 반영했고 git diff --check를 통과했다. 코드·DB·Git 커밋·푸시는 변경하지 않았다.
+
+## Input — 2026-08-24 14:00:20 +0800 (+08)
+
+UI/UX는 Workday 컨셉을 따라가되 전부 똑같이 만들지 않는 선에서 가이드를 만들어줘.
+
+## Output — 2026-08-24 14:01:09 +0800 (+08)
+
+ats-ui 스킬을 적용해 docs/13_UI_UX_GUIDE.md를 만들고 MANIFEST에 등록했다. Workday에서 역할별 workspace, requisition 중심 구조, 명확한 상태와 dense operational list만 참고하며, Workday 화면·탐색·용어·HRIS 범위를 복제하지 않도록 정의했다. 내부 IA, public careers route, requisition/posting/application/review workspace wireframe, 별도 상태 체계, 증거 우선 candidate detail 계층, 한국어 NOT_FOUND 문구, 접근성·반응형·Playwright 기준을 포함한다. 공식 Workday requisition 문서를 concept reference로 연결했다. git diff --check를 통과했고, 코드·DB·Git 커밋·푸시는 변경하지 않았다.
+
+## Input — 2026-08-24 14:12:25 +0800 (+08)
+
+Admin은 시스템 어드민이라 Hiring Manager가 작성안 Job Requisition 생성을 승인 및 반려할 필요가 없어. Workday 채용 프로스의 일반적인 프로세스를 기준으로 다시 제안 해줘
+
+## Output — 2026-08-24 14:12:25 +0800 (+08)
+
+Workday 공식 문서를 기준으로, Job Requisition의 승인 단계는 시스템 Admin이 아니라 테넌트의 Job Requisition business process와 조직·예산 권한에 따라 라우팅되는 업무 승인이다. HireLens 권장안은 Hiring Manager가 requisition을 DRAFT로 만들고 제출하며, 새 비즈니스 역할인 Requisition Approver(예: Hiring Manager의 상위 조직장, 부서장, HRBP 또는 예산 책임자)가 PENDING_APPROVAL에서 승인 또는 반려 사유를 남기는 방식이다. 승인되면 requisition은 OPEN이 되고, Recruiter가 담당자로 배정되어 Scorecard 승인 후 posting을 PUBLISHED로 전환한다. Admin은 사용자·권한·장애·데모 환경만 운영하며 requisition 승인/반려 경로에는 참여하지 않는다. 상태는 requisition DRAFT → PENDING_APPROVAL → OPEN 또는 RETURNED, 이후 CLOSED/FROZEN; posting DRAFT → PUBLISHED → UNPOSTED/CLOSED; scorecard의 승인 상태와 별개로 유지하는 것을 제안한다. P0의 후보자 공개 지원은 계속 합성/익명화 데이터만 허용한다. 이 설계는 현재 세 역할 외에 Requisition Approver 역할을 추가하는 제품 결정을 요구하므로 문서/코드는 아직 바꾸지 않았다. 공식 Workday documentation을 확인했다.
+
+## Input — 2026-08-24 14:14:12 +0800 (+08)
+
+→ Scorecard 승인 이거 계속 나오는데 이거 후보자 인터뷰 후에 평가서 작성하는거 아냐?
+
+## Output — 2026-08-24 14:14:12 +0800 (+08)
+
+맞다. 일반 채용 문맥에서 Scorecard는 보통 인터뷰 후 면접관이 후보자를 평가하는 양식이다. 현재 HireLens의 Scorecard는 후보자별 인터뷰 평가서가 아니라, 공고 전 Hiring Manager가 승인하는 서류 검토 기준(필수/선호/면접 전용 기준과 이력서에서 인정할 근거)이라는 다른 개념이다. 따라서 현 용어는 혼동을 만든다. 권장안은 P0에서 이 개념을 Evaluation Framework 또는 Screening Criteria(한국어: 서류 검토 기준)로 바꾸고, 후보자별 인터뷰 후 평가 양식은 P1 이후 별도 Interview Scorecard로 분리하는 것이다. 승인 위치는 requisition이 OPEN 된 뒤, posting PUBLISHED 전이다; 인터뷰 후에는 사람의 candidate decision/후속 평가가 위치한다. 문서와 코드는 아직 이름을 바꾸지 않았다.
+## Input — 2026-08-24 14:16:17 +08
+
+Job Requisition 작성 할 때 Scorecard 작성하지 않아?
+
+## Output — 2026-08-24 14:16:17 +08
+
+네. Job Requisition을 작성할 때 Hiring Manager가 직무 요건과 함께 사전 검토 기준을 만드는 것이 자연스럽습니다. 다만 이는 지원자별 인터뷰 후 작성하는 평가서와 다른 역할입니다. HireLens에서는 전자를 Requisition에 연결된 버전형 평가 기준으로 두고, 후자는 향후 별도 Interview Scorecard로 분리하는 방안을 제안했습니다. Requisition의 사업상 승인자는 시스템 Admin이 아니라 조직장·예산 책임자·HRBP 같은 Requisition Approver 역할이 맡는 것이 적절합니다.
+
+## Input — 2026-08-24 14:20:56 +08
+
+그래 Job Requisition 을 할때  Scorecard 을 작성하게 요청하고 지원자가 이력서를 제출하여 받으면 Open AI가 그 작성된 Scorecard 기준으로 이력서를 검증하여 면접 후보리스트를 나열하자 리쿠르터에게 접한한 후보자 리스트를 나열해 주고 Job Requisition 기준으로 이력서가 얼마나 매칭이 잘 되는지 100 점 만점 중에 몇점 표기를 해주고 그 사유에 대해서도 기록을 남겨주자.
+
+## Output — 2026-08-24 14:20:56 +08
+
+요청한 흐름 중 Requisition과 서류 검토 기준을 함께 작성하고, OpenAI가 이력서의 기준별 근거와 사유를 추출해 Recruiter의 검토 대기열에 제공하는 부분은 HireLens의 목적과 일치한다. 그러나 단일 100점 점수와 AI가 면접 후보자를 나열하는 부분은 현재 PRD와 AGENTS.md의 인간 최종 판단 및 단일 권위 점수 금지 원칙에 충돌한다. 안전한 권장안은 AI가 후보자를 합격·면접 추천하지 않고, 기준별 FOUND/NOT_FOUND/HUMAN_ONLY, 원문 인용·페이지·불확실성, 그리고 검토 필요 사유를 제공하며 Recruiter가 최종적으로 검토 우선순위와 면접 진행 여부를 결정하는 구조다. 단일 100점 점수 사용은 해당 비가역적 제품 원칙을 명시적으로 변경해야 하므로 아직 문서나 코드를 변경하지 않았다.
+
+## Input — 2026-08-24 14:46:22 +08
+
+이거는 AI가 점수와 사유에 대해 리스트만 나열만 해주는 것이지 Hiring Manager와 인터뷰 할 대상은 리크루터가 결정하도록 하자. 최종 결정할 때 후보자에게 이메일을 발송해서 서류 전형에 합격 했다고 하면서 인터뷰 일정에 대한 스케쥴을 선택할 수 있는 걸 제공하자.
+
+## Output — 2026-08-24 14:46:22 +08
+
+AI는 근거와 분석 결과만 제공하고 Recruiter가 검토·면접 대상자를 결정하며 Hiring Manager가 면접 및 최종 채용 결정을 맡는 역할 분리는 적절하다. 다만 단일 100점 적합도 표기는 현재의 단일 권위 점수 금지 원칙과, 후보자 합격 이메일 및 일정 선택 기능은 현재 P1 범위와 충돌한다. 점수는 기준별 근거 충족 현황 또는 비결정적 검토 지표로 재정의해야 하며, 이메일·일정 선택은 합성 데이터 전용 데모의 P1 확장으로 명시적 승인 후 추가해야 한다. 문서와 코드는 아직 변경하지 않았다.
+
+## Input — 2026-08-24 14:46:22 +08
+
+아 Recruiter가 인터뷰 결정을 진행하기 전에 Hiring Manager에게 이력서 리뷰 요청을 할 수 있는게 맞는가? 일반 적인 프로세스가 어떻게 되지?
+
+## Output — 2026-08-24 14:46:22 +08
+
+가능하며, 일반적인 ATS 운영에서는 Recruiter가 지원서를 먼저 사전 검토하고 채용 기준에 따라 후보자를 Hiring Manager Review 상태로 보내면 Hiring Manager가 면접 후보군을 확인·승인하는 방식이 흔하다. Recruiter는 채용 운영과 일정 조율을 담당하고, Hiring Manager는 직무 적합성과 인터뷰 진행 판단을 담당한다. HireLens에는 AI 분석 완료 → Recruiter 사전 검토 → Hiring Manager 리뷰 요청 → Hiring Manager의 면접 진행/보류/추가 정보 요청 → Recruiter의 후보자 안내 및 일정 조율 흐름을 권장했다. SAP SuccessFactors 공식 문서도 Recruiter가 후보자를 Hiring Manager Review로 이동시켜 상세 검토를 요청하고, Hiring Manager가 인터뷰용 후보자 shortlist를 확정하는 흐름을 제시한다.
+
+## Input — 2026-08-24 14:51:49 +08
+
+그래 HireLens 도 그렇게 결정하자
+
+## Output — 2026-08-24 14:52:17 +08
+
+Recruiter 사전 검토 후 Hiring Manager에게 리뷰를 요청하고, Hiring Manager가 인터뷰 진행·보류·추가 정보 요청을 결정하는 흐름을 제품 결정으로 수용했다. 다만 문서 반영 전 기존 문서의 충돌을 확인했다. PRD와 운영 프로세스는 Admin이 requisition을 승인한다고 적고 있으나, 사용자가 확정한 Admin은 시스템 운영만 담당한다는 원칙과 충돌한다. 또한 일부 문서는 Recruiter가 Job을 만들고 다른 문서는 Hiring Manager가 requisition을 만든다고 적는다. AGENTS.md의 문서 충돌 규칙에 따라 이 충돌을 해소하기 전에는 문서나 코드를 변경하지 않았다. 권장 해소안은 Hiring Manager가 requisition과 서류 검토 기준을 작성하고, 별도 Requisition Approver(조직장·예산 책임자·HRBP)가 requisition을 승인/반려하며, Recruiter가 사전 검토 후 Hiring Manager Review를 요청하고 Hiring Manager가 인터뷰 진행 여부를 결정하는 구조다.
+
+## Input — 2026-08-24 14:55:46 +08
+
+권장 확정안대로 기준을 잡아줘
+
+## Output — 2026-08-24 14:58:08 +08
+
+권장안을 제품 기준으로 확정하고 문서에 반영했다. Hiring Manager가 Job Requisition 및 초기 서류 검토 기준을 작성하고, `REQUISITION_APPROVER`가 업무상 requisition을 승인/반려하며, Admin은 시스템 운영만 담당한다. AI 분석 후 Recruiter가 사전 검토와 Hiring Manager 리뷰 요청을 하고, 지정된 Hiring Manager만 `INTERVIEW`, `HOLD`, `MORE_INFORMATION_REQUIRED` 결과를 사유와 함께 기록한다. 이 인터뷰 진행 결과는 최종 인사결정과 별도의 이력으로 유지되며, 후보자 이메일과 일정 선택은 P1로 유지한다. `docs/01_PRD.md`, `docs/02_USER_FLOWS.md`, `docs/04_DATA_MODEL.md`, `docs/10_DECISIONS.md`, `docs/12_TARGET_OPERATING_PROCESS.md`, `docs/13_UI_UX_GUIDE.md`, `TASKS.md`를 동기화했고 `git diff --check`를 통과했다. 코드, 데이터베이스 마이그레이션, 테스트, 커밋 및 푸시는 수행하지 않았다.
+
+## Input — 2026-08-24 15:01:15 +08
+
+develop에 커밋/푸쉬 해줘
+
+## Output — 2026-08-24 15:01:50 +08
+
+현재 작업 트리를 `develop`에 `feat: add evidence intake and hiring workflow contracts` 메시지로 커밋하고 원격 `develop`에 푸시했다. 커밋에는 PDF 업로드·큐 기반 처리 기반, Worker 환경 실행 보정, 관련 데이터베이스 마이그레이션 및 테스트, P0 운영 프로세스와 UI/UX 가이드, Requisition Approver 및 Hiring Manager 인터뷰 진행 검토 계약이 포함된다. `pnpm typecheck`와 `git diff --check`를 통과했고, 비밀값 패턴 점검에서 노출 후보를 발견하지 못했다.

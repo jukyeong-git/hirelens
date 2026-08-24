@@ -8,23 +8,36 @@ Primary job: make every application reviewable and route evidence to the correct
 
 ### Hiring manager
 
-Primary job: define what counts for the role and make a fast, reasoned judgment.
+Primary job: create the requisition and screening criteria, then decide whether
+an assigned candidate should proceed to interview.
+
+### Requisition Approver
+
+Primary job: perform the designated business approval or return of a submitted
+requisition. This is an organizational role such as a leader, budget owner, or
+HRBP, not a system-admin duty.
 
 ### Admin
 
 Primary job: operate the demo, inspect failures, manage access, and review the audit trail.
 
-## 2. Flow A — Job and scorecard setup
+### Candidate
+
+Primary job: submit a synthetic or explicitly anonymized demo PDF through a
+published posting. The candidate has no account and cannot view internal
+application, processing, or review data.
+
+## 2. Flow A — Requisition, posting, and scorecard setup
 
 ```text
-Recruiter creates job
-→ enters raw job description
-→ requests scorecard draft
+Hiring Manager creates requisition
+→ defines job description and requests scorecard draft
 → system flags ambiguous phrases
 → hiring manager edits criteria
 → manager classifies each criterion
 → manager approves version
-→ job becomes ready for intake
+→ Requisition Approver approves or returns requisition with a reason
+→ Recruiter publishes posting
 ```
 
 ### Key UX requirements
@@ -34,16 +47,20 @@ Recruiter creates job
 - Accepted evidence must be concrete enough to distinguish learning, use, operations, incident response, and architecture ownership when relevant.
 - Approval makes the version immutable.
 
-## 3. Flow B — Bulk application intake
+## 3. Flow B — Candidate application intake
 
 ```text
-Recruiter selects PDFs
+Candidate opens published posting
+→ attests data is synthetic/anonymized
+→ selects PDF
 → client validates basic type/size
 → server creates candidate/application/file rows
 → files upload to private storage
 → one queue task per application
 → UI shows per-file state
 ```
+
+Recruiter/Admin batch upload remains an internal synthetic-demo operations path.
 
 ### Failure branches
 
@@ -76,7 +93,8 @@ Recruiter opens application list
 → filters by ready/partial/failure state
 → opens candidate detail
 → compares criterion status and source page
-→ adds recruiter note or assigns hiring-manager review
+→ adds recruiter note if needed
+→ requests Hiring Manager review
 ```
 
 ### Evidence presentation order
@@ -95,19 +113,17 @@ Recruiter opens application list
 Manager opens assigned review
 → reads concise evidence summary
 → opens source pages where needed
-→ selects decision
-→ selects structured reason
-→ adds optional note/question
-→ saves review
+→ selects `INTERVIEW`, `HOLD`, or `MORE_INFORMATION_REQUIRED`
+→ records a required reason
+→ Recruiter receives the outcome and coordinates the next step
 ```
 
-### Decision form
+### Interview-progression form
 
 Required:
 
-- decision,
-- reason for `DO_NOT_PROCEED`,
-- confidence: `HIGH`, `MEDIUM`, `LOW`.
+- outcome: `INTERVIEW`, `HOLD`, or `MORE_INFORMATION_REQUIRED`,
+- reason.
 
 Optional:
 
@@ -115,7 +131,9 @@ Optional:
 - interview question,
 - request for more information.
 
-Target interaction time is a product hypothesis, not a guaranteed source requirement. The UI is designed to make the review possible in about one minute when evidence is clear.
+This is distinct from the later human hiring decision (`PROCEED`, `HOLD`, or
+`DO_NOT_PROCEED`), which remains a separate reasoned event. Target interaction
+time is a product hypothesis, not a guaranteed source requirement.
 
 ## 7. Flow F — Decision change
 
@@ -141,23 +159,24 @@ Recruiter opens processing issue
 
 A quarantined result requires a new analysis or human-only review; it is never treated as valid evidence.
 
-## 9. Application state sketch
+## 9. Separate state sketch
 
 ```text
-RECEIVED
-  → PROCESSING
-      → READY_FOR_RECRUITER_REVIEW
-      → PARTIAL_REVIEW_AVAILABLE
-      → NEEDS_OCR
-      → PROCESSING_FAILED
-  → MANAGER_REVIEW_REQUESTED
-  → MANAGER_REVIEWED
-  → INTERVIEW
-  → HOLD
-  → CLOSED
+Processing: RECEIVED → PROCESSING → READY_FOR_RECRUITER_REVIEW
+                              ├→ PARTIAL_REVIEW_AVAILABLE
+                              ├→ NEEDS_OCR
+                              └→ PROCESSING_FAILED
+
+Recruiter review request: NOT_REQUESTED → REQUESTED → COMPLETED
+
+Hiring Manager review outcome: INTERVIEW | HOLD | MORE_INFORMATION_REQUIRED
+
+Final human hiring decision: PROCEED | HOLD | DO_NOT_PROCEED
 ```
 
-AI processing states and human hiring decisions are separate dimensions. Do not collapse them into one enum.
+Processing, Recruiter review request, Hiring Manager interview-progression
+outcome, and final human hiring decision are separate dimensions. Do not
+collapse them into one enum.
 
 ## 10. UX principles
 

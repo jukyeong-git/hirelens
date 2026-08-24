@@ -22,7 +22,8 @@ When documents conflict, stop and report the conflict. Do not silently choose on
 
 ## Git branch policy
 
-- Commit and push ordinary work to `develop` only.
+- Do not commit or push ordinary work unless the user explicitly requests it.
+- When explicitly requested, commit and push ordinary work to `develop` only.
 - Do not merge, fast-forward, push, or otherwise update `alpha` or `main`
   unless the user explicitly requests that branch operation.
 

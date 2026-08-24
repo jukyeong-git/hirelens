@@ -27,3 +27,16 @@ export {
   updateReviewNote,
 } from "./notes";
 export { listNotifications, markNotificationRead } from "./notifications";
+export {
+  cancelResumeUploadReservation,
+  createResumeUploadReservation,
+  finalizeUploadedResume,
+  listResumeFilesForApplication,
+  listResumeProcessingRunsForApplication,
+  claimResumeExtractionRun,
+  completeResumeExtraction,
+  markResumeExtractionNeedsOcr,
+  failResumeExtraction,
+  getResumeProcessingRun,
+} from "./resumes";
+export type { ClaimedResumeExtractionRun, CreateResumeUploadReservationRequest } from "./resumes";

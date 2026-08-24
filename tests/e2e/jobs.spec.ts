@@ -93,6 +93,17 @@ test.describe("Job and scorecard workspace", () => {
     ).toBeVisible();
     await expect(page.getByLabel("새 임시 의견")).toHaveCount(0);
   });
+
+  test("recruiter sees the resume intake gate before a scorecard is approved", async ({ page }) => {
+    await signIn(page, "recruiter@demo.hirelens.example");
+    await page.getByRole("link", { name: "Backend Engineer" }).click();
+
+    await expect(page.getByRole("heading", { name: "합성 PDF 이력서 접수" })).toBeVisible();
+    await expect(
+      page.getByText("승인된 Scorecard가 있는 ‘접수 준비’ Job에서만 업로드할 수 있습니다."),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "선택한 PDF 업로드" })).toHaveCount(0);
+  });
 });
 
 async function signIn(page: import("@playwright/test").Page, email: string) {
