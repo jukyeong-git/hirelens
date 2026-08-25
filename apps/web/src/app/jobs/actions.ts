@@ -32,7 +32,7 @@ import {
   scorecardAmbiguityReviewInputSchema,
   scorecardApprovalInputSchema,
   scorecardDraftSchema,
-  scorecardRevisionInputSchema,
+  scorecardDraftUpdateInputSchema,
   resolveRequisitionApprovalInputSchema,
   submitRequisitionInputSchema,
   setReviewNoteDeletedInputSchema,
@@ -49,7 +49,6 @@ import {
   recordInterviewProgression,
   createReviewNote,
   createScorecardDraft,
-  createScorecardRevision,
   getJobForScorecard,
   getJobPosting,
   getScorecardForJob,
@@ -63,6 +62,7 @@ import {
   submitRequisition,
   SupabaseRestError,
   updateReviewNote,
+  updateScorecardDraft,
 } from "@hirelens/database";
 
 import type {
@@ -127,13 +127,14 @@ export async function createJobAction(
   if (viewer.role !== "HIRING_MANAGER") {
     return {
       status: "error",
-      message: "Requisition 초안은 Hiring Manager만 생성할 수 있습니다.",
+      message: "채용 요청 초안은 채용 책임자만 생성할 수 있습니다.",
     };
   }
 
   const parsed = createJobInputSchema.safeParse({
     title: formData.get("title"),
     department: formData.get("department"),
+    hiringNeed: formData.get("hiringNeed"),
     rawJobDescription: formData.get("rawJobDescription"),
     recruiterId: formData.get("recruiterId"),
     hiringManagerId: viewer.id,
@@ -142,7 +143,7 @@ export async function createJobAction(
   if (!parsed.success) {
     return {
       status: "error",
-      message: "제목, 부서, 담당 Recruiter, 직무 설명을 확인하세요.",
+      message: "직무명, 부서, 채용 담당자, 직무 설명, 요청 사유를 확인하세요.",
     };
   }
 
@@ -150,18 +151,18 @@ export async function createJobAction(
     await createJob(client, parsed.data);
   } catch (error) {
     if (error instanceof SupabaseRestError && error.status === 403) {
-      return { status: "error", message: "현재 사용자에게 Job 생성 권한이 없습니다." };
+      return { status: "error", message: "현재 사용자에게 채용 요청 생성 권한이 없습니다." };
     }
 
     if (error instanceof SupabaseRestError && error.status === 409) {
       return { status: "error", message: "최신 권한 정보를 확인한 뒤 다시 시도하세요." };
     }
 
-    return { status: "error", message: "Job 생성에 실패했습니다. 잠시 후 다시 시도하세요." };
+    return { status: "error", message: "채용 요청 생성에 실패했습니다. 잠시 후 다시 시도하세요." };
   }
 
   revalidatePath("/jobs");
-  return { status: "success", message: "Job 초안을 생성했습니다." };
+  redirect("/jobs");
 }
 
 /** Generates an editable form value only; createJobAction remains the sole persistence path. */
@@ -174,18 +175,17 @@ export async function generateJobRequisitionDraftAction(
     return { status: "error", message: "세션이 없거나 만료되었습니다. 다시 로그인하세요." };
   }
   if (authenticated.viewer.role !== "HIRING_MANAGER") {
-    return { status: "error", message: "AI Requisition 초안은 Hiring Manager만 만들 수 있습니다." };
+    return { status: "error", message: "AI 채용 요청 초안은 채용 책임자만 만들 수 있습니다." };
   }
 
   const parsed = jobRequisitionDraftInputSchema.safeParse({
     title: formData.get("title"),
     department: formData.get("department"),
-    authorBrief: formData.get("authorBrief") || undefined,
   });
   if (!parsed.success) {
     return {
       status: "error",
-      message: "직무명, 부서, 채용 필요성 또는 추가 요청을 입력한 뒤 AI 초안을 요청하세요.",
+      message: "직무명과 부서를 입력한 뒤 AI 초안을 요청하세요.",
     };
   }
 
@@ -193,7 +193,7 @@ export async function generateJobRequisitionDraftAction(
   if (!environment.OPENAI_API_KEY || !environment.OPENAI_MODEL) {
     return {
       status: "error",
-      message: "AI Requisition 초안 설정이 없습니다. Admin에게 확인을 요청하세요.",
+      message: "AI 채용 요청 초안 설정이 없습니다. 관리자에게 확인을 요청하세요.",
     };
   }
 
@@ -202,12 +202,27 @@ export async function generateJobRequisitionDraftAction(
     model: environment.OPENAI_MODEL,
     endpoint: "https://api.openai.com/v1/responses",
   });
+  const startedAt = Date.now();
+  logAiDraftRequest({
+    event: "started",
+    operation: "job_requisition_draft",
+    model: adapter.versions.model,
+    promptVersion: adapter.versions.prompt,
+    schemaVersion: adapter.versions.schema,
+  });
 
   try {
     const generated = await generateJobRequisitionDraftWithRetry(adapter, {
       title: parsed.data.title,
       department: parsed.data.department,
-      author_brief: parsed.data.authorBrief ?? null,
+    });
+    logAiDraftRequest({
+      event: "succeeded",
+      operation: "job_requisition_draft",
+      model: generated.versions.model,
+      promptVersion: generated.versions.prompt,
+      schemaVersion: generated.versions.schema,
+      durationMs: Date.now() - startedAt,
     });
     return {
       status: "success",
@@ -216,6 +231,14 @@ export async function generateJobRequisitionDraftAction(
       promptVersion: generated.versions.prompt,
     };
   } catch (error) {
+    logAiDraftFailure({
+      operation: "job_requisition_draft",
+      model: adapter.versions.model,
+      promptVersion: adapter.versions.prompt,
+      schemaVersion: adapter.versions.schema,
+      durationMs: Date.now() - startedAt,
+      error,
+    });
     if (error instanceof JobRequisitionDraftAdapterError) {
       if (error.code === "REFUSAL" || error.code === "INVALID_SCHEMA") {
         return {
@@ -257,18 +280,18 @@ export async function generateScorecardDraftAction(
 
   const jobId = String(formData.get("jobId") ?? "").trim();
   if (!isUuid(jobId)) {
-    return { status: "error", message: "유효하지 않은 Job입니다." };
+    return { status: "error", message: "유효하지 않은 채용 요청입니다." };
   }
 
   const job = await getJobForScorecard(client, jobId);
   if (!job) {
-    return { status: "error", message: "Job을 찾을 수 없거나 접근할 수 없습니다." };
+    return { status: "error", message: "채용 요청을 찾을 수 없거나 접근할 수 없습니다." };
   }
 
   if (viewer.role === "HIRING_MANAGER" && job.hiring_manager_id !== viewer.id) {
     return {
       status: "error",
-      message: "배정된 Hiring Manager만 검토 기준 초안을 요청할 수 있습니다.",
+      message: "배정된 채용 책임자만 검토 기준 초안을 요청할 수 있습니다.",
     };
   }
 
@@ -292,6 +315,18 @@ export async function generateScorecardDraftAction(
     apiKey: environment.OPENAI_API_KEY,
     model: environment.OPENAI_MODEL,
     endpoint: "https://api.openai.com/v1/responses",
+    timeoutMs: 45_000,
+    maxOutputTokens: 3_500,
+    reasoningEffort: "low",
+    verbosity: "low",
+  });
+  const startedAt = Date.now();
+  logAiDraftRequest({
+    event: "started",
+    operation: "review_framework_draft",
+    model: adapter.versions.model,
+    promptVersion: adapter.versions.prompt,
+    schemaVersion: adapter.versions.schema,
   });
 
   let generated;
@@ -301,7 +336,23 @@ export async function generateScorecardDraftAction(
       raw_job_description: job.raw_job_description,
       human_clarification: null,
     });
+    logAiDraftRequest({
+      event: "succeeded",
+      operation: "review_framework_draft",
+      model: generated.versions.model,
+      promptVersion: generated.versions.prompt,
+      schemaVersion: generated.versions.schema,
+      durationMs: Date.now() - startedAt,
+    });
   } catch (error) {
+    logAiDraftFailure({
+      operation: "review_framework_draft",
+      model: adapter.versions.model,
+      promptVersion: adapter.versions.prompt,
+      schemaVersion: adapter.versions.schema,
+      durationMs: Date.now() - startedAt,
+      error,
+    });
     if (error instanceof ScorecardDraftAdapterError) {
       if (
         error.code === "REFUSAL" ||
@@ -312,6 +363,13 @@ export async function generateScorecardDraftAction(
           status: "error",
           message:
             "AI 초안을 검증할 수 없어 적용하지 않았습니다. 수기로 작성하거나 다시 시도하세요.",
+        };
+      }
+
+      if (error.code === "TIMEOUT") {
+        return {
+          status: "error",
+          message: "AI 초안 생성이 지연되고 있습니다. 잠시 후 다시 시도하거나 직접 작성하세요.",
         };
       }
 
@@ -444,17 +502,17 @@ export async function saveScorecardDraftAction(
 
   const jobId = String(formData.get("jobId") ?? "").trim();
   if (!isUuid(jobId)) {
-    return { status: "error", message: "유효하지 않은 Job입니다." };
+    return { status: "error", message: "유효하지 않은 채용 요청입니다." };
   }
 
   const job = await getJobForScorecard(client, jobId);
   if (!job) {
-    return { status: "error", message: "Job을 찾을 수 없거나 접근할 수 없습니다." };
+    return { status: "error", message: "채용 요청을 찾을 수 없거나 접근할 수 없습니다." };
   }
   if (viewer.role === "HIRING_MANAGER" && job.hiring_manager_id !== viewer.id) {
     return {
       status: "error",
-      message: "배정된 Hiring Manager만 검토 기준 초안을 저장할 수 있습니다.",
+      message: "배정된 채용 책임자만 검토 기준 초안을 저장할 수 있습니다.",
     };
   }
 
@@ -518,6 +576,62 @@ export async function saveScorecardDraftAction(
 
   revalidatePath(`/jobs/${jobId}`);
   redirect(`/jobs/${jobId}`);
+}
+
+export async function updateScorecardDraftAction(
+  _previousState: ScorecardActionState,
+  formData: FormData,
+): Promise<ScorecardActionState> {
+  const authenticated = await getAuthenticatedViewer();
+  if (!authenticated) {
+    return { status: "error", message: "세션이 없거나 만료되었습니다. 다시 로그인하세요." };
+  }
+
+  const { client, viewer } = authenticated;
+  if (viewer.role !== "ADMIN" && viewer.role !== "HIRING_MANAGER") {
+    return { status: "error", message: "검토 기준 초안을 수정할 권한이 없습니다." };
+  }
+
+  const jobId = String(formData.get("jobId") ?? "").trim();
+  const parsedInput = scorecardDraftUpdateInputSchema.safeParse({
+    scorecardVersionId: String(formData.get("scorecardVersionId") ?? "").trim(),
+    expectedVersionNumber: Number(formData.get("expectedVersionNumber")),
+    expectedStatus: String(formData.get("expectedStatus") ?? ""),
+    expectedContentRevision: Number(formData.get("expectedContentRevision")),
+    reason: String(formData.get("reason") ?? ""),
+  });
+  if (!isUuid(jobId) || !parsedInput.success) {
+    return { status: "error", message: "수정 대상과 수정 사유를 확인하세요." };
+  }
+
+  let rawDraft: unknown;
+  try {
+    rawDraft = JSON.parse(String(formData.get("draftJson") ?? "")) as unknown;
+  } catch {
+    return { status: "error", message: "검토 기준 초안 형식을 읽을 수 없습니다." };
+  }
+  const parsedDraft = scorecardDraftSchema.safeParse(rawDraft);
+  if (!parsedDraft.success) {
+    return { status: "error", message: "검토 기준의 필수 입력값을 확인하세요." };
+  }
+
+  try {
+    await updateScorecardDraft(client, {
+      ...parsedInput.data,
+      draft: {
+        ...parsedDraft.data,
+        criteria: parsedDraft.data.criteria.map((criterion, displayOrder) => ({
+          ...criterion,
+          display_order: displayOrder,
+        })),
+      },
+    });
+  } catch (error) {
+    return scorecardWorkflowError(error, "검토 기준 초안 수정에 실패했습니다.");
+  }
+
+  revalidatePath(`/jobs/${jobId}`);
+  return { status: "success", message: "검토 기준 초안을 수정했습니다." };
 }
 
 export async function reviewScorecardAmbiguityAction(
@@ -624,43 +738,7 @@ export async function approveScorecardAction(
   }
 
   revalidatePath(`/jobs/${jobId}`);
-  return { status: "success", message: "사람의 검토 기준 승인과 버전 이력을 저장했습니다." };
-}
-
-export async function createScorecardRevisionAction(
-  _previousState: ScorecardActionState,
-  formData: FormData,
-): Promise<ScorecardActionState> {
-  const authenticated = await getAuthenticatedViewer();
-  if (!authenticated) {
-    return { status: "error", message: "세션이 없거나 만료되었습니다. 다시 로그인하세요." };
-  }
-
-  const { client, viewer } = authenticated;
-  if (viewer.role !== "ADMIN" && viewer.role !== "HIRING_MANAGER") {
-    return { status: "error", message: "새 검토 기준 버전을 만들 권한이 없습니다." };
-  }
-
-  const jobId = String(formData.get("jobId") ?? "").trim();
-  const parsed = scorecardRevisionInputSchema.safeParse({
-    sourceScorecardVersionId: String(formData.get("sourceScorecardVersionId") ?? "").trim(),
-    expectedVersionNumber: Number(formData.get("expectedVersionNumber")),
-    expectedStatus: String(formData.get("expectedStatus") ?? ""),
-    reason: String(formData.get("reason") ?? ""),
-  });
-
-  if (!isUuid(jobId) || !parsed.success) {
-    return { status: "error", message: "검토 기준 버전과 새 버전 생성 사유를 확인하세요." };
-  }
-
-  try {
-    await createScorecardRevision(client, parsed.data);
-  } catch (error) {
-    return scorecardWorkflowError(error, "새 검토 기준 버전 생성에 실패했습니다.");
-  }
-
-  revalidatePath(`/jobs/${jobId}`);
-  return { status: "success", message: "승인본을 보존하고 새 검토 기준 초안 버전을 만들었습니다." };
+  return { status: "success", message: "검토 기준을 승인하고 고정했습니다." };
 }
 
 export async function saveHumanDecisionAction(
@@ -673,7 +751,7 @@ export async function saveHumanDecisionAction(
   if (authenticated.viewer.role !== "ADMIN" && authenticated.viewer.role !== "HIRING_MANAGER") {
     return {
       status: "error",
-      message: "최종 결정은 Hiring Manager 또는 Admin만 저장할 수 있습니다.",
+      message: "최종 결정은 채용 책임자 또는 관리자만 저장할 수 있습니다.",
     };
   }
   const parsed = createHumanReviewInputSchema.safeParse({
@@ -704,7 +782,7 @@ export async function requestHiringManagerReviewAction(
   if (!authenticated)
     return { status: "error", message: "세션이 만료되었습니다. 다시 로그인하세요." };
   if (authenticated.viewer.role !== "RECRUITER" && authenticated.viewer.role !== "ADMIN")
-    return { status: "error", message: "Recruiter 또는 Admin만 검토를 요청할 수 있습니다." };
+    return { status: "error", message: "채용 담당자 또는 관리자만 검토를 요청할 수 있습니다." };
   const parsed = requestHiringManagerReviewInputSchema.safeParse({
     applicationId: String(formData.get("applicationId") ?? "").trim(),
     note: nullableFormText(formData.get("note")),
@@ -713,12 +791,12 @@ export async function requestHiringManagerReviewAction(
   try {
     await requestHiringManagerReview(authenticated.client, parsed.data);
   } catch (error) {
-    return reviewActionError(error, "Hiring Manager 검토를 요청하지 못했습니다.");
+    return reviewActionError(error, "채용 책임자 검토를 요청하지 못했습니다.");
   }
   revalidatePath(`/applications/${parsed.data.applicationId}`);
   return {
     status: "success",
-    message: "Hiring Manager에게 사람 검토를 요청했습니다. 인터뷰 결정은 생성되지 않았습니다.",
+    message: "채용 책임자에게 검토를 요청했습니다. 인터뷰 결정은 생성되지 않았습니다.",
   };
 }
 
@@ -732,7 +810,7 @@ export async function recordInterviewProgressionAction(
   if (authenticated.viewer.role !== "HIRING_MANAGER")
     return {
       status: "error",
-      message: "배정된 Hiring Manager만 인터뷰 진행 판단을 저장할 수 있습니다.",
+      message: "배정된 채용 책임자만 인터뷰 판단을 저장할 수 있습니다.",
     };
   const parsed = recordInterviewProgressionInputSchema.safeParse({
     applicationId: String(formData.get("applicationId") ?? "").trim(),
@@ -740,15 +818,14 @@ export async function recordInterviewProgressionAction(
     outcome: String(formData.get("outcome") ?? "").trim(),
     reason: String(formData.get("reason") ?? ""),
   });
-  if (!parsed.success)
-    return { status: "error", message: "인터뷰 진행 판단과 필수 사유를 확인하세요." };
+  if (!parsed.success) return { status: "error", message: "인터뷰 판단과 필수 사유를 확인하세요." };
   try {
     await recordInterviewProgression(authenticated.client, parsed.data);
   } catch (error) {
-    return reviewActionError(error, "인터뷰 진행 판단을 저장하지 못했습니다.");
+    return reviewActionError(error, "인터뷰 판단을 저장하지 못했습니다.");
   }
   revalidatePath(`/applications/${parsed.data.applicationId}`);
-  return { status: "success", message: "사람의 인터뷰 진행 판단과 사유를 이력에 저장했습니다." };
+  return { status: "success", message: "사람의 인터뷰 판단과 사유를 이력에 저장했습니다." };
 }
 
 export async function createRecruiterNoteAction(
@@ -771,7 +848,7 @@ export async function createRecruiterNoteAction(
     return reviewActionError(error, "임시 의견을 저장하지 못했습니다.");
   }
   revalidatePath(`/applications/${parsed.data.applicationId}`);
-  return { status: "success", message: "Recruiter 임시 의견을 버전 1로 저장했습니다." };
+  return { status: "success", message: "채용 담당자 메모를 버전 1로 저장했습니다." };
 }
 
 export async function updateRecruiterNoteAction(
@@ -850,7 +927,7 @@ export async function assignRequisitionApproverAction(
   if (!authenticated)
     return { status: "error", message: "세션이 만료되었습니다. 다시 로그인하세요." };
   if (authenticated.viewer.role !== "HIRING_MANAGER") {
-    return { status: "error", message: "승인자 지정은 배정된 Hiring Manager만 할 수 있습니다." };
+    return { status: "error", message: "승인자 지정은 배정된 채용 책임자만 할 수 있습니다." };
   }
 
   const parsed = assignRequisitionApproverInputSchema.safeParse({
@@ -862,7 +939,7 @@ export async function assignRequisitionApproverAction(
   try {
     const job = await getJobForScorecard(authenticated.client, parsed.data.jobId);
     if (!job || job.hiring_manager_id !== authenticated.viewer.id) {
-      return { status: "error", message: "이 Requisition의 승인자를 지정할 권한이 없습니다." };
+      return { status: "error", message: "이 채용 요청의 승인자를 지정할 권한이 없습니다." };
     }
     await assignRequisitionApprover(authenticated.client, parsed.data);
   } catch (error) {
@@ -870,7 +947,7 @@ export async function assignRequisitionApproverAction(
   }
 
   revalidatePath(`/jobs/${parsed.data.jobId}`);
-  return { status: "success", message: "Requisition 승인자를 지정했습니다." };
+  return { status: "success", message: "채용 요청 승인자를 지정했습니다." };
 }
 
 export async function submitRequisitionAction(
@@ -883,7 +960,7 @@ export async function submitRequisitionAction(
   if (authenticated.viewer.role !== "HIRING_MANAGER") {
     return {
       status: "error",
-      message: "Requisition 제출은 배정된 Hiring Manager만 할 수 있습니다.",
+      message: "채용 요청 제출은 배정된 채용 책임자만 할 수 있습니다.",
     };
   }
 
@@ -893,7 +970,7 @@ export async function submitRequisitionAction(
   if (!parsed.success)
     return {
       status: "error",
-      message: "유효하지 않은 Requisition입니다. 최신 화면을 다시 여세요.",
+      message: "유효하지 않은 채용 요청입니다. 최신 화면을 다시 여세요.",
     };
 
   try {
@@ -902,7 +979,7 @@ export async function submitRequisitionAction(
       getScorecardWorkspaceForJob(authenticated.client, parsed.data.jobId),
     ]);
     if (!job || job.hiring_manager_id !== authenticated.viewer.id) {
-      return { status: "error", message: "이 Requisition을 제출할 권한이 없습니다." };
+      return { status: "error", message: "이 채용 요청을 제출할 권한이 없습니다." };
     }
     if (job.requisition_status !== "DRAFT" && job.requisition_status !== "RETURNED") {
       return {
@@ -915,15 +992,12 @@ export async function submitRequisitionAction(
     }
     await submitRequisition(authenticated.client, parsed.data);
   } catch (error) {
-    return requisitionActionError(
-      error,
-      "Requisition 제출에 실패했습니다. 잠시 후 다시 시도하세요.",
-    );
+    return requisitionActionError(error, "채용 요청 제출에 실패했습니다. 잠시 후 다시 시도하세요.");
   }
 
   revalidatePath("/jobs");
   revalidatePath(`/jobs/${parsed.data.jobId}`);
-  return { status: "success", message: "Requisition을 승인자에게 제출했습니다." };
+  return { status: "success", message: "채용 요청을 승인자에게 제출했습니다." };
 }
 
 export async function resolveRequisitionApprovalAction(
@@ -937,7 +1011,7 @@ export async function resolveRequisitionApprovalAction(
   if (authenticated.viewer.role !== "REQUISITION_APPROVER") {
     return {
       status: "error",
-      message: "지정된 Requisition 승인자만 승인 또는 반려할 수 있습니다.",
+      message: "지정된 채용 요청 승인자만 승인 또는 반려할 수 있습니다.",
     };
   }
 
@@ -956,13 +1030,12 @@ export async function resolveRequisitionApprovalAction(
   try {
     const job = await getJobForScorecard(authenticated.client, parsed.data.jobId);
     if (!job || job.requisition_approver_id !== authenticated.viewer.id) {
-      return { status: "error", message: "이 Requisition을 처리할 권한이 없습니다." };
+      return { status: "error", message: "이 채용 요청을 처리할 권한이 없습니다." };
     }
     if (job.requisition_status !== "PENDING_APPROVAL") {
       return {
         status: "error",
-        message:
-          "이 Requisition은 이미 처리되었습니다. 최신 결과를 확인하려면 화면을 새로 고치세요.",
+        message: "이 채용 요청은 이미 처리되었습니다. 최신 결과를 확인하려면 화면을 새로 고치세요.",
       };
     }
     await resolveRequisitionApproval(authenticated.client, parsed.data);
@@ -979,8 +1052,8 @@ export async function resolveRequisitionApprovalAction(
     status: "success",
     message:
       parsed.data.status === "APPROVED"
-        ? "Requisition을 승인했습니다."
-        : "Requisition을 반려했습니다. Hiring Manager가 보완 후 다시 제출할 수 있습니다.",
+        ? "채용 요청을 승인했습니다."
+        : "채용 요청을 반려했습니다. 채용 책임자가 보완 후 다시 제출할 수 있습니다.",
   };
 }
 
@@ -1016,7 +1089,10 @@ export async function updateJobPostingContentAction(
 
   const { client, viewer } = authenticated;
   if (viewer.role !== "ADMIN" && viewer.role !== "RECRUITER") {
-    return { status: "error", message: "Recruiter 또는 Admin만 공개 공고를 관리할 수 있습니다." };
+    return {
+      status: "error",
+      message: "채용 담당자 또는 관리자만 공개 공고를 관리할 수 있습니다.",
+    };
   }
 
   const parsed = jobPostingContentInputSchema.safeParse({
@@ -1042,7 +1118,7 @@ export async function updateJobPostingContentAction(
     }
     const posting = await getJobPosting(client, parsed.data.jobId);
     if (!posting) {
-      return { status: "error", message: "먼저 Job Posting 초안을 만들어야 합니다." };
+      return { status: "error", message: "먼저 채용 공고 초안을 만들어야 합니다." };
     }
     await updateJobPostingContent(client, parsed.data);
     revalidatePath(`/jobs/${parsed.data.jobId}`);
@@ -1050,7 +1126,7 @@ export async function updateJobPostingContentAction(
   } catch (error) {
     return jobPostingActionError(
       error,
-      "공개 공고 내용을 저장하지 못했습니다. 잠시 후 다시 시도하세요.",
+      "공고 내용을 저장하지 못했습니다. 잠시 후 다시 시도하세요.",
     );
   }
 
@@ -1067,32 +1143,32 @@ async function runJobPostingAction(
   }
   const { client, viewer } = authenticated;
   if (viewer.role !== "ADMIN" && viewer.role !== "RECRUITER") {
-    return { status: "error", message: "Recruiter 또는 Admin만 Job Posting을 관리할 수 있습니다." };
+    return {
+      status: "error",
+      message: "채용 담당자 또는 관리자만 채용 공고를 관리할 수 있습니다.",
+    };
   }
 
   const parsed = jobPostingActionInputSchema.safeParse({
     jobId: String(formData.get("jobId") ?? "").trim(),
   });
   if (!parsed.success) {
-    return { status: "error", message: "유효하지 않은 Job Posting 대상입니다." };
+    return { status: "error", message: "유효하지 않은 채용 공고 대상입니다." };
   }
 
   try {
     const job = await getJobForScorecard(client, parsed.data.jobId);
     if (!job || (viewer.role === "RECRUITER" && job.recruiter_id !== viewer.id)) {
-      return { status: "error", message: "이 Job Posting을 관리할 권한이 없습니다." };
+      return { status: "error", message: "이 채용 공고를 관리할 권한이 없습니다." };
     }
 
     const posting = await getJobPosting(client, parsed.data.jobId);
     if (operation === "create" && posting) {
-      return { status: "error", message: "이 Job에는 이미 Posting 초안이 있습니다." };
+      return { status: "error", message: "이 채용 요청에는 이미 공고 초안이 있습니다." };
     }
     if (operation === "publish") {
       if (!posting || posting.status !== "DRAFT") {
         return { status: "error", message: "게시 가능한 Posting 초안을 최신 화면에서 확인하세요." };
-      }
-      if (job.requisition_status !== "APPROVED") {
-        return { status: "error", message: "승인된 Requisition이 있어야 게시할 수 있습니다." };
       }
       const workspace = await getScorecardWorkspaceForJob(client, parsed.data.jobId);
       if (workspace.activeApprovedVersion === null) {
@@ -1109,7 +1185,7 @@ async function runJobPostingAction(
   } catch (error) {
     return jobPostingActionError(
       error,
-      "Job Posting 상태를 저장하지 못했습니다. 잠시 후 다시 시도하세요.",
+      "채용 공고 상태를 저장하지 못했습니다. 잠시 후 다시 시도하세요.",
     );
   }
 
@@ -1117,10 +1193,10 @@ async function runJobPostingAction(
   revalidatePath(`/jobs/${parsed.data.jobId}`);
   const message =
     operation === "create"
-      ? "Job Posting 초안을 만들었습니다."
+      ? "채용 공고 초안을 만들었습니다."
       : operation === "publish"
-        ? "Job Posting을 게시했습니다."
-        : "Job Posting을 종료했습니다. 재개할 수 없습니다.";
+        ? "채용 공고를 게시했습니다."
+        : "채용 공고를 종료했습니다. 재개할 수 없습니다.";
   return { status: "success", message };
 }
 
@@ -1163,9 +1239,51 @@ function isRetryableJobRequisitionDraftError(code: JobRequisitionDraftAdapterErr
 }
 
 function isRetryableScorecardError(code: ScorecardDraftAdapterError["code"]) {
-  return (
-    code === "NETWORK_ERROR" || code === "TIMEOUT" || code === "HTTP_ERROR" || code === "INCOMPLETE"
-  );
+  return code === "NETWORK_ERROR" || code === "HTTP_ERROR" || code === "INCOMPLETE";
+}
+
+type AiDraftLogEntry = Readonly<{
+  event: "started" | "succeeded" | "failed";
+  operation: "job_requisition_draft" | "review_framework_draft";
+  model: string;
+  promptVersion: string;
+  schemaVersion: string;
+  durationMs?: number;
+  errorCode?: string;
+  httpStatus?: number;
+  openAiRequestId?: string;
+}>;
+
+/**
+ * Server-only diagnostics for web-triggered AI drafts. Intentionally excludes
+ * form values, prompts, model output, API keys, user identity, and resume data.
+ */
+function logAiDraftRequest(entry: AiDraftLogEntry): void {
+  console.info("[hirelens.ai_draft]", JSON.stringify(entry));
+}
+
+function logAiDraftFailure(
+  input: Omit<AiDraftLogEntry, "event" | "errorCode" | "httpStatus" | "openAiRequestId"> & {
+    error: unknown;
+  },
+): void {
+  const adapterError =
+    input.error instanceof JobRequisitionDraftAdapterError ||
+    input.error instanceof ScorecardDraftAdapterError
+      ? input.error
+      : null;
+
+  logAiDraftRequest({
+    event: "failed",
+    operation: input.operation,
+    model: input.model,
+    promptVersion: input.promptVersion,
+    schemaVersion: input.schemaVersion,
+    durationMs: input.durationMs,
+    errorCode: adapterError?.code ?? "UNEXPECTED_ERROR",
+    httpStatus: adapterError?.diagnostic?.httpStatus,
+    openAiRequestId: adapterError?.diagnostic?.openAiRequestId,
+  });
 }
 
 function isUuid(value: string) {
@@ -1212,7 +1330,7 @@ function scorecardWorkflowError(error: unknown, fallback: string): ScorecardActi
 function requisitionActionError(error: unknown, fallback: string): RequisitionActionState {
   if (error instanceof SupabaseRestError) {
     if (error.status === 401 || error.status === 403) {
-      return { status: "error", message: "현재 사용자에게 이 Requisition 작업 권한이 없습니다." };
+      return { status: "error", message: "현재 사용자에게 이 채용 요청 작업 권한이 없습니다." };
     }
     if (
       error.status === 409 ||
@@ -1230,7 +1348,7 @@ function requisitionActionError(error: unknown, fallback: string): RequisitionAc
 function jobPostingActionError(error: unknown, fallback: string): JobPostingActionState {
   if (error instanceof SupabaseRestError) {
     if (error.status === 401 || error.status === 403) {
-      return { status: "error", message: "현재 사용자에게 이 Job Posting 작업 권한이 없습니다." };
+      return { status: "error", message: "현재 사용자에게 이 채용 공고 작업 권한이 없습니다." };
     }
     if (
       error.status === 409 ||

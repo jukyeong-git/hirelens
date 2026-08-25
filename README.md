@@ -48,7 +48,7 @@ pnpm env:check
 
 일상 개발의 웹과 Alpha Edge consumer는 동일한 hosted Alpha Supabase 프로젝트에 연결하며 Docker를 실행할 필요가 없습니다. `.env.example`의 `SUPABASE_ENV=hosted-alpha`와 공용 Supabase URL·publishable key를 설정하세요. 로컬과 Alpha는 `APP_ENV`만 각각 `development`와 `alpha`로 다르게 사용합니다.
 
-공개 지원서 접수는 별도의 서버 전용 `DEMO_PUBLIC_SUBMISSION_CODE`가 설정된 경우에만 활성화됩니다. 이 코드는 공개 페이지에 포함하지 말고 진행자가 참가자에게 별도로 전달하세요.
+공개 지원서 접수는 게시 중이며 접수 준비가 완료된 공고에서 PDF 이력서를 제출하면 시작됩니다.
 
 `pnpm db:start`는 항상 Docker 실행을 거부합니다. `pnpm test:integration`은 `.env.local`의 `DATABASE_URL`로 공유 Alpha PostgreSQL에 연결해 등록된 pgTAP 검증을 실행합니다. 각 검증은 임시 합성 데이터를 트랜잭션 안에서 만들고 rollback하며 Alpha 데이터를 초기화하지 않습니다.
 

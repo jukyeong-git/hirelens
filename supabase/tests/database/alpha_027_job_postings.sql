@@ -1,7 +1,7 @@
 begin;
 
 -- Alpha verification only: every fixture mutation below is rolled back.
-select plan(44);
+select plan(45);
 
 set local role postgres;
 update public.profiles
@@ -67,15 +67,22 @@ select is(
   'DRAFT',
   'Posting draft is separate from the requisition state'
 );
-select throws_ok(
+select lives_ok(
+  $$ select public.update_job_posting_content(
+    '10000000-0000-0000-0000-000000000027',
+    'Posting verification role', 'Synthetic posting summary', 'Synthetic responsibilities',
+    'Synthetic requirements', 'Singapore', 'Full-time'
+  ) $$,
+  'Assigned Recruiter can prepare complete public posting content'
+);
+select lives_ok(
   $$ select public.publish_job_posting('10000000-0000-0000-0000-000000000027') $$,
-  '55000', 'an approved requisition is required before publishing',
-  'Publishing is atomically blocked until the requisition is approved'
+  'Publishing is allowed without the deferred requisition approval gate'
 );
 select is(
   (select count(*)::integer from public.job_posting_status_history where job_id = '10000000-0000-0000-0000-000000000027'),
-  1,
-  'Failed publish does not append history'
+  2,
+  'Successful publish appends one history row after the draft row'
 );
 
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000003', true);
@@ -96,23 +103,22 @@ select throws_ok(
   'Requisition Approver cannot publish a posting'
 );
 
-select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000003', true);
-select lives_ok(
-  $$ select public.submit_requisition('10000000-0000-0000-0000-000000000027') $$,
-  'Hiring Manager can submit the approved-framework requisition'
+select is(
+  (select requisition_status::text from public.jobs where id = '10000000-0000-0000-0000-000000000027'),
+  'DRAFT',
+  'Posting does not implicitly mutate the dormant requisition status'
 );
-select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000005', true);
-select lives_ok(
-  $$ select public.resolve_requisition_approval(
-    '10000000-0000-0000-0000-000000000027', 'APPROVED', 'Synthetic approval reason'
-  ) $$,
-  'Designated approver can approve the requisition'
+select is(
+  (select count(*)::integer from public.requisition_status_history where job_id = '10000000-0000-0000-0000-000000000027'),
+  0,
+  'Posting does not create a requisition approval history event'
 );
 
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true);
-select lives_ok(
-  $$ select public.publish_job_posting('10000000-0000-0000-0000-000000000027') $$,
-  'Admin exception can publish an assigned Recruiter posting'
+select is(
+  (select status::text from public.job_postings where job_id = '10000000-0000-0000-0000-000000000027'),
+  'PUBLISHED',
+  'Admin sees the already-published posting without a requisition approval step'
 );
 select is(
   (select status::text from public.job_postings where job_id = '10000000-0000-0000-0000-000000000027'),

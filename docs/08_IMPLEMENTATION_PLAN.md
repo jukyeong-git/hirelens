@@ -36,25 +36,28 @@ app and Supabase Edge worker can use the hosted Alpha backend without exposing s
 - unauthorized reads and writes are denied in tests; and
 - the shared Alpha presentation dataset remains synthetic-only.
 
-## Slice 1 — Opening definition and business approval
+## Slice 1 — Opening definition and screening criteria
 
 ### Outcome
 
 The Hiring Manager creates a Job Requisition and its initial screening criteria.
-A designated `REQUISITION_APPROVER` approves or returns the requisition with a
-reason. Admin operates the system but does not act as a business approver.
+The separate `REQUISITION_APPROVER` business workflow is deferred from the MVP;
+the human-approved Review Framework is the gate for intake and posting. Admin
+operates the system but does not act as a business approver.
 
 ### Tickets
 
-- `HL-024` Add `REQUISITION_APPROVER`, requisition state machine, and RLS
+- `HL-024` Retain requisition approval structures for future enterprise use;
+  keep the role and state machine inactive in the MVP
 - `HL-025` Build Hiring Manager requisition workspace and criteria handoff
-- `HL-026` Build approval/return work queue, reason history, safe audit events, and tests
+- `HL-026` Build approval/return work queue and tests for the deferred future slice
 
 ### Exit criteria
 
-- state is `DRAFT → PENDING_APPROVAL → APPROVED` or `RETURNED`;
+- requisition approval structures remain available for future use but are not an
+  MVP exit gate;
 - a requisition includes one approved immutable screening-criteria version;
-- only the designated approver can approve or return it;
+- the Review Framework approval is the active human gate;
 - Recruiter can see approved work but cannot alter approval; and
 - UI, RLS, audit, unit, Alpha rollback-only integration, and E2E coverage prove the path.
 
@@ -178,6 +181,8 @@ full workflow from requisition to reasoned human outcome.
 ## Implementation status — 2026-08-24
 
 - HL-026 and HL-030 through HL-045 are implemented in the workspace.
+- Hiring Manager requisition drafting is a separate `/jobs/new` route; the workspace page no longer renders the long creation form inline.
+- Internal and public UI copy now uses one concise page title, noun-based section titles, and Korean role/workflow terms; repeated decorative labels and non-operational descriptions are removed while state, authorization, validation, and AI/human boundary messages remain.
 - Alpha contains forward migrations through
   `20260824002500_preprocessed_demo_fallback.sql`; rollback-only pgTAP covers
   the evidence backend, human interview gate, Admin override, worker RPC
@@ -195,6 +200,13 @@ full workflow from requisition to reasoned human outcome.
 - HL-052, HL-054, and HL-055 remain release gates: authenticated full-flow
   E2E, guarded hosted-Alpha reseed/reset semantics, deployed smoke test,
   rehearsal, and offline screenshots.
+- The internal landing workspace now uses role-specific data projections:
+  Recruiters manage their assigned requisitions, newly received applications,
+  published postings, and related tasks; Hiring Managers manage assigned
+  requisitions, Review Framework approvals, and candidate review requests;
+  Admins see the cross-workflow operational summary and processing failures.
+  This is a presentation-layer role split on top of existing RLS and does not
+  grant any new data access or decision authority.
 - P1 remains gated until those P0 release checks pass.
 
 ## Scope-cut order

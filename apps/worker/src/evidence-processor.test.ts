@@ -94,10 +94,15 @@ describe("evidence processing lease heartbeat", () => {
       criteria: [
         {
           criterion_id: criterionId,
+          name: "Synthetic reliability experience",
           type: "REQUIRED",
           definition: "Synthetic reliability evidence",
           accepted_evidence: ["Operated a synthetic service"],
           alternative_evidence: [],
+          partial_evidence_guidance: "Development without operational responsibility",
+          evidence_fields: [
+            { field_name: "operational_scope", description: "Synthetic operating scope" },
+          ],
           resume_assessable: true,
           suggested_interview_question: null,
         },

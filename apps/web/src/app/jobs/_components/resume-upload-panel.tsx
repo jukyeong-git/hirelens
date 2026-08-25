@@ -55,10 +55,9 @@ export function ResumeUploadPanel({ jobId, enabled }: { jobId: string; enabled: 
   return (
     <section className="panel" aria-labelledby="resume-upload-title">
       <div className="section-heading">
-        <p className="eyebrow">Resume intake</p>
-        <h2 id="resume-upload-title">PDF 이력서 접수</h2>
+        <h2 id="resume-upload-title">이력서 업로드</h2>
       </div>
-      <p className="section-copy">PDF 다중 선택 · 파일당 10 MiB · 업로드 후 처리 대기</p>
+      <p className="form-help">PDF · 파일당 최대 10 MiB · 다중 선택 가능</p>
       {enabled ? (
         <form className="scorecard-workflow-form" onSubmit={submit}>
           <label>
@@ -78,8 +77,8 @@ export function ResumeUploadPanel({ jobId, enabled }: { jobId: string; enabled: 
         </form>
       ) : (
         <p className="form-alert form-alert-warning" role="status">
-          승인된 지원서 검토 기준이 있는 ‘접수 준비’ Job에서만 업로드할 수 있습니다. 현재는 파일을
-          저장하지 않았습니다.
+          승인된 지원서 검토 기준이 있는 ‘접수 준비’ 채용 요청에서만 업로드할 수 있습니다. 현재는
+          파일을 저장하지 않았습니다.
         </p>
       )}
       {results.length ? (

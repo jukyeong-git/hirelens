@@ -54,34 +54,26 @@ export function ApplicationReviewPanel({
     <div className="review-workflow-stack">
       <div className="review-grid">
         <section className="panel" aria-labelledby="manager-request-title">
-          <p className="eyebrow">Recruiter routing</p>
-          <h2 id="manager-request-title">Hiring Manager 검토 요청</h2>
-          <p className="section-copy">
-            검토 요청은 후보자를 인터뷰로 이동시키거나 최종 결정을 만들지 않습니다.
-          </p>
+          <h2 id="manager-request-title">검토 요청</h2>
           {activeAssignment ? (
             <div className="history-item">
               <strong>검토 요청됨</strong>
-              <span>{profileNames[activeAssignment.assigned_to] ?? "Assigned Hiring Manager"}</span>
+              <span>{profileNames[activeAssignment.assigned_to] ?? "채용 책임자"}</span>
               {activeAssignment.request_note ? <p>{activeAssignment.request_note}</p> : null}
             </div>
           ) : canWriteNote ? (
             <ReviewRequestForm applicationId={applicationId} />
           ) : (
-            <p className="empty-copy">아직 Hiring Manager 검토 요청이 없습니다.</p>
+            <p className="empty-copy">아직 채용 책임자 검토 요청이 없습니다.</p>
           )}
         </section>
 
         <section className="panel" aria-labelledby="interview-progression-title">
-          <p className="eyebrow">Human interview gate</p>
-          <h2 id="interview-progression-title">인터뷰 진행 판단</h2>
-          <p className="section-copy">
-            배정된 Hiring Manager가 근거를 검토한 뒤 사유와 함께 기록합니다.
-          </p>
+          <h2 id="interview-progression-title">인터뷰 판단</h2>
           {interviewReviews.length > 0 ? (
             <InterviewProgressionHistory reviews={interviewReviews} profileNames={profileNames} />
           ) : (
-            <p className="empty-copy">아직 저장된 인터뷰 진행 판단이 없습니다.</p>
+            <p className="empty-copy">아직 저장된 인터뷰 판단이 없습니다.</p>
           )}
           {viewerRole === "HIRING_MANAGER" && activeAssignment && approvedVersion ? (
             <InterviewProgressionForm
@@ -89,20 +81,13 @@ export function ApplicationReviewPanel({
               scorecardVersionId={approvedVersion.id}
             />
           ) : (
-            <p className="info-banner">
-              활성 검토 요청을 받은 Hiring Manager만 저장할 수 있습니다.
-            </p>
+            <p className="info-banner">활성 검토 요청을 받은 채용 책임자만 저장할 수 있습니다.</p>
           )}
         </section>
       </div>
       <div className="review-grid">
         <section className="panel" aria-labelledby="human-decision-title">
-          <p className="eyebrow">Human-only decision</p>
-          <h2 id="human-decision-title">최종 결정</h2>
-          <p className="section-copy">
-            AI와 Recruiter 의견은 결정을 대신하지 않습니다. 모든 최초·변경 결정에는 사유가
-            필요합니다.
-          </p>
+          <h2 id="human-decision-title">사람의 최종 결정</h2>
           {currentReview ? (
             <DecisionHistory reviews={reviews} profileNames={profileNames} />
           ) : (
@@ -113,18 +98,14 @@ export function ApplicationReviewPanel({
             <DecisionForm applicationId={applicationId} approvedVersion={approvedVersion} />
           ) : (
             <p className="info-banner">
-              최종 결정은 인터뷰 진행 판단과 분리됩니다. Hiring Manager는 INTERVIEW 기록 후, Admin은
-              운영 권한으로 저장할 수 있습니다.
+              최종 결정은 인터뷰 판단과 분리됩니다. 채용 책임자는 인터뷰 진행 기록 후, 관리자는 운영
+              권한으로 저장할 수 있습니다.
             </p>
           )}
         </section>
 
         <section className="panel" aria-labelledby="recruiter-note-title">
-          <p className="eyebrow">Recruiter working notes</p>
-          <h2 id="recruiter-note-title">임시 의견과 이력</h2>
-          <p className="section-copy">
-            의견은 최종 결정과 분리됩니다. 변경·삭제·복구 이력은 유지됩니다.
-          </p>
+          <h2 id="recruiter-note-title">채용 담당자 메모</h2>
           {canWriteNote ? <CreateNoteForm applicationId={applicationId} /> : null}
           {notes.length === 0 ? (
             <p className="empty-copy">표시할 임시 의견이 없습니다.</p>
@@ -150,7 +131,7 @@ function ReviewRequestForm({ applicationId }: { applicationId: string }) {
         <textarea name="note" maxLength={2000} disabled={pending} />
       </label>
       <button className="button button-primary" type="submit" disabled={pending}>
-        {pending ? "요청 중…" : "Hiring Manager 검토 요청"}
+        {pending ? "요청 중…" : "채용 책임자 검토 요청"}
       </button>
       <ActionMessage state={state} />
     </form>
@@ -188,7 +169,7 @@ function InterviewProgressionForm({
         <textarea name="reason" required minLength={1} maxLength={2000} disabled={pending} />
       </label>
       <button className="button button-primary" type="submit" disabled={pending}>
-        {pending ? "저장 중…" : "인터뷰 진행 판단 저장"}
+        {pending ? "저장 중…" : "인터뷰 판단 저장"}
       </button>
       <ActionMessage state={state} />
     </form>
@@ -211,7 +192,7 @@ function InterviewProgressionHistory({
           </strong>
           <p>{review.reason}</p>
           <span>
-            {profileNames[review.reviewer_id] ?? "Hiring Manager"} · {formatTime(review.created_at)}
+            {profileNames[review.reviewer_id] ?? "채용 책임자"} · {formatTime(review.created_at)}
           </span>
         </article>
       ))}

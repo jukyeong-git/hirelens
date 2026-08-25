@@ -121,16 +121,19 @@ the other participant profile needed to render the list. Browser access remains
 publishable-key plus authenticated-session only.
 
 For HL-025, a Hiring Manager may read the display name and role of
-`REQUISITION_APPROVER` profiles solely to designate an approver. This does not
-grant access to any requisition, scorecard, candidate, resume, or evidence data.
+`REQUISITION_APPROVER` profiles solely to designate a future approver and of
+`RECRUITER` profiles solely to assign the operating recruiter while creating a
+requisition. This does not grant access to any requisition, scorecard,
+candidate, resume, or evidence data.
 
 ### `jobs`
 
 - `id`
 - `title`
 - `department`
+- `hiring_need` (internal human-authored rationale; never model input)
 - `raw_job_description`
-- `requisition_status`
+- `requisition_status` (dormant compatibility state in the MVP)
 - `recruiter_id`
 - `hiring_manager_id`
 - `requisition_approver_id`
@@ -186,13 +189,13 @@ or free-text content.
 - `reason`
 - `created_at`
 
-This is an append-only business-approval history. Only the assigned Hiring
+This is an append-only future business-approval history. Only the assigned Hiring
 Manager may append `DRAFT` or `RETURNED` to `PENDING_APPROVAL`; only the
 designated `REQUISITION_APPROVER` may append `PENDING_APPROVAL` to `APPROVED`
 or `RETURNED`, with a bounded human-written reason. Self-approval is prohibited;
 the Hiring Manager may change the approver only in `DRAFT` or `RETURNED`, and
 may resubmit only after return. It is separate from
-Scorecard approval history and does not grant the approver scorecard,
+Scorecard approval history and does not grant the dormant approver scorecard,
 application, resume, or evidence access.
 
 Approver designation or replacement is recorded separately as an append-only
@@ -231,6 +234,12 @@ pipeline.
 
 Invariant: an approved version cannot be updated.
 
+An assigned Hiring Manager or Admin may replace the structured contents of a
+`DRAFT` version through the controlled `update_scorecard_draft` workflow. The
+workflow requires the expected version and content revision plus a human-written
+reason, advances `content_revision`, and appends a safe audit event. It cannot
+update an `APPROVED` or `SUPERSEDED` version.
+
 ### `criteria`
 
 - `id`
@@ -240,6 +249,7 @@ Invariant: an approved version cannot be updated.
 - `definition`
 - `accepted_evidence`
 - `alternative_evidence`
+- `partial_evidence_guidance`
 - `evidence_fields`
 - `resume_assessable`
 - `source_phrase`
@@ -251,9 +261,16 @@ Invariant: an approved version cannot be updated.
 
 `accepted_evidence`, `alternative_evidence`, and `evidence_fields` are
 structured JSON arrays validated by the shared Zod contract and the database
-boundary. `INTERVIEW_ONLY` and `HUMAN_ONLY` criteria cannot be marked as
+boundary. `partial_evidence_guidance` records the human-readable boundary for
+using `PARTIAL` rather than silently treating weak or incomplete evidence as
+fully supported. `INTERVIEW_ONLY` and `HUMAN_ONLY` criteria cannot be marked as
 resume-assessable. A criterion marked resume-assessable must include accepted
 evidence.
+
+The evidence-analysis context includes the criterion name, definition,
+accepted and alternative evidence, partial-evidence guidance, and extraction
+fields from the approved immutable Review Framework version. The job
+description remains secondary context and does not create additional criteria.
 
 For the initial Review Framework version, only the assigned Hiring Manager or
 an Admin may use the atomic `create_scorecard_draft` RPC. They may save either
@@ -278,24 +295,21 @@ and writes a safe before/after audit event with the human reason.
 For HL-023, the assigned Hiring Manager or Admin approves a `DRAFT` through
 the atomic `approve_scorecard` RPC. Every approval requires a reason and is
 blocked while any criterion remains `AMBIGUOUS`. Approval sets the Job to
-`READY_FOR_INTAKE`; when a replacement draft is approved, the prior active
-version becomes `SUPERSEDED` while retaining its original approver and time.
-There is at most one active `APPROVED` version per Job.
+`READY_FOR_INTAKE`. The approved framework is final for that Job and there is
+at most one `APPROVED` version per Job.
 
 `content_revision` is a positive concurrency token incremented whenever draft
 criteria change. Approval compares the value shown to the reviewer with the
 locked database value so a criterion changed after page load cannot be
 silently approved. The original `create_scorecard_draft` entry point is
-initial-only; after any version exists, subsequent drafts must use the
-reasoned Hiring Manager/Admin revision workflow.
+initial-only; after any version exists no replacement-draft workflow is
+available in the MVP.
 
 Approved and superseded versions and their criteria are immutable at the
-database boundary. `create_scorecard_revision` copies an active approved
-version into the next `DRAFT` version without changing the source. The source
-remains active for analysis until the replacement draft is explicitly
-approved. New processing may use only the active `APPROVED` version; future
-processing tables must retain the exact historical version reference after
-supersession.
+database boundary. New processing may use only the Job's single `APPROVED`
+framework. Processing tables retain its internal identifier for traceability,
+but the product does not expose Review Framework history or replacement
+controls.
 
 ### `candidates`
 

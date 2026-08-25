@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildScorecardDraftPrompt,
   SCORECARD_DRAFT_CONTRACT_VERSIONS,
+  SCORECARD_DRAFT_SYSTEM_PROMPT,
+  scorecardDraftContract,
   scorecardDraftJsonSchema,
   scorecardDraftSchema,
   validateScorecardDraft,
@@ -41,10 +43,47 @@ describe("scorecard draft contract", () => {
     );
   });
 
-  it("rejects unknown decision or protected-trait fields", () => {
-    expect(scorecardDraftSchema.safeParse({ ...(fixture as object), fit_score: 0.8 }).success).toBe(
+  it("locks Review Framework v3 prompt and schema provenance", () => {
+    expect(SCORECARD_DRAFT_CONTRACT_VERSIONS).toEqual({
+      pipeline: "ai-pipeline-v2",
+      prompt: "scorecard-draft-prompt-v3",
+      schema: "scorecard-draft-schema-v2",
+    });
+    expect(scorecardDraftContract.versions).toBe(SCORECARD_DRAFT_CONTRACT_VERSIONS);
+    expect(SCORECARD_DRAFT_SYSTEM_PROMPT).toContain(
+      `Contract version: ${SCORECARD_DRAFT_CONTRACT_VERSIONS.prompt}`,
+    );
+  });
+
+  it.each([
+    ["a missing value", undefined],
+    ["blank guidance", "   "],
+    ["guidance over 1,000 characters", "x".repeat(1_001)],
+  ])("rejects partial_evidence_guidance with %s", (_case, partialEvidenceGuidance) => {
+    const invalid = JSON.parse(JSON.stringify(fixture)) as {
+      criteria: Array<Record<string, unknown>>;
+    };
+
+    if (partialEvidenceGuidance === undefined) {
+      delete invalid.criteria[0]?.partial_evidence_guidance;
+    } else if (invalid.criteria[0]) {
+      invalid.criteria[0].partial_evidence_guidance = partialEvidenceGuidance;
+    }
+
+    expect(scorecardDraftSchema.safeParse(invalid).success).toBe(false);
+  });
+
+  it.each([
+    ["fit_score", 0.8],
+    ["candidate_ranking", 1],
+    ["hiring_decision", "PROCEED"],
+  ])("rejects forbidden top-level %s output", (field, value) => {
+    expect(scorecardDraftSchema.safeParse({ ...(fixture as object), [field]: value }).success).toBe(
       false,
     );
+  });
+
+  it("rejects unknown decision or protected-trait criterion fields", () => {
     expect(
       scorecardDraftSchema.safeParse({
         ...(fixture as { criteria: unknown[] }),
@@ -52,6 +91,17 @@ describe("scorecard draft contract", () => {
           {
             ...(fixture as { criteria: Array<Record<string, unknown>> }).criteria[0],
             protected_trait_inference: "age",
+          },
+        ],
+      }).success,
+    ).toBe(false);
+    expect(
+      scorecardDraftSchema.safeParse({
+        ...(fixture as { criteria: unknown[] }),
+        criteria: [
+          {
+            ...(fixture as { criteria: Array<Record<string, unknown>> }).criteria[0],
+            hiring_decision: "PROCEED",
           },
         ],
       }).success,

@@ -1,5 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { listNotifications } from "@hirelens/database";
+
+import { markNotificationReadAction, signOutAction } from "./jobs/actions";
+import { GlobalHeader } from "./_components/global-header";
+import { KoreanFormValidation } from "./_components/korean-form-validation";
+import { visibleCopy } from "./_components/visible-copy";
+import { getAuthenticatedViewer } from "../lib/supabase-server";
 
 import "./globals.css";
 
@@ -8,10 +15,14 @@ export const metadata: Metadata = {
   description: "Evidence-first hiring judgment support",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const authenticated = await getAuthenticatedViewer();
+  const notifications = authenticated ? await listNotifications(authenticated.client) : [];
+
   return (
     <html lang="ko">
       <body>
+        <KoreanFormValidation />
         <a className="skip-link" href="#main-content">
           본문으로 이동
         </a>
@@ -23,10 +34,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               </span>
               HireLens
             </Link>
-            <nav className="global-navigation" aria-label="주요 메뉴">
-              <Link href="/careers">채용 공고</Link>
-              <Link href="/jobs">로그인</Link>
-            </nav>
+            <GlobalHeader
+              viewerName={authenticated ? visibleCopy(authenticated.viewer.displayName) : null}
+              notifications={notifications}
+              signOutAction={signOutAction}
+              markNotificationReadAction={markNotificationReadAction}
+            />
           </div>
         </header>
         {children}

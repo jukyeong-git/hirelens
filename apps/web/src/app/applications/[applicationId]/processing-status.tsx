@@ -3,9 +3,7 @@ import type { ResumeProcessingRunRecord } from "@hirelens/domain";
 export function ProcessingStatus({ runs }: { runs: ResumeProcessingRunRecord[] }) {
   return (
     <section className="panel" aria-labelledby="processing-title">
-      <p className="eyebrow">File processing</p>
-      <h2 id="processing-title">파일 처리 상태</h2>
-      <p className="section-copy">파일 처리 상태 · AI 근거 및 사람의 채용 결정과 분리</p>
+      <h2 id="processing-title">처리 상태</h2>
       {runs.length === 0 ? (
         <p className="empty-copy">처리 작업이 아직 생성되지 않았습니다.</p>
       ) : (

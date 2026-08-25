@@ -1,7 +1,7 @@
 export const SCORECARD_DRAFT_CONTRACT_VERSIONS = {
-  pipeline: "ai-pipeline-v1",
-  prompt: "scorecard-draft-prompt-v1",
-  schema: "scorecard-draft-schema-v1",
+  pipeline: "ai-pipeline-v2",
+  prompt: "scorecard-draft-prompt-v3",
+  schema: "scorecard-draft-schema-v2",
 } as const;
 
 export type ScorecardDraftContractVersions = {
@@ -15,7 +15,7 @@ export const SCORECARD_DRAFT_SCHEMA_NAME = "hirelens_scorecard_draft" as const;
 
 export const JOB_REQUISITION_DRAFT_CONTRACT_VERSIONS = {
   pipeline: "ai-pipeline-v1",
-  prompt: "job-requisition-draft-prompt-v1",
+  prompt: "job-requisition-draft-prompt-v3",
   schema: "job-requisition-draft-schema-v1",
 } as const;
 
@@ -30,10 +30,10 @@ export const JOB_REQUISITION_DRAFT_SCHEMA_NAME = "hirelens_job_requisition_draft
 
 export const EVIDENCE_CONTRACT_VERSIONS = {
   pipeline: "evidence-pipeline-v1",
-  prompt: "evidence-extraction-prompt-v1",
-  schema: "evidence-extraction-schema-v1",
+  prompt: "evidence-extraction-prompt-v2",
+  schema: "evidence-extraction-schema-v2",
 } as const;
-export const EVIDENCE_SCHEMA_NAME = "hirelens_evidence_extraction_v1" as const;
+export const EVIDENCE_SCHEMA_NAME = "hirelens_evidence_extraction_v2" as const;
 export type EvidenceContractVersions = {
   model: string;
   pipeline: typeof EVIDENCE_CONTRACT_VERSIONS.pipeline;

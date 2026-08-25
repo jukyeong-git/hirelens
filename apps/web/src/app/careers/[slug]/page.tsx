@@ -35,10 +35,9 @@ export default async function PublicCareerPostingPage({
       </header>
 
       <div className="public-careers-workspace">
-        <aside className="public-careers-sidebar" aria-label="공개 포지션 목록">
+        <aside className="public-careers-sidebar" aria-label="채용 중인 포지션">
           <div className="public-careers-sidebar-heading">
-            <p className="eyebrow">Open positions</p>
-            <h2>포지션 목록</h2>
+            <h2>채용 중인 포지션</h2>
             <span className="count-label">{postings.length}개</span>
           </div>
           <nav aria-label="공개 포지션">
@@ -62,7 +61,6 @@ export default async function PublicCareerPostingPage({
 
         <article className="public-careers-card public-careers-detail">
           <header className="public-careers-title-block">
-            <p className="eyebrow">Position</p>
             <h1>{visibleCopy(posting.title)}</h1>
             <p className="public-careers-meta">
               {visibleCopy(posting.location)} · {visibleCopy(posting.employment_type)}

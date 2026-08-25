@@ -7,10 +7,13 @@ const input = {
   criteria: [
     {
       criterion_id: criterionId,
+      name: "Production operations",
       type: "REQUIRED" as const,
       definition: "Production operations",
       accepted_evidence: ["Stated operations responsibility"],
       alternative_evidence: [],
+      partial_evidence_guidance: "Development without operations responsibility",
+      evidence_fields: [{ field_name: "scope", description: "Operations scope" }],
       resume_assessable: true,
       suggested_interview_question: null,
     },
@@ -82,8 +85,8 @@ describe("evidence Responses adapter", () => {
     });
     expect(result.versions).toMatchObject({
       model: "test-model",
-      prompt: "evidence-extraction-prompt-v1",
-      schema: "evidence-extraction-schema-v1",
+      prompt: "evidence-extraction-prompt-v2",
+      schema: "evidence-extraction-schema-v2",
     });
   });
 

@@ -22,7 +22,6 @@ import { LoginForm } from "../../jobs/_components/login-form";
 import { ApplicationReviewPanel } from "../../jobs/_components/application-review-panel";
 import { ProcessingStatus } from "./processing-status";
 import { ApplicationEvidencePanel } from "./application-evidence-panel";
-import { signOutAction } from "../../jobs/actions";
 import { getAuthenticatedViewer } from "../../../lib/supabase-server";
 import { visibleCopy } from "../../_components/visible-copy";
 
@@ -88,22 +87,8 @@ export default async function ApplicationReviewPage({
           <Link className="back-link" href={`/jobs/${job.id}`}>
             ← {visibleCopy(job.title)}로
           </Link>
-          <p className="eyebrow">Application</p>
           <h1>{visibleCopy(application.candidate?.demo_label ?? "Synthetic candidate")}</h1>
-          <p className="lede">
-            <strong>{application.workflow_state}</strong> · AI 근거와 사람의 판단 분리
-          </p>
-        </div>
-        <div className="header-actions">
-          <div className="viewer-card" aria-label="현재 사용자">
-            <strong>{visibleCopy(viewer.displayName)}</strong>
-            <span>{viewer.role}</span>
-          </div>
-          <form action={signOutAction}>
-            <button className="button button-quiet" type="submit">
-              로그아웃
-            </button>
-          </form>
+          <p className="lede">{application.workflow_state}</p>
         </div>
       </header>
       <nav className="section-navigation" aria-label="지원서 검토 섹션">
@@ -130,9 +115,7 @@ export default async function ApplicationReviewPage({
       />
       <ProcessingStatus runs={processingRuns} />
       <section className="panel" aria-labelledby="audit-timeline-title">
-        <p className="eyebrow">Audit history</p>
         <h2 id="audit-timeline-title">변경 이력</h2>
-        <p className="section-copy">AI 처리와 사람의 요청·판단·결정</p>
         {auditEvents.length === 0 ? (
           <p className="empty-copy">표시할 이력이 없습니다.</p>
         ) : (
@@ -165,9 +148,9 @@ function auditLabel(eventType: string) {
         PROCESSING_RETRY_PENDING: "처리 재시도 대기",
         PROCESSING_FAILED: "처리 실패",
         PROCESSING_QUARANTINED: "검증 실패 결과 격리",
-        HIRING_MANAGER_REVIEW_REQUESTED: "Hiring Manager 검토 요청",
-        INTERVIEW_PROGRESSION_RECORDED: "인터뷰 진행 판단 저장",
-        INTERVIEW_PROGRESSION_CHANGED: "인터뷰 진행 판단 변경",
+        HIRING_MANAGER_REVIEW_REQUESTED: "채용 책임자 검토 요청",
+        INTERVIEW_PROGRESSION_RECORDED: "인터뷰 판단 저장",
+        INTERVIEW_PROGRESSION_CHANGED: "인터뷰 판단 변경",
         HUMAN_DECISION_CREATED: "최종 결정 저장",
         HUMAN_DECISION_CHANGED: "최종 결정 변경",
       } as Record<string, string>

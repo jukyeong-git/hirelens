@@ -6,7 +6,6 @@ import type { JobRequisitionDraftAdapterErrorCode } from "./server";
 const input = {
   title: "Backend Engineer",
   department: "Platform Engineering",
-  author_brief: "Build and operate reliable backend services.",
 };
 const draft = {
   contract: "JOB_REQUISITION_DRAFT",
@@ -66,7 +65,7 @@ describe("job requisition draft Responses adapter", () => {
     expect(result.versions).toEqual({
       model: "test-model",
       pipeline: "ai-pipeline-v1",
-      prompt: "job-requisition-draft-prompt-v1",
+      prompt: "job-requisition-draft-prompt-v3",
       schema: "job-requisition-draft-schema-v1",
     });
   });
@@ -98,6 +97,23 @@ describe("job requisition draft Responses adapter", () => {
     ).toThrow(/timeoutMs/u);
   });
 
+  it("keeps HTTP diagnostics safe and excludes the response body", async () => {
+    const adapter = createAdapter(
+      vi.fn<typeof fetch>(
+        async () =>
+          new Response(JSON.stringify({ error: { message: "do not expose this" } }), {
+            status: 429,
+            headers: { "x-request-id": "req_test_123" },
+          }),
+      ),
+    );
+
+    await expect(adapter(input)).rejects.toMatchObject({
+      code: "HTTP_ERROR",
+      diagnostic: { httpStatus: 429, openAiRequestId: "req_test_123" },
+    } satisfies Partial<JobRequisitionDraftAdapterError>);
+  });
+
   it("rejects oversized input before it reaches the model adapter", async () => {
     const fetchImpl = vi.fn<typeof fetch>(async () => new Response());
     const adapter = createAdapter(fetchImpl);
@@ -105,7 +121,7 @@ describe("job requisition draft Responses adapter", () => {
     await expect(adapter({ ...input, title: "x".repeat(161) })).rejects.toMatchObject({
       name: "ZodError",
     });
-    await expect(adapter({ ...input, author_brief: "x".repeat(4_001) })).rejects.toMatchObject({
+    await expect(adapter({ ...input, hiring_need: "x".repeat(4_001) } as never)).rejects.toMatchObject({
       name: "ZodError",
     });
     expect(fetchImpl).not.toHaveBeenCalled();
