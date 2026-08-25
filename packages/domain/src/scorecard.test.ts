@@ -34,6 +34,29 @@ describe("scorecard persistence contract", () => {
     expect(result.success).toBe(true);
   });
 
+  it("accepts a manually authored draft without an AI source phrase", () => {
+    const result = scorecardDraftSchema.safeParse({
+      ambiguous_phrases: [],
+      criteria: [{ ...validCriterion, source_phrase: null }],
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it.each([
+    ["an unsupported criterion type", { type: "AUTOMATIC_DECISION" }],
+    ["an unsupported ambiguity state", { ambiguity_status: "APPROVED" }],
+    ["a resume-assessable criterion without accepted evidence", { accepted_evidence: [] }],
+    ["an automatic hiring decision field", { decision: "PROCEED" }],
+  ])("rejects a manual draft with %s", (_label, override) => {
+    const result = scorecardDraftSchema.safeParse({
+      ambiguous_phrases: [],
+      criteria: [{ ...validCriterion, ...override }],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
   it("keeps human-only criteria out of resume assessment", () => {
     const result = scorecardDraftSchema.safeParse({
       ambiguous_phrases: [],

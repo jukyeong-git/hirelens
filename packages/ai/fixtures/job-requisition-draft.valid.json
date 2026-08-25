@@ -1,0 +1,5 @@
+{
+  "contract": "JOB_REQUISITION_DRAFT",
+  "draft_only": true,
+  "raw_job_description": "The Platform Engineering team is seeking a Backend Engineer to build and operate reliable backend services. The role will collaborate with product and engineering partners, improve service reliability, and document operational practices."
+}

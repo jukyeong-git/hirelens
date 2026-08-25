@@ -16,27 +16,18 @@ function runSupabase(args: string[]): number {
   return result.status ?? 1;
 }
 
-if (action === "start" && environment.SUPABASE_ENV !== "local-docker") {
+if (action === "start") {
   console.log(
-    `SUPABASE_ENV=${environment.SUPABASE_ENV} uses hosted Supabase; no local Docker containers were started.`,
+    `SUPABASE_ENV=${environment.SUPABASE_ENV} uses hosted Alpha Supabase; local Docker Supabase is disabled.`,
   );
-  console.log("Use SUPABASE_ENV=local-docker pnpm db:start only for local integration tests.");
   process.exit(0);
 }
 
-if (action === "start") {
-  process.exit(runSupabase(["start"]));
-}
-
 if (action === "reset") {
-  if (environment.APP_ENV !== "demo" || environment.SUPABASE_ENV !== "local-docker") {
-    console.error(
-      "Refusing database reset unless APP_ENV=demo and SUPABASE_ENV=local-docker are set.",
-    );
-    process.exitCode = 1;
-  } else {
-    process.exit(runSupabase(["db", "reset"]));
-  }
+  console.error(
+    "Database reset is disabled. Alpha verification is rollback-only and never resets shared data.",
+  );
+  process.exitCode = 1;
 }
 
 if (action === "link" || action === "push") {

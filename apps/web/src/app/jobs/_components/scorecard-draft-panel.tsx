@@ -1,22 +1,30 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
 
 import type {
   AppRole,
+  CriterionType,
+  ScorecardCriterion,
   ScorecardDetail,
+  ScorecardDraft,
   ScorecardVersionHistoryRecord,
   ScorecardWorkspace,
 } from "@hirelens/domain";
 
-import { initialScorecardActionState } from "../action-state";
-import { requestScorecardDraftAction } from "../actions";
+import {
+  initialScorecardActionState,
+  initialScorecardDraftGenerationActionState,
+} from "../action-state";
+import { generateScorecardDraftAction, saveScorecardDraftAction } from "../actions";
 import { AmbiguityReviewForm } from "./ambiguity-review-form";
 import { ScorecardApprovalForm, ScorecardRevisionForm } from "./scorecard-approval-form";
+import { visibleCopy } from "../../_components/visible-copy";
 
 interface ScorecardDraftPanelProps {
   jobId: string;
   viewerRole: AppRole;
+  isAssignedHiringManager: boolean;
   workspace: ScorecardWorkspace;
 }
 
@@ -31,13 +39,14 @@ const ambiguityStatusLabels = {
   HUMAN_ONLY: "면접에서 확인",
 } as const;
 
-export function ScorecardDraftPanel({ jobId, viewerRole, workspace }: ScorecardDraftPanelProps) {
-  const [state, formAction, pending] = useActionState(
-    requestScorecardDraftAction,
-    initialScorecardActionState,
-  );
-  const canRequest = viewerRole === "ADMIN" || viewerRole === "RECRUITER";
-  const canApprove = viewerRole === "ADMIN" || viewerRole === "HIRING_MANAGER";
+export function ScorecardDraftPanel({
+  jobId,
+  viewerRole,
+  isAssignedHiringManager,
+  workspace,
+}: ScorecardDraftPanelProps) {
+  const canEdit = viewerRole === "ADMIN" || isAssignedHiringManager;
+  const canApprove = viewerRole === "ADMIN" || isAssignedHiringManager;
   const workingVersion = workspace.latestWorkingVersion;
   const approvedVersion = workspace.activeApprovedVersion;
   const displayedVersion = workingVersion ?? approvedVersion;
@@ -46,31 +55,20 @@ export function ScorecardDraftPanel({ jobId, viewerRole, workspace }: ScorecardD
     return (
       <section className="panel" aria-labelledby="scorecard-title">
         <div className="section-heading">
-          <p className="eyebrow">Scorecard draft</p>
-          <h2 id="scorecard-title">아직 Scorecard 초안이 없습니다.</h2>
+          <p className="eyebrow">Application review criteria draft</p>
+          <h2 id="scorecard-title">아직 지원서 검토 기준 초안이 없습니다.</h2>
         </div>
         <p className="section-copy">
-          Job 설명을 기준으로 AI 초안을 만들 수 있습니다. 생성 결과는 초안으로만 저장되고, Hiring
-          Manager 또는 Admin 승인 전에는 이력서 분석에 사용할 수 없습니다.
+          직무 설명을 기준으로 AI가 검토 기준 초안을 제안합니다. 결과는 초안으로만 저장되며, 사람의
+          검토와 승인 전에는 이력서 분석에 사용할 수 없습니다.
         </p>
-        {canRequest ? (
-          <form action={formAction} className="form-actions">
-            <input type="hidden" name="jobId" value={jobId} />
-            <button className="button button-primary" type="submit" disabled={pending}>
-              {pending ? "초안 생성 중…" : "Scorecard 초안 요청"}
-            </button>
-            <span className="form-help">현재 Job 설명을 그대로 AI 입력으로 사용합니다.</span>
-          </form>
+        {canEdit ? (
+          <ReviewFrameworkDraftEditor jobId={jobId} />
         ) : (
           <p className="info-banner" role="status">
-            초안 요청은 Recruiter 또는 Admin이 수행합니다.
+            검토 기준 초안 요청은 배정된 Hiring Manager 또는 Admin이 수행합니다.
           </p>
         )}
-        {state.status === "error" ? (
-          <p className="form-alert form-alert-error" role="alert">
-            {state.message}
-          </p>
-        ) : null}
       </section>
     );
   }
@@ -79,6 +77,7 @@ export function ScorecardDraftPanel({ jobId, viewerRole, workspace }: ScorecardD
     (criterion) => criterion.ambiguity_status === "AMBIGUOUS",
   ).length;
   const isDraft = displayedVersion.version.status === "DRAFT";
+  const isHumanAuthored = displayedVersion.version.model_id === "HUMAN_AUTHORED";
   const approver = workspace.versionHistory.find(
     (version) => version.id === displayedVersion.version.id,
   )?.approver;
@@ -88,7 +87,7 @@ export function ScorecardDraftPanel({ jobId, viewerRole, workspace }: ScorecardD
       {workingVersion && approvedVersion ? (
         <section className="panel active-version-summary" aria-labelledby="active-scorecard-title">
           <div>
-            <p className="eyebrow">Active approved scorecard</p>
+            <p className="eyebrow">Active approved review criteria</p>
             <h2 id="active-scorecard-title">
               v{approvedVersion.version.version_number} 승인본 사용 중
             </h2>
@@ -105,10 +104,15 @@ export function ScorecardDraftPanel({ jobId, viewerRole, workspace }: ScorecardD
         <div className="section-heading section-heading-inline">
           <div>
             <p className="eyebrow">
-              {isDraft ? "Scorecard draft · AI output + human review" : "Human-approved scorecard"}
+              {isDraft
+                ? isHumanAuthored
+                  ? "검토 기준 초안 · 사람 작성"
+                  : "검토 기준 초안 · AI 제안 + 사람 검토"
+                : "사람이 승인한 검토 기준"}
             </p>
             <h2 id="scorecard-title">
-              Scorecard {isDraft ? "초안" : "승인본"} v{displayedVersion.version.version_number}
+              지원서 검토 기준 {isDraft ? "초안" : "승인본"} v
+              {displayedVersion.version.version_number}
             </h2>
           </div>
           <span className={`status-chip ${scorecardStatusClass(displayedVersion.version.status)}`}>
@@ -118,15 +122,22 @@ export function ScorecardDraftPanel({ jobId, viewerRole, workspace }: ScorecardD
 
         <ScorecardMetadata scorecard={displayedVersion} />
         {isDraft ? (
-          <div className="draft-warning" role="note">
-            <strong>AI가 만든 초안을 사람이 검토 중입니다.</strong> 명시적 승인이 완료되기 전에는 이
-            버전을 이력서 분석에 사용할 수 없습니다.
-          </div>
+          isHumanAuthored ? (
+            <div className="draft-warning" role="note">
+              <strong>사람이 작성한 초안을 검토 중입니다.</strong> 명시적 승인이 완료되기 전에는 이
+              버전을 이력서 분석에 사용할 수 없습니다.
+            </div>
+          ) : (
+            <div className="draft-warning" role="note">
+              <strong>AI가 제안한 초안을 사람이 검토 중입니다.</strong> 명시적 승인이 완료되기
+              전에는 이 버전을 이력서 분석에 사용할 수 없습니다.
+            </div>
+          )
         ) : (
           <div className="approved-banner" role="status">
             <strong>사람이 승인한 활성 버전입니다.</strong>
             <span>
-              승인자 {approver?.display_name ?? "확인 가능한 사용자"} ·{" "}
+              승인자 {visibleCopy(approver?.display_name ?? "확인 가능한 사용자")} ·{" "}
               {formatDate(displayedVersion.version.approved_at)}
             </span>
           </div>
@@ -146,8 +157,8 @@ export function ScorecardDraftPanel({ jobId, viewerRole, workspace }: ScorecardD
           aria-labelledby="scorecard-workflow-title"
         >
           <div className="section-heading">
-            <p className="eyebrow">Human approval · HL-023</p>
-            <h3 id="scorecard-workflow-title">승인 및 버전 관리</h3>
+            <p className="eyebrow">Human review and approval</p>
+            <h3 id="scorecard-workflow-title">검토 기준 승인 및 버전 관리</h3>
           </div>
           {isDraft ? (
             canApprove ? (
@@ -158,16 +169,16 @@ export function ScorecardDraftPanel({ jobId, viewerRole, workspace }: ScorecardD
               />
             ) : (
               <p className="info-banner" role="status">
-                Recruiter는 검토 상태를 확인할 수 있지만 승인할 수 없습니다. 담당 Hiring Manager
-                또는 Admin이 사유를 남기고 승인합니다.
+                Recruiter는 검토 기준을 읽을 수 있지만 승인할 수 없습니다. 담당 Hiring Manager 또는
+                Admin이 사유를 남기고 승인합니다.
               </p>
             )
           ) : canApprove ? (
             <ScorecardRevisionForm jobId={jobId} version={displayedVersion.version} />
           ) : (
             <p className="info-banner" role="status">
-              승인본은 변경할 수 없습니다. 변경이 필요하면 Hiring Manager 또는 Admin이 새 초안
-              버전을 생성합니다.
+              승인된 검토 기준은 변경할 수 없습니다. 변경이 필요하면 Hiring Manager 또는 Admin이 새
+              초안 버전을 생성합니다.
             </p>
           )}
         </section>
@@ -178,9 +189,449 @@ export function ScorecardDraftPanel({ jobId, viewerRole, workspace }: ScorecardD
   );
 }
 
-function ScorecardMetadata({ scorecard }: { scorecard: ScorecardDetail }) {
+type DraftOrigin = "manual" | "ai";
+
+function ReviewFrameworkDraftEditor({ jobId }: { jobId: string }) {
+  const [generationState, generateAction, generating] = useActionState(
+    generateScorecardDraftAction,
+    initialScorecardDraftGenerationActionState,
+  );
+  const [saveState, saveAction, saving] = useActionState(
+    saveScorecardDraftAction,
+    initialScorecardActionState,
+  );
+  const [draft, setDraft] = useState<ScorecardDraft | null>(null);
+  const [origin, setOrigin] = useState<DraftOrigin>("manual");
+
+  useEffect(() => {
+    if (generationState.status === "success" && generationState.draft) {
+      setDraft(normalizeDraft(generationState.draft));
+      setOrigin("ai");
+    }
+  }, [generationState.draft, generationState.status]);
+
+  const openManualDraft = () => {
+    setDraft(createBlankDraft());
+    setOrigin("manual");
+  };
+
   return (
-    <div className="metadata-grid" aria-label="Scorecard 계약 메타데이터">
+    <div className="subsection" aria-labelledby="review-framework-editor-title">
+      <div className="section-heading">
+        <p className="eyebrow">Human-controlled draft</p>
+        <h3 id="review-framework-editor-title">Review Framework / 지원서 검토 기준</h3>
+      </div>
+      <p className="section-copy">
+        기준은 사람이 직접 검토하고 저장합니다. 저장된 초안도 승인 전에는 지원서 분석에 사용되지
+        않습니다.
+      </p>
+
+      <div className="form-actions" aria-label="검토 기준 초안 시작 방법">
+        <button className="button button-quiet" type="button" onClick={openManualDraft}>
+          빈 검토 기준 초안 만들기
+        </button>
+        <form action={generateAction}>
+          <input type="hidden" name="jobId" value={jobId} />
+          <button className="button button-primary" type="submit" disabled={generating}>
+            {generating ? "AI 제안 생성 중…" : "AI로 검토 기준 제안 받기"}
+          </button>
+        </form>
+      </div>
+      <p className="form-help">
+        AI는 저장하거나 승인하지 않습니다. 제안이 도착하면 아래 편집기에만 채워집니다.
+      </p>
+
+      {generationState.status === "error" ? (
+        <ActionAlert message={visibleCopy(generationState.message)} />
+      ) : null}
+      {generationState.status === "success" ? (
+        <p className="form-alert form-alert-success" role="status">
+          {visibleCopy(generationState.message)}
+        </p>
+      ) : null}
+
+      {draft ? (
+        <form action={saveAction} className="scorecard-workflow-form">
+          <input type="hidden" name="jobId" value={jobId} />
+          <input type="hidden" name="draftJson" value={JSON.stringify(normalizeDraft(draft))} />
+          {origin === "ai" && generationState.aiDraftToken ? (
+            <input type="hidden" name="aiDraftToken" value={generationState.aiDraftToken} />
+          ) : null}
+          {origin === "ai" ? (
+            <div className="draft-warning" role="note">
+              <strong>AI 제안입니다.</strong> 아직 저장되거나 승인되지 않았습니다. 각 기준을 사람이
+              검토·수정한 뒤에만 초안을 저장하세요.
+            </div>
+          ) : (
+            <p className="info-banner" role="status">
+              사람이 작성한 빈 초안입니다. 필요한 기준을 추가하고 내용을 입력하세요.
+            </p>
+          )}
+          <CriteriaEditor draft={draft} disabled={saving} onChange={setDraft} />
+          <button className="button button-primary" type="submit" disabled={saving}>
+            {saving ? "검토 기준 초안 저장 중…" : "사람이 검토한 초안 저장"}
+          </button>
+          <p className="form-help">
+            저장은 명시적인 사람의 작업이며 승인이나 분석 시작을 의미하지 않습니다.
+          </p>
+          {saveState.status === "error" ? (
+            <ActionAlert message={visibleCopy(saveState.message)} />
+          ) : null}
+        </form>
+      ) : (
+        <p className="info-banner" role="status">
+          아직 편집할 초안이 없습니다. 빈 초안을 열거나 AI 제안을 요청하세요.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function CriteriaEditor({
+  draft,
+  disabled,
+  onChange,
+}: {
+  draft: ScorecardDraft;
+  disabled: boolean;
+  onChange: (draft: ScorecardDraft) => void;
+}) {
+  const updateCriterion = (
+    index: number,
+    update: (criterion: ScorecardCriterion) => ScorecardCriterion,
+  ) => {
+    onChange(
+      normalizeDraft({
+        ...draft,
+        criteria: draft.criteria.map((criterion, itemIndex) =>
+          itemIndex === index ? update(criterion) : criterion,
+        ),
+      }),
+    );
+  };
+  const removeCriterion = (index: number) =>
+    onChange(
+      normalizeDraft({
+        ...draft,
+        criteria: draft.criteria.filter((_, itemIndex) => itemIndex !== index),
+      }),
+    );
+  const moveCriterion = (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (target < 0 || target >= draft.criteria.length) return;
+    const criteria = [...draft.criteria];
+    [criteria[index], criteria[target]] = [criteria[target]!, criteria[index]!];
+    onChange(normalizeDraft({ ...draft, criteria }));
+  };
+
+  return (
+    <fieldset disabled={disabled}>
+      <legend>검토 기준 편집</legend>
+      <div className="criteria-list">
+        {draft.criteria.map((criterion, index) => (
+          <article className="criterion-card" key={criterion.client_id}>
+            <div className="criterion-heading">
+              <h4>기준 {index + 1}</h4>
+              <div className="form-actions">
+                <button
+                  type="button"
+                  className="button button-quiet"
+                  onClick={() => moveCriterion(index, -1)}
+                  disabled={index === 0}
+                >
+                  위로 이동
+                </button>
+                <button
+                  type="button"
+                  className="button button-quiet"
+                  onClick={() => moveCriterion(index, 1)}
+                  disabled={index === draft.criteria.length - 1}
+                >
+                  아래로 이동
+                </button>
+                <button
+                  type="button"
+                  className="button button-quiet"
+                  onClick={() => removeCriterion(index)}
+                >
+                  기준 삭제
+                </button>
+              </div>
+            </div>
+            <label>
+              기준명
+              <input
+                value={criterion.name}
+                onChange={(event) =>
+                  updateCriterion(index, (item) => ({ ...item, name: event.target.value }))
+                }
+              />
+            </label>
+            <label>
+              유형
+              <select
+                value={criterion.type}
+                onChange={(event) =>
+                  updateCriterion(index, (item) =>
+                    updateCriterionType(item, event.target.value as CriterionType),
+                  )
+                }
+              >
+                <option value="REQUIRED">필수</option>
+                <option value="PREFERRED">우대</option>
+                <option value="INTERVIEW_ONLY">면접 전용</option>
+              </select>
+            </label>
+            <label>
+              기준 정의
+              <textarea
+                value={criterion.definition}
+                onChange={(event) =>
+                  updateCriterion(index, (item) => ({ ...item, definition: event.target.value }))
+                }
+              />
+            </label>
+            <ListTextArea
+              label="인정 근거 (줄마다 하나)"
+              value={criterion.accepted_evidence}
+              onChange={(accepted_evidence) =>
+                updateCriterion(index, (item) => ({ ...item, accepted_evidence }))
+              }
+            />
+            <ListTextArea
+              label="대체 근거 (줄마다 하나)"
+              value={criterion.alternative_evidence}
+              onChange={(alternative_evidence) =>
+                updateCriterion(index, (item) => ({ ...item, alternative_evidence }))
+              }
+            />
+            <fieldset>
+              <legend>근거 필드</legend>
+              {criterion.evidence_fields.map((field, fieldIndex) => (
+                <div className="form-grid-two" key={`${criterion.client_id}-field-${fieldIndex}`}>
+                  <label>
+                    필드명
+                    <input
+                      value={field.field_name}
+                      onChange={(event) =>
+                        updateCriterion(index, (item) => ({
+                          ...item,
+                          evidence_fields: item.evidence_fields.map((current, currentIndex) =>
+                            currentIndex === fieldIndex
+                              ? { ...current, field_name: event.target.value }
+                              : current,
+                          ),
+                        }))
+                      }
+                    />
+                  </label>
+                  <label>
+                    필드 설명
+                    <input
+                      value={field.description}
+                      onChange={(event) =>
+                        updateCriterion(index, (item) => ({
+                          ...item,
+                          evidence_fields: item.evidence_fields.map((current, currentIndex) =>
+                            currentIndex === fieldIndex
+                              ? { ...current, description: event.target.value }
+                              : current,
+                          ),
+                        }))
+                      }
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="button button-quiet"
+                    onClick={() =>
+                      updateCriterion(index, (item) => ({
+                        ...item,
+                        evidence_fields: item.evidence_fields.filter(
+                          (_, currentIndex) => currentIndex !== fieldIndex,
+                        ),
+                      }))
+                    }
+                  >
+                    근거 필드 삭제
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                className="button button-quiet"
+                onClick={() =>
+                  updateCriterion(index, (item) => ({
+                    ...item,
+                    evidence_fields: [...item.evidence_fields, { field_name: "", description: "" }],
+                  }))
+                }
+              >
+                근거 필드 추가
+              </button>
+            </fieldset>
+            <label>
+              <input
+                type="checkbox"
+                checked={criterion.resume_assessable}
+                disabled={criterion.type === "INTERVIEW_ONLY"}
+                onChange={(event) =>
+                  updateCriterion(index, (item) => ({
+                    ...item,
+                    resume_assessable: event.target.checked,
+                  }))
+                }
+              />
+              이력서에서 평가 가능
+            </label>
+            <label>
+              제안 면접 질문
+              <textarea
+                value={criterion.suggested_interview_question ?? ""}
+                onChange={(event) =>
+                  updateCriterion(index, (item) => ({
+                    ...item,
+                    suggested_interview_question: emptyToNull(event.target.value),
+                  }))
+                }
+              />
+            </label>
+          </article>
+        ))}
+      </div>
+      <button
+        type="button"
+        className="button button-quiet"
+        onClick={() =>
+          onChange(
+            normalizeDraft({ ...draft, criteria: [...draft.criteria, createBlankCriterion()] }),
+          )
+        }
+      >
+        기준 추가
+      </button>
+    </fieldset>
+  );
+}
+
+function ListTextArea({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string[];
+  onChange: (value: string[]) => void;
+}) {
+  return (
+    <label>
+      {label}
+      <textarea
+        value={value.join("\n")}
+        onChange={(event) =>
+          onChange(
+            event.target.value
+              .split("\n")
+              .map((item) => item.trim())
+              .filter(Boolean),
+          )
+        }
+      />
+    </label>
+  );
+}
+
+function ActionAlert({ message }: { message?: string }) {
+  const stale = message?.includes("이미 검토 기준 초안이 있습니다");
+  return (
+    <div className="form-alert form-alert-error" role="alert">
+      <p>{message ?? "요청을 완료하지 못했습니다. 다시 시도하세요."}</p>
+      {stale ? (
+        <button
+          className="button button-quiet"
+          type="button"
+          onClick={() => window.location.reload()}
+        >
+          최신 상태 새로고침
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function updateCriterionType(
+  criterion: ScorecardCriterion,
+  type: CriterionType,
+): ScorecardCriterion {
+  return {
+    ...criterion,
+    type,
+    resume_assessable: type === "INTERVIEW_ONLY" ? false : criterion.resume_assessable,
+  };
+}
+
+function createBlankDraft(): ScorecardDraft {
+  return { ambiguous_phrases: [], criteria: [createBlankCriterion()] };
+}
+
+function createBlankCriterion(): ScorecardCriterion {
+  return {
+    client_id: createClientId(),
+    name: "",
+    type: "REQUIRED",
+    definition: "",
+    accepted_evidence: [],
+    alternative_evidence: [],
+    evidence_fields: [],
+    resume_assessable: true,
+    source_phrase: null,
+    ambiguity_note: null,
+    ambiguity_status: "CLEAR",
+    suggested_interview_question: null,
+    display_order: 0,
+  };
+}
+
+function normalizeDraft(draft: ScorecardDraft): ScorecardDraft {
+  return {
+    ...draft,
+    criteria: draft.criteria.map((criterion, display_order) => ({ ...criterion, display_order })),
+  };
+}
+
+function emptyToNull(value: string) {
+  return value.trim() || null;
+}
+
+function createClientId() {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `criterion-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function ScorecardMetadata({ scorecard }: { scorecard: ScorecardDetail }) {
+  const isHumanAuthored = scorecard.version.model_id === "HUMAN_AUTHORED";
+  if (isHumanAuthored) {
+    return (
+      <div className="metadata-grid" aria-label="검토 기준 작성 메타데이터">
+        <div>
+          <span>작성 방식</span>
+          <strong>수기 입력</strong>
+        </div>
+        <div>
+          <span>검증 계약</span>
+          <strong>{scorecard.version.schema_version}</strong>
+        </div>
+        <div>
+          <span>직무 설명 기준</span>
+          <strong>{scorecard.version.source_job_description_hash.slice(0, 12)}…</strong>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="metadata-grid" aria-label="검토 기준 계약 메타데이터">
       <div>
         <span>Model</span>
         <strong>{scorecard.version.model_id}</strong>
@@ -333,7 +784,7 @@ function VersionHistory({ versions }: { versions: ScorecardVersionHistoryRecord[
     <section className="panel" aria-labelledby="version-history-title">
       <div className="section-heading">
         <p className="eyebrow">Immutable history</p>
-        <h2 id="version-history-title">Scorecard 버전 이력</h2>
+        <h2 id="version-history-title">검토 기준 버전 이력</h2>
       </div>
       <ol className="version-history-list">
         {versions.map((version) => (
@@ -346,7 +797,7 @@ function VersionHistory({ versions }: { versions: ScorecardVersionHistoryRecord[
             </div>
             <span>
               {version.approved_at
-                ? `${version.approver?.display_name ?? "승인 사용자"} · ${formatDate(version.approved_at)}`
+                ? `${visibleCopy(version.approver?.display_name ?? "승인 사용자")} · ${formatDate(version.approved_at)}`
                 : `생성 ${formatDate(version.created_at)}`}
             </span>
           </li>

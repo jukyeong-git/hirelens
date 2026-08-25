@@ -1,0 +1,273 @@
+{
+  "fixture_version": "synthetic-resumes-v1",
+  "criteria": {
+    "production_backend": "Production backend delivery and operations",
+    "incident_response": "Production incident response",
+    "distributed_systems": "Distributed systems design",
+    "collaboration": "Cross-functional collaboration - interview only"
+  },
+  "cases": [
+    {
+      "file": "supported-01.pdf",
+      "criterion": "production_backend",
+      "acceptable_statuses": [
+        "SUPPORTED"
+      ],
+      "required_source_phrase": "Built and operated production backend services",
+      "expected_page": 1,
+      "forbidden_overclaims": [
+        "candidate lacks the capability",
+        "not qualified",
+        "hire probability"
+      ]
+    },
+    {
+      "file": "supported-02.pdf",
+      "criterion": "production_backend",
+      "acceptable_statuses": [
+        "SUPPORTED"
+      ],
+      "required_source_phrase": "Built and operated production backend services",
+      "expected_page": 1,
+      "forbidden_overclaims": [
+        "candidate lacks the capability",
+        "not qualified",
+        "hire probability"
+      ]
+    },
+    {
+      "file": "supported-03.pdf",
+      "criterion": "production_backend",
+      "acceptable_statuses": [
+        "SUPPORTED"
+      ],
+      "required_source_phrase": "Built and operated production backend services",
+      "expected_page": 1,
+      "forbidden_overclaims": [
+        "candidate lacks the capability",
+        "not qualified",
+        "hire probability"
+      ]
+    },
+    {
+      "file": "supported-04.pdf",
+      "criterion": "production_backend",
+      "acceptable_statuses": [
+        "SUPPORTED"
+      ],
+      "required_source_phrase": "Built and operated production backend services",
+      "expected_page": 1,
+      "forbidden_overclaims": [
+        "candidate lacks the capability",
+        "not qualified",
+        "hire probability"
+      ]
+    },
+    {
+      "file": "supported-05.pdf",
+      "criterion": "production_backend",
+      "acceptable_statuses": [
+        "SUPPORTED"
+      ],
+      "required_source_phrase": "Built and operated production backend services",
+      "expected_page": 1,
+      "forbidden_overclaims": [
+        "candidate lacks the capability",
+        "not qualified",
+        "hire probability"
+      ]
+    },
+    {
+      "file": "partial-01.pdf",
+      "criterion": "production_backend",
+      "acceptable_statuses": [
+        "PARTIAL"
+      ],
+      "required_source_phrase": "Contributed to backend API development",
+      "expected_page": 1,
+      "forbidden_overclaims": [
+        "candidate lacks the capability",
+        "not qualified",
+        "hire probability"
+      ]
+    },
+    {
+      "file": "partial-02.pdf",
+      "criterion": "production_backend",
+      "acceptable_statuses": [
+        "PARTIAL"
+      ],
+      "required_source_phrase": "Contributed to backend API development",
+      "expected_page": 1,
+      "forbidden_overclaims": [
+        "candidate lacks the capability",
+        "not qualified",
+        "hire probability"
+      ]
+    },
+    {
+      "file": "partial-03.pdf",
+      "criterion": "production_backend",
+      "acceptable_statuses": [
+        "PARTIAL"
+      ],
+      "required_source_phrase": "Contributed to backend API development",
+      "expected_page": 1,
+      "forbidden_overclaims": [
+        "candidate lacks the capability",
+        "not qualified",
+        "hire probability"
+      ]
+    },
+    {
+      "file": "partial-04.pdf",
+      "criterion": "production_backend",
+      "acceptable_statuses": [
+        "PARTIAL"
+      ],
+      "required_source_phrase": "Contributed to backend API development",
+      "expected_page": 1,
+      "forbidden_overclaims": [
+        "candidate lacks the capability",
+        "not qualified",
+        "hire probability"
+      ]
+    },
+    {
+      "file": "partial-05.pdf",
+      "criterion": "production_backend",
+      "acceptable_statuses": [
+        "PARTIAL"
+      ],
+      "required_source_phrase": "Contributed to backend API development",
+      "expected_page": 1,
+      "forbidden_overclaims": [
+        "candidate lacks the capability",
+        "not qualified",
+        "hire probability"
+      ]
+    },
+    {
+      "file": "not-found-01.pdf",
+      "criterion": "production_backend",
+      "acceptable_statuses": [
+        "NOT_FOUND"
+      ],
+      "required_source_phrase": null,
+      "expected_page": null,
+      "forbidden_overclaims": [
+        "candidate lacks the capability",
+        "not qualified",
+        "hire probability"
+      ]
+    },
+    {
+      "file": "not-found-02.pdf",
+      "criterion": "production_backend",
+      "acceptable_statuses": [
+        "NOT_FOUND"
+      ],
+      "required_source_phrase": null,
+      "expected_page": null,
+      "forbidden_overclaims": [
+        "candidate lacks the capability",
+        "not qualified",
+        "hire probability"
+      ]
+    },
+    {
+      "file": "not-found-03.pdf",
+      "criterion": "production_backend",
+      "acceptable_statuses": [
+        "NOT_FOUND"
+      ],
+      "required_source_phrase": null,
+      "expected_page": null,
+      "forbidden_overclaims": [
+        "candidate lacks the capability",
+        "not qualified",
+        "hire probability"
+      ]
+    },
+    {
+      "file": "not-found-04.pdf",
+      "criterion": "production_backend",
+      "acceptable_statuses": [
+        "NOT_FOUND"
+      ],
+      "required_source_phrase": null,
+      "expected_page": null,
+      "forbidden_overclaims": [
+        "candidate lacks the capability",
+        "not qualified",
+        "hire probability"
+      ]
+    },
+    {
+      "file": "contradicted-01.pdf",
+      "criterion": "production_backend",
+      "acceptable_statuses": [
+        "CONTRADICTED"
+      ],
+      "required_source_phrase": "never deployed to a production environment",
+      "expected_page": 1,
+      "forbidden_overclaims": [
+        "candidate lacks the capability",
+        "not qualified",
+        "hire probability"
+      ]
+    },
+    {
+      "file": "contradicted-02.pdf",
+      "criterion": "production_backend",
+      "acceptable_statuses": [
+        "CONTRADICTED"
+      ],
+      "required_source_phrase": "never deployed to a production environment",
+      "expected_page": 1,
+      "forbidden_overclaims": [
+        "candidate lacks the capability",
+        "not qualified",
+        "hire probability"
+      ]
+    },
+    {
+      "file": "interview-only-01.pdf",
+      "criterion": "production_backend",
+      "acceptable_statuses": [
+        "HUMAN_ONLY"
+      ],
+      "required_source_phrase": null,
+      "expected_page": null,
+      "forbidden_overclaims": [
+        "candidate lacks the capability",
+        "not qualified",
+        "hire probability"
+      ]
+    },
+    {
+      "file": "interview-only-02.pdf",
+      "criterion": "production_backend",
+      "acceptable_statuses": [
+        "HUMAN_ONLY"
+      ],
+      "required_source_phrase": null,
+      "expected_page": null,
+      "forbidden_overclaims": [
+        "candidate lacks the capability",
+        "not qualified",
+        "hire probability"
+      ]
+    },
+    {
+      "file": "image-only-01.pdf",
+      "expected_processing_state": "NEEDS_OCR",
+      "acceptable_statuses": []
+    },
+    {
+      "file": "malformed-01.pdf",
+      "expected_processing_state": "FAILED",
+      "acceptable_statuses": []
+    }
+  ]
+}

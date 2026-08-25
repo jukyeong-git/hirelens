@@ -36,5 +36,7 @@
 - `docs/09_DEMO_SCRIPT.md`
 - `docs/10_DECISIONS.md`
 - `docs/11_AGENT_SKILL_CATALOG.md`
+- `docs/12_TARGET_OPERATING_PROCESS.md`
+- `docs/13_UI_UX_GUIDE.md`
 - `references/README.md`
 - `supabase/AGENTS.md`

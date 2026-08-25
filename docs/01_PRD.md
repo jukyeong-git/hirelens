@@ -10,19 +10,21 @@ Build a demo-quality ATS that proves this statement:
 
 ### P0
 
-1. Job creation
-2. Scorecard draft from a job description
-3. Human scorecard review, approval, and versioning
-4. Multi-PDF upload
-5. Per-file processing status
-6. Page-level text extraction
-7. Criterion-level evidence extraction with exact source quote
-8. Recruiter and hiring-manager review
-9. Human-only decision with reason
-10. Append-only audit timeline
-11. Synthetic demo seed and reset
-12. Unit, integration, E2E, security, and AI eval gates
-13. Internal in-app notifications with role-based recipients
+1. Human-created Job Requisition and approval
+2. Internal Job Posting publish and close
+3. Candidate self-service PDF application; presentation fixtures remain synthetic
+4. AI-proposed application-review-criteria draft from a job description
+5. Human review, approval, and versioning of application review criteria
+6. Multi-PDF upload
+7. Per-file processing status
+8. Page-level text extraction
+9. Criterion-level evidence extraction with exact source quote
+10. Recruiter and hiring-manager review
+11. Human-only decision with reason
+12. Minimal append-only change history
+13. Synthetic demo seed and reset
+14. Unit, integration, E2E, security, and AI eval gates
+15. Internal in-app notifications with role-based recipients
 
 ### P1
 
@@ -43,11 +45,13 @@ Build a demo-quality ATS that proves this statement:
 
 ## 3. User roles
 
-| Role | Main permissions |
-|---|---|
-| `ADMIN` | manage users and roles, inspect all jobs, reset demo, manage scorecards, processing, notes, decisions, and view audit |
-| `RECRUITER` | create jobs, upload applications, review evidence, assign candidates, request manager review, manage own temporary notes |
-| `HIRING_MANAGER` | approve scorecards, review assigned candidates, save and change human decisions |
+| Role                   | Main permissions                                                                                                                                                                      |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ADMIN`                | manage users and roles, inspect all jobs, reset demo, manage scorecards, processing, notes, decisions, and view audit                                                                 |
+| `RECRUITER`            | prepare/publish postings, upload internal demo applications, review evidence, request manager review, manage own temporary notes, and coordinate a manager-approved interview handoff |
+| `HIRING_MANAGER`       | create requisitions and the screening criteria, review assigned candidates, decide whether to progress them to interview, and save and change human decisions                         |
+| `REQUISITION_APPROVER` | approve or return a pending requisition as the designated business approver (for example an organizational leader, budget owner, or HRBP)                                             |
+| `CANDIDATE`            | no account in P0; may submit a PDF resume through a published public posting                                                                                                          |
 
 The exact production organization and role model is not defined by the source brief. This role model is an MVP decision.
 
@@ -77,32 +81,127 @@ Only authenticated human roles may create or change a decision. `HIRING_MANAGER`
 
 ## 5. Functional requirements
 
-### FR-001 — Create and manage a job
+### FR-001 — Create and manage a Job Requisition
 
-The recruiter can create a job with title, department, owner, hiring manager, and raw job description.
+The assigned hiring manager can create a Job Requisition with title,
+department, hiring need, assigned recruiter, and raw job description. Before
+saving, they may explicitly request an AI-proposed, editable job-description
+draft from the title, department, and human-authored hiring need. The
+requisition includes the initial screening-criteria workflow.
 
 Acceptance criteria:
 
 - Required fields are validated.
-- A job starts in `DRAFT`.
+- A requisition starts in `DRAFT`.
+- AI draft generation is explicit, labeled as AI-generated, editable, and
+  transient until the Hiring Manager saves the requisition; it does not
+  automatically save, approve, submit, publish, assign people, or change a
+  hiring decision.
+- AI must not invent compensation, legal/eligibility terms, company policy, or
+  protected-trait preferences. Those terms remain human-provided or `TBD`.
 - A job cannot accept analysis until an approved scorecard version exists.
 - Creation is written to the audit trail.
 
-### FR-002 — Generate a scorecard draft
+### FR-002 — Create an editable Review Framework draft
 
-The system can generate a draft scorecard from a job description.
+The assigned Hiring Manager or an Admin may start the initial `지원서 검토 기준`
+(Review Framework) either from a blank structured form or from an explicit AI
+proposal. Recruiters can read the saved framework but cannot create, save, or
+approve it.
+
+Acceptance criteria:
+
+- The form supports criteria, types, definitions, accepted/alternative
+  evidence, evidence fields, resume-assessability, and suggested interview
+  questions.
+- AI generation only fills the same editable, unsaved form. It never creates a
+  version, audit event, approval, analysis run, ranking, or hiring decision.
+- A human must explicitly save the form as a draft before the existing
+  ambiguity-review and approval workflow begins.
+- A manually saved draft is explicitly recorded as human-authored rather than
+  being mislabeled as model output.
+
+### FR-001A — Approve a Job Requisition
+
+The assigned Hiring Manager submits a Job Requisition to a designated
+`REQUISITION_APPROVER`, who approves or returns it with a reason. `ADMIN` is a
+system-operations role and is not part of the business approval path.
+
+Acceptance criteria:
+
+- Requisition state is separate from Scorecard and Posting state.
+- Only the designated authenticated `REQUISITION_APPROVER` can approve or
+  return a pending requisition.
+- The assigned Hiring Manager cannot approve their own requisition. An approver
+  assignment may change only while the requisition is `DRAFT` or `RETURNED`.
+- Only the assigned Hiring Manager may resubmit a `RETURNED` requisition; a
+  pending requisition cannot be reassigned or resubmitted.
+- Submission requires at least one human-approved Scorecard version; the
+  browser and server-side workflow both enforce this gate.
+- Approval or return requires a non-empty reason and retains actor, time, and
+  prior status in the minimal change history.
+- AI and worker identities cannot approve a requisition.
+
+### FR-001B — Publish an internal Job Posting
+
+The assigned Recruiter can prepare and publish a Job Posting for an approved
+requisition. A posting is public only after the requisition and one Scorecard
+version are human-approved.
+
+Acceptance criteria:
+
+- Posting state is `DRAFT`, `PUBLISHED`, or `CLOSED`, separate from Job and
+  Scorecard state.
+- Only the assigned Recruiter or Admin may publish or close a posting.
+- Recruiter or Admin must save complete candidate-facing posting content before
+  publication: title, summary, responsibilities, requirements, location, and
+  employment type.
+- A closed or unpublished posting is not visible from the public route and
+  accepts no new applications.
+- The public route exposes a narrow posting projection, never internal users,
+  applications, files, processing, or evaluation data.
+
+### FR-001C — Submit a candidate application
+
+An unauthenticated candidate can submit a PDF through a published posting
+without creating an account. Intake neither asks for nor infers whether the
+content is real, synthetic, or anonymized; presentation, seed, reset, and
+committed fixtures remain synthetic.
+
+Acceptance criteria:
+
+- The form does not require a data classification or synthetic-data
+  attestation. Historical synthetic attestations are preserved and are not
+  reused for new submissions.
+- Submission uses a new server-side path and private Storage reservation; it
+  must not expose existing internal upload RPCs or Storage policies.
+- File type and size are validated and the response does not disclose internal
+  application, Storage, or processing identifiers.
+- Submission creates an application in a visible internal processing state but
+  never creates a human decision.
+- Public-route tests prove unpublished/closed postings and unrelated internal
+  data are inaccessible to anonymous users.
+
+### FR-002 — Generate an application-review-criteria draft
+
+The Hiring Manager explicitly requests an AI-proposed application-review-criteria
+draft from a job description. `Scorecard` remains the internal contract name;
+the user-facing term is `지원서 검토 기준`.
 
 Acceptance criteria:
 
 - Output uses a strict schema.
+- AI runs only after an authenticated human explicitly requests a draft; it
+  never runs automatically when a requisition is saved.
 - The system identifies ambiguous phrases.
 - Each criterion includes type, definition, accepted evidence, alternative evidence, and resume-assessable flag.
 - Ambiguous human qualities default to `INTERVIEW_ONLY`.
 - AI output remains a draft and has no effect until human approval.
 
-### FR-003 — Approve and version a scorecard
+### FR-003 — Approve and version application review criteria
 
-An authorized hiring manager or admin can edit and approve a draft scorecard.
+An authorized hiring manager or admin can edit and approve draft application
+review criteria.
 
 Acceptance criteria:
 
@@ -174,6 +273,21 @@ Acceptance criteria:
 - The scorecard version is visible.
 - Uncertainty is visible.
 - `INTERVIEW_ONLY` criteria are clearly marked as not resume-assessed.
+
+### FR-008A — Route a candidate for Hiring Manager review
+
+After reviewing evidence, a recruiter may request a Hiring Manager review. The
+request is not an interview decision and cannot be created by AI or the worker.
+
+Acceptance criteria:
+
+- A review request identifies the assigned Hiring Manager and retains its
+  requester, time, and optional recruiter note separately from AI evidence.
+- The assigned Hiring Manager can record `INTERVIEW`, `HOLD`, or
+  `MORE_INFORMATION_REQUIRED` with a required reason.
+- Only a Hiring Manager's `INTERVIEW` outcome authorizes the Recruiter to make
+  an interview handoff; candidate messaging and scheduling remain P1.
+- AI analysis never creates, changes, or implies the review outcome.
 
 ### FR-009 — Complete a 60-second structured review
 
@@ -248,7 +362,7 @@ Acceptance criteria:
 - Resume files are private.
 - No PII in logs.
 - Audit events are append-only and protected at the database layer.
-- Demo uses synthetic data.
+- Presentation, seed, reset, and committed fixtures use synthetic data.
 
 ### Reliability
 

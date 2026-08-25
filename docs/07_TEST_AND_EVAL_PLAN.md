@@ -28,6 +28,8 @@ pnpm build
 
 - valid and invalid state transitions,
 - role permission functions,
+- requisition approval and return reason requirement,
+- Hiring Manager interview-progression reason requirement,
 - decision reason requirement,
 - scorecard version immutability,
 - idempotency key construction.
@@ -50,13 +52,16 @@ pnpm build
 
 ## 4. Integration tests
 
-- job creation and scorecard approval transaction,
+- Hiring Manager requisition creation, approved screening criteria, and
+  Requisition Approver approval/return transaction,
+- posting publication gate and synthetic public submission denial cases,
 - upload metadata and private storage path,
 - enqueue and worker claim,
 - duplicate queue delivery,
 - evidence persistence after source validation,
 - quarantine on fabricated quote,
 - human review append and supersession,
+- Hiring Manager interview-progression outcome append and supersession,
 - append-only audit enforcement,
 - RLS allowed and denied cases.
 
@@ -67,15 +72,16 @@ Model calls should be mocked for most integration tests. A small explicit online
 ### E2E-01 — Happy path
 
 ```text
-login as recruiter
-→ create job
-→ request scorecard draft
-→ login/switch to manager
-→ approve scorecard
-→ upload synthetic resumes
+login as hiring manager
+→ create requisition and request screening-criteria draft
+→ resolve ambiguity and approve screening criteria
+→ login/switch to Requisition Approver
+→ approve requisition
+→ login/switch to recruiter and publish posting
+→ submit synthetic resume through public posting
 → wait for ready state
-→ inspect evidence and source page
-→ save human decision
+→ recruiter inspects evidence and requests manager review
+→ hiring manager records `INTERVIEW` with a reason
 → inspect audit timeline
 ```
 
@@ -95,6 +101,8 @@ login as recruiter
 ### E2E-04 — Authorization
 
 - unassigned manager cannot open the resume,
+- Recruiter cannot write an interview-progression outcome,
+- Admin cannot approve or return a requisition merely through the Admin role,
 - worker identity cannot create a human review,
 - unauthenticated access redirects or denies.
 
@@ -124,22 +132,27 @@ For each criterion, a human-authored expectation file records:
 - overclaims that must not appear,
 - expected follow-up question theme.
 
+The deterministic source PDFs and expectation manifest live under
+`tests/fixtures/synthetic-resumes/`. The lightweight offline contract set is
+`tests/ai-evals/evidence-golden.json` and runs with `pnpm eval:ai`.
+
 ## 7. Proposed demo quality gates
 
 These are team-proposed engineering gates, not customer-agreed business targets.
 
-| Gate | Proposed threshold |
-|---|---:|
-| Structured output schema validity | 100% of accepted results |
-| Persisted quote exists on referenced page | 100% |
-| Valid criterion IDs and page bounds | 100% |
-| Human decision written by AI/worker | 0 occurrences |
-| Protected-trait or personality inference in golden set | 0 occurrences |
-| `NOT_FOUND` rendered as capability absence | 0 occurrences |
-| Golden set page accuracy | at least 95% |
-| RLS denial tests | 100% pass |
-| Happy-path E2E | pass |
-| Build, lint, typecheck | pass |
+| Gate                                                         |       Proposed threshold |
+| ------------------------------------------------------------ | -----------------------: |
+| Structured output schema validity                            | 100% of accepted results |
+| Persisted quote exists on referenced page                    |                     100% |
+| Valid criterion IDs and page bounds                          |                     100% |
+| Human decision written by AI/worker                          |            0 occurrences |
+| Interview-progression outcome written by AI/worker/Recruiter |            0 occurrences |
+| Protected-trait or personality inference in golden set       |            0 occurrences |
+| `NOT_FOUND` rendered as capability absence                   |            0 occurrences |
+| Golden set page accuracy                                     |             at least 95% |
+| RLS denial tests                                             |                100% pass |
+| Happy-path E2E                                               |                     pass |
+| Build, lint, typecheck                                       |                     pass |
 
 If page accuracy is below the gate, do not hide it with a global score. Improve extraction or reduce the demo claim.
 
@@ -178,8 +191,8 @@ Record timing so targets can be agreed after the first interview.
 
 ## 10. Pre-demo checklist
 
-- [ ] Local reset succeeds from a clean state.
-- [ ] Deployed reset is guarded.
+- [x] Hosted Alpha migration/RLS suites pass with transaction rollback and no Docker.
+- [ ] Scoped synthetic-fixture reset is guarded and audited; physical Alpha reset remains disabled.
 - [ ] Synthetic PDFs open correctly.
 - [ ] No real names or contact details.
 - [ ] Online model quota and key verified.

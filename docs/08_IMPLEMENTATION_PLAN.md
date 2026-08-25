@@ -2,199 +2,212 @@
 
 ## Guiding principle
 
-Build one vertical slice to completion before adding breadth.
+Build one **business-workflow vertical slice** to completion before beginning
+the next one. A slice is complete only when its role permissions, state
+transitions, UI states, audit behavior, and relevant tests are complete.
 
-## Phase 0 — Foundation
+This plan is the delivery roadmap. `TASKS.md` is the lower-level execution
+checklist.
 
-### Deliverables
+## Workflow roadmap
 
-- pnpm workspace,
-- Next.js web app,
-- TypeScript worker,
-- shared packages,
-- environment validation,
-- CI,
-- local database start/reset.
+| Slice                                       | Business outcome                                              | Depends on | Exit gate                                                                         |
+| ------------------------------------------- | ------------------------------------------------------------- | ---------- | --------------------------------------------------------------------------------- |
+| 0. Foundation and safe access               | A synthetic, role-aware demo can run safely                   | —          | Auth, RLS, private Storage, audit, and commands work                              |
+| 1. Opening definition and business approval | An approved opening has explicit screening criteria           | Slice 0    | A Requisition Approver approves or returns an HM-authored requisition             |
+| 2. Posting and candidate application        | A candidate can apply to an approved opening                  | Slice 1    | A published posting accepts a valid PDF without content classification            |
+| 3. Evidence processing and Recruiter triage | Every submitted PDF becomes reviewable or visibly exceptional | Slice 2    | Recruiter can inspect validated evidence and request HM review                    |
+| 4. Hiring Manager interview gate            | The right human authorizes interview progression              | Slice 3    | HM records a reasoned `INTERVIEW`, `HOLD`, or `MORE_INFORMATION_REQUIRED` outcome |
+| 5. Final human judgment and record          | Final decision remains human-only and traceable               | Slice 4    | Reasoned decision history and audit timeline are visible                          |
+| 6. Demo hardening                           | The complete synthetic flow is reliable live                  | Slices 1–5 | E2E, privacy, AI-eval, retry, reset, and fallback gates pass                      |
 
-### Exit criteria
+## Slice 0 — Foundation and safe access
 
-- `pnpm lint`, `typecheck`, `test`, and `build` exist and pass.
-- A blank authenticated shell can run locally.
-- Worker starts and performs a no-op health task.
-- No product feature or cloud integration is required yet.
+### Outcome
 
-## Phase 1 — Data and access
-
-### Deliverables
-
-- P0 migrations,
-- roles and demo users,
-- RLS,
-- private storage,
-- audit table,
-- deterministic seed/reset.
+Synthetic demo users can sign in, authorized access is enforced, and the web
+app and Supabase Edge worker can use the hosted Alpha backend without exposing secrets.
 
 ### Exit criteria
 
-- assigned access works,
-- unauthorized access fails in tests,
-- browser never receives a secret key,
-- audit update/delete is impossible for application roles.
+- roles, synthetic users, RLS, private resume Storage, and append-only audit
+  protection are present;
+- local web and deployed Edge worker use validated environment variables;
+- unauthorized reads and writes are denied in tests; and
+- the shared Alpha presentation dataset remains synthetic-only.
 
-## Phase 2 — Job and scorecard vertical slice
+## Slice 1 — Opening definition and business approval
 
-### Deliverables
+### Outcome
 
-- job create/list/detail,
-- scorecard AI draft adapter,
-- ambiguity UI,
-- criterion editor,
-- approval and version history.
+The Hiring Manager creates a Job Requisition and its initial screening criteria.
+A designated `REQUISITION_APPROVER` approves or returns the requisition with a
+reason. Admin operates the system but does not act as a business approver.
 
-### Exit criteria
+### Tickets
 
-- draft cannot analyze resumes,
-- approval is human-authored,
-- approved version is immutable,
-- changing criteria creates a new version.
-
-## Phase 3 — Resume intake
-
-### Deliverables
-
-- multi-file upload,
-- private file storage,
-- application records,
-- queue task,
-- progress UI,
-- text extraction.
+- `HL-024` Add `REQUISITION_APPROVER`, requisition state machine, and RLS
+- `HL-025` Build Hiring Manager requisition workspace and criteria handoff
+- `HL-026` Build approval/return work queue, reason history, safe audit events, and tests
 
 ### Exit criteria
 
-- 20 synthetic PDFs can be submitted,
-- each file has independent state,
-- image-only fixture becomes `NEEDS_OCR`,
-- duplicate task does not duplicate the run.
+- state is `DRAFT → PENDING_APPROVAL → APPROVED` or `RETURNED`;
+- a requisition includes one approved immutable screening-criteria version;
+- only the designated approver can approve or return it;
+- Recruiter can see approved work but cannot alter approval; and
+- UI, RLS, audit, unit, Alpha rollback-only integration, and E2E coverage prove the path.
 
-## Phase 4 — Evidence pipeline
+## Slice 2 — Posting and synthetic application
 
-### Deliverables
+### Outcome
 
-- versioned evidence prompt,
-- strict schema,
-- Responses API adapter,
-- source quote validator,
-- evidence persistence,
-- quarantine state,
-- golden eval command.
+The Recruiter publishes an approved opening. A candidate can submit only
+real application or test material through the public posting.
 
-### Exit criteria
+### Tickets
 
-- every persisted quote matches a source page,
-- model output has no decision field,
-- invalid output is quarantined,
-- evidence contains uncertainty and follow-up question where relevant.
-
-## Phase 5 — Human judgment UI
-
-### Deliverables
-
-- evidence-first candidate list,
-- split source/evidence detail,
-- 60-second review card,
-- decision change history,
-- audit timeline.
+- `HL-027` Add independent posting state, Recruiter publish/close controls, and Admin operational override
+- `HL-028` Add Recruiter public-content editor, candidate preview, and narrow public careers route
+- `HL-029` Add private server-side submission and public-route security tests — complete: server-only reservation/finalization RPCs, private Storage write, anonymous candidate form, and Alpha rollback-only authorization coverage
 
 ### Exit criteria
 
-- only human roles write decisions,
-- `DO_NOT_PROCEED` requires a reason,
-- prior decision remains visible,
-- AI result and human decision are visually distinct.
+- posting state is `DRAFT → PUBLISHED → CLOSED`;
+- publishing requires an approved requisition and screening-criteria version;
+- publishing requires complete candidate-facing content;
+- public users can read only the narrow projection for a published posting and
+  cannot access internal data or upload through internal paths;
+- a closed posting accepts no application; and
+- no public submission creates a decision.
 
-## Phase 6 — Hardening and demo
+## Slice 3 — Evidence processing and Recruiter triage
 
-### Deliverables
+### Outcome
 
-- full E2E,
-- RLS tests,
-- AI eval report,
-- error recovery,
-- deployed demo,
-- demo reset,
-- presentation script.
+Each submitted PDF has an independent processing state. Validated evidence is
+available to the Recruiter, who can request Hiring Manager review.
+
+### Tickets
+
+- `HL-030` Batch/public application upload and application registration
+- `HL-031` Idempotent queue contract and worker claim
+- `HL-032` PDF page extraction, text hashes, and `NEEDS_OCR`
+- `HL-033` Versioned OpenAI evidence contract and cost gate
+- `HL-034` Quote validation and evidence persistence
+- `HL-035` Bounded retry, quarantine, and failure notification
+- `HL-036` Supabase Edge queue consumer, fenced leases, Cron/Vault activation,
+  and retained Node rollback
+- `HL-040` Evidence-first Recruiter list and review-request action
 
 ### Exit criteria
 
-All release blockers in the PRD are cleared.
+- each file reaches a visible review-ready, partial, failed, OCR, or
+  quarantined state;
+- every saved quote matches its source page;
+- AI does not write a review request, interview outcome, or decision; and
+- Recruiter requests a specific Hiring Manager review with optional notes kept
+  separate from AI evidence.
 
-## Suggested implementation tickets
+## Slice 4 — Hiring Manager interview gate
 
-### Foundation
+### Outcome
 
-- `HL-001` Initialize workspace and commands
-- `HL-002` Add environment schema
-- `HL-003` Add CI
-- `HL-004` Add local Supabase workflow
+The assigned Hiring Manager reviews Recruiter-routed evidence and makes the
+human interview-progression decision.
 
-### Data
+### Tickets
 
-- `HL-010` Add jobs and profiles
-- `HL-011` Add scorecard tables
-- `HL-012` Add applications and resume files
-- `HL-013` Add processing and evidence tables
-- `HL-014` Add reviews and audit
-- `HL-015` Add RLS and tests
+- `HL-041` Candidate evidence/source split view
+- `HL-042` Hiring Manager review outcome and reason form
+- `HL-043` Interview-progression history and authorization tests
 
-### Scorecard
+### Exit criteria
 
-- `HL-020` Job create/list UI
-- `HL-021` Scorecard draft contract
-- `HL-022` Ambiguity review UI
-- `HL-023` Approval and versioning
+- only the assigned Hiring Manager can record `INTERVIEW`, `HOLD`, or
+  `MORE_INFORMATION_REQUIRED`;
+- every outcome has a reason and is append-only; and
+- the Recruiter can coordinate the next step only after `INTERVIEW`.
 
-### Pipeline
+Candidate email and interview scheduling are P1 and are deliberately excluded
+from this slice.
 
-- `HL-030` Batch upload
-- `HL-031` Queue contract
-- `HL-032` PDF page extraction
-- `HL-033` AI evidence contract
-- `HL-034` Quote validation
-- `HL-035` Retry/quarantine
+## Slice 5 — Final human judgment and record
 
-### Review
+### Outcome
 
-- `HL-040` Candidate list
-- `HL-041` Evidence/source split view
-- `HL-042` Human review card
-- `HL-043` Audit timeline
+After interview activity outside P0, the authorized human records the final
+hiring decision and its reason without overwriting prior history.
 
-### Quality
+### Tickets
+
+- `HL-044` Final human decision card and reason validation
+- `HL-045` Decision supersession history and audit timeline
+
+### Exit criteria
+
+- `PROCEED`, `HOLD`, and `DO_NOT_PROCEED` remain distinct from the interview
+  outcome;
+- AI and worker identities have no decision-write path; and
+- prior value, actor, time, and reason remain visible.
+
+## Slice 6 — Demo hardening
+
+### Tickets
 
 - `HL-050` Synthetic golden set
 - `HL-051` AI eval runner
-- `HL-052` Playwright flow
+- `HL-052` Workflow E2E and retry/error path
 - `HL-053` Privacy/security review
-- `HL-054` Demo seed and reset
-- `HL-055` Deployment smoke test
+- `HL-054` Deterministic synthetic demo reset
+- `HL-055` Deployment smoke test and fallback rehearsal
 
-## Scope cut order
+### Exit criteria
 
-If time is short, cut in this order:
+All P0 quality gates in `docs/07_TEST_AND_EVAL_PLAN.md` pass, including the
+full workflow from requisition to reasoned human outcome.
+
+## P1 after P0
+
+- Candidate email notifications
+- Candidate self-service interview scheduling
+- Google Calendar free/busy integration
+- Slack reminders
+- OCR and external recruiting-platform integrations
+
+## Implementation status — 2026-08-24
+
+- HL-026 and HL-030 through HL-045 are implemented in the workspace.
+- Alpha contains forward migrations through
+  `20260824002500_preprocessed_demo_fallback.sql`; rollback-only pgTAP covers
+  the evidence backend, human interview gate, Admin override, worker RPC
+  privileges, and the idempotent preprocessed fallback installer.
+- HL-050 has a deterministic 20-file synthetic golden set and HL-051 has an
+  offline contract eval.
+- HL-053 has passed its privacy/secret scan and security review with no
+  remaining High or Medium finding.
+- The 15 role/public Playwright scenarios pass against the locally served web
+  app connected to Alpha. The full state-changing P0 workflow and partial-batch
+  retry scenario remain HL-052 release gates.
+- Alpha has an idempotent service-role-only preprocessed synthetic evidence
+  fixture, and the three fallback screenshots in `docs/demo-fallback/` were
+  captured and visually checked.
+- HL-052, HL-054, and HL-055 remain release gates: authenticated full-flow
+  E2E, guarded hosted-Alpha reseed/reset semantics, deployed smoke test,
+  rehearsal, and offline screenshots.
+- P1 remains gated until those P0 release checks pass.
+
+## Scope-cut order
+
+If time is short, preserve Slices 1–5 and cut in this order:
 
 1. Slack
 2. Calendar
-3. email
+3. candidate email
 4. OCR
 5. advanced dashboard
 6. multi-job templates
 7. real platform adapters
 
-Do not cut:
-
-- scorecard approval,
-- evidence source validation,
-- human-only decision,
-- audit trail,
-- RLS,
-- synthetic data policy.
+Do not cut approved criteria, source validation, human-only outcomes and
+decisions, audit history, RLS, or the synthetic-data policy.

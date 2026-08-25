@@ -1,11 +1,11 @@
 export default function Loading() {
   return (
-    <main className="app-shell" aria-busy="true" aria-live="polite">
+    <main className="app-shell" id="main-content" aria-busy="true" aria-live="polite">
       <div className="loading-card">
         <span className="loading-bar loading-bar-short" />
         <span className="loading-bar" />
         <span className="loading-bar loading-bar-wide" />
-        <p>Job 작업 공간을 불러오는 중입니다…</p>
+        <p>작업 공간 로딩 중…</p>
       </div>
     </main>
   );

@@ -29,6 +29,21 @@ export type {
 export { buildScorecardDraftPrompt, SCORECARD_DRAFT_SYSTEM_PROMPT } from "./prompt";
 
 export {
+  jobRequisitionDraftContract,
+  jobRequisitionDraftJsonSchema,
+  jobRequisitionDraftPromptInputSchema,
+  jobRequisitionDraftResponseFormat,
+  jobRequisitionDraftSchema,
+  parseJobRequisitionDraft,
+} from "./job-requisition-draft";
+export type { JobRequisitionDraft, JobRequisitionDraftPromptInput } from "./job-requisition-draft";
+
+export {
+  buildJobRequisitionDraftPrompt,
+  JOB_REQUISITION_DRAFT_SYSTEM_PROMPT,
+} from "./job-requisition-prompt";
+
+export {
   evidenceExtractionJsonSchema,
   evidenceExtractionSchema,
   evidenceSourceSchema,
@@ -46,6 +61,16 @@ export type {
   EvidenceValidationCode,
   EvidenceValidationContext,
 } from "./evidence";
+export { buildEvidencePrompt, EVIDENCE_SYSTEM_PROMPT } from "./evidence-prompt";
 
 export { SCORECARD_DRAFT_CONTRACT_VERSIONS, SCORECARD_DRAFT_SCHEMA_NAME } from "./versions";
-export type { ScorecardDraftContractVersions } from "./versions";
+export {
+  JOB_REQUISITION_DRAFT_CONTRACT_VERSIONS,
+  JOB_REQUISITION_DRAFT_SCHEMA_NAME,
+} from "./versions";
+export type {
+  EvidenceContractVersions,
+  JobRequisitionDraftContractVersions,
+  ScorecardDraftContractVersions,
+} from "./versions";
+export { EVIDENCE_CONTRACT_VERSIONS, EVIDENCE_SCHEMA_NAME } from "./versions";

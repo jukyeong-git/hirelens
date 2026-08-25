@@ -45,6 +45,37 @@ export function getSupabaseConfiguration() {
   };
 }
 
+export function getPublicSupabaseClient() {
+  const configuration = getSupabaseConfiguration();
+  return createSupabaseRestClient({
+    ...configuration,
+    // PostgREST uses the publishable key as the anonymous bearer token when
+    // no user session is present. The public RPC still limits the projection.
+    accessToken: configuration.publishableKey,
+  });
+}
+
+/**
+ * Server-route-only client for the public submission handoff. Never import this
+ * from browser code: the service key bypasses RLS and is limited to the
+ * server-owned public submission RPC and private Storage write path.
+ */
+export function getSupabaseServiceClient() {
+  const configuration = getSupabaseConfiguration();
+  const environment = parseEnvironment();
+
+  if (!environment.SUPABASE_SECRET_KEY) {
+    throw new SupabaseConfigurationError(
+      "공개 지원서 접수에는 서버의 Supabase secret key 설정이 필요합니다.",
+    );
+  }
+
+  return createSupabaseRestClient({
+    url: configuration.url,
+    publishableKey: environment.SUPABASE_SECRET_KEY,
+  });
+}
+
 function cookieOptions(maxAge: number) {
   return {
     httpOnly: true,
