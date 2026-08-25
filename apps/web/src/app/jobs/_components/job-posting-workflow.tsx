@@ -60,12 +60,10 @@ export function JobPostingWorkflow({
   );
   const isAssignedRecruiter = viewerRole === "RECRUITER" && viewerId === job.recruiter_id;
   const canManage = viewerRole === "ADMIN" || isAssignedRecruiter;
-  const hasApprovedRequisition = job.requisition_status === "APPROVED";
   const hasApprovedFramework = scorecardWorkspace.activeApprovedVersion !== null;
   const hasCompletePublicContent = hasPublicContent(posting);
   const canPublish = Boolean(
     posting?.status === "DRAFT" &&
-      hasApprovedRequisition &&
       hasApprovedFramework &&
       hasCompletePublicContent,
   );
@@ -77,9 +75,7 @@ export function JobPostingWorkflow({
     <section className="panel" aria-labelledby="job-posting-title">
       <div className="section-heading section-heading-inline">
         <div>
-          <p className="eyebrow">Job posting</p>
-          <h2 id="job-posting-title">공고 관리</h2>
-          <p className="section-copy">Requisition 승인·검토 기준·후보자 판단과 분리</p>
+          <h2 id="job-posting-title">채용 공고</h2>
         </div>
         <span className={`status-chip status-${posting?.status.toLowerCase() ?? "draft"}`}>
           {posting ? statusLabel[posting.status] : "공고 초안 없음"}
@@ -88,8 +84,8 @@ export function JobPostingWorkflow({
 
       <dl className="metadata-grid" aria-label="공고 게시 조건">
         <div>
-          <span>Requisition 승인</span>
-          <strong>{hasApprovedRequisition ? "승인됨" : "승인 전"}</strong>
+          <span>채용 요청</span>
+          <strong>작성됨</strong>
         </div>
         <div>
           <span>지원서 검토 기준</span>
@@ -97,7 +93,7 @@ export function JobPostingWorkflow({
         </div>
         <div>
           <span>공개 범위</span>
-          <strong>{posting?.status === "PUBLISHED" ? "Career Site 공개" : "게시 전 비공개"}</strong>
+          <strong>{posting?.status === "PUBLISHED" ? "채용 사이트 공개" : "게시 전 비공개"}</strong>
         </div>
         <div>
           <span>재게시</span>
@@ -107,7 +103,7 @@ export function JobPostingWorkflow({
 
       {!canManage ? (
         <p className="info-banner" role="status">
-          배정 Recruiter 전용 · Admin 운영 예외
+          배정된 채용 담당자 전용 · 관리자 운영 예외
         </p>
       ) : null}
 
@@ -126,9 +122,7 @@ export function JobPostingWorkflow({
         <section className="posting-content-editor" aria-labelledby="posting-content-title">
           <div className="section-heading section-heading-inline">
             <div>
-              <p className="eyebrow">Candidate content</p>
-              <h3 id="posting-content-title">공개 공고 내용</h3>
-              <p className="section-copy">내부 Requisition 원문과 분리 · 종료 후 수정 불가</p>
+              <h3 id="posting-content-title">공고 내용</h3>
             </div>
             <span className="status-chip status-draft">
               {hasCompletePublicContent ? "공개 문구 준비됨" : "공개 문구 입력 필요"}
@@ -143,7 +137,7 @@ export function JobPostingWorkflow({
             <form action={contentAction} className="posting-content-form">
               <input type="hidden" name="jobId" value={job.id} />
               <label>
-                공개 직무명 *
+                공개 직무명
                 <input
                   name="publicTitle"
                   defaultValue={posting.public_title ?? job.title}
@@ -152,7 +146,7 @@ export function JobPostingWorkflow({
                 />
               </label>
               <label>
-                공개 요약 *
+                공개 요약
                 <textarea
                   name="publicSummary"
                   defaultValue={posting.public_summary ?? ""}
@@ -162,7 +156,7 @@ export function JobPostingWorkflow({
                 />
               </label>
               <label>
-                주요 업무 *
+                주요 업무
                 <textarea
                   name="publicResponsibilities"
                   defaultValue={posting.public_responsibilities ?? ""}
@@ -172,7 +166,7 @@ export function JobPostingWorkflow({
                 />
               </label>
               <label>
-                필수 자격 *
+                필수 자격
                 <textarea
                   name="publicRequirements"
                   defaultValue={posting.public_requirements ?? ""}
@@ -183,7 +177,7 @@ export function JobPostingWorkflow({
               </label>
               <div className="form-grid form-grid-two">
                 <label>
-                  근무지 *
+                  근무지
                   <input
                     name="publicLocation"
                     defaultValue={posting.public_location ?? ""}
@@ -192,7 +186,7 @@ export function JobPostingWorkflow({
                   />
                 </label>
                 <label>
-                  고용 형태 *
+                  고용 형태
                   <input
                     name="publicEmploymentType"
                     defaultValue={posting.public_employment_type ?? ""}
@@ -203,7 +197,7 @@ export function JobPostingWorkflow({
               </div>
               <div className="form-actions">
                 <button className="button button-quiet" type="submit" disabled={contentPending}>
-                  {contentPending ? "공개 문구 저장 중…" : "공개 공고 내용 저장"}
+                  {contentPending ? "공고 내용 저장 중…" : "공고 내용 저장"}
                 </button>
                 <span className="form-help">저장 후 후보자 화면 확인</span>
                 <ActionMessage state={contentState} />
@@ -213,7 +207,7 @@ export function JobPostingWorkflow({
 
           {!canManage ? (
             <p className="info-banner" role="status">
-              공개 공고 내용은 배정된 Recruiter 또는 Admin만 수정할 수 있습니다.
+              공고 내용은 배정된 채용 담당자 또는 관리자만 수정할 수 있습니다.
             </p>
           ) : null}
 
@@ -240,15 +234,13 @@ export function JobPostingWorkflow({
             {publishPending ? "게시 중…" : "공고 게시"}
           </button>
           <span className="form-help">
-            승인된 Requisition, 지원서 검토 기준, 공개 공고 내용이 모두 있어야 게시할 수 있습니다.
+            승인된 지원서 검토 기준과 공고 내용이 있어야 게시할 수 있습니다.
           </span>
           {!canPublish ? (
             <p className="form-alert form-alert-warning" role="status">
-              {!hasApprovedRequisition
-                ? "승인된 Requisition을 확인하세요."
-                : !hasApprovedFramework
-                  ? "승인된 지원서 검토 기준을 확인하세요."
-                  : "공개 공고 내용을 모두 입력하고 저장하세요."}
+              {!hasApprovedFramework
+                ? "승인된 지원서 검토 기준을 확인하세요."
+                : "공고 내용을 모두 입력하고 저장하세요."}
             </p>
           ) : null}
           <ActionMessage state={publishState} />
@@ -282,7 +274,6 @@ export function JobPostingWorkflow({
 
       <section aria-labelledby="job-posting-history-title">
         <div className="section-heading">
-          <p className="eyebrow">Status history</p>
           <h3 id="job-posting-history-title">공고 상태 이력</h3>
         </div>
         {orderedHistory.length === 0 ? (
@@ -322,7 +313,7 @@ function PublicPostingPreview({ posting }: { posting: JobPostingRecord }) {
   if (!hasPublicContent(posting)) {
     return (
       <div className="empty-state" role="status">
-        공개 공고 내용을 저장하면 후보자 화면 미리보기가 표시됩니다.
+        공고 내용을 저장하면 공개 미리보기가 표시됩니다.
       </div>
     );
   }
@@ -331,8 +322,7 @@ function PublicPostingPreview({ posting }: { posting: JobPostingRecord }) {
     <article className="public-posting-preview" aria-labelledby="public-preview-title">
       <div className="section-heading section-heading-inline">
         <div>
-          <p className="eyebrow">Candidate preview</p>
-          <h4 id="public-preview-title">후보자 공개 미리보기</h4>
+          <h4 id="public-preview-title">공개 미리보기</h4>
         </div>
         {posting.status === "PUBLISHED" ? (
           <a

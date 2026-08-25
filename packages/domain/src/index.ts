@@ -68,7 +68,7 @@ export {
   scorecardCriterionSchema,
   scorecardCriterionReviewSnapshotSchema,
   scorecardDraftSchema,
-  scorecardRevisionInputSchema,
+  scorecardDraftUpdateInputSchema,
   scorecardStatusSchema,
 } from "./scorecard";
 export {
@@ -119,6 +119,8 @@ export {
   extractedResumePageSchema,
   completeResumeExtractionInputSchema,
 } from "./resume";
+export { buildRoleWorkspace, selectWorkspaceJobs } from "./workspace";
+export type { RoleWorkspace, WorkspaceMetric } from "./workspace";
 export type {
   CancelResumeUploadReservationInput,
   CreateResumeUploadReservationInput,
@@ -144,7 +146,7 @@ export type {
   ScorecardCriterionReviewSnapshot,
   ScorecardDetail,
   ScorecardDraft,
-  ScorecardRevisionInput,
+  ScorecardDraftUpdateInput,
   ScorecardStatus,
   ScorecardVersionRecord,
   ScorecardVersionHistoryRecord,

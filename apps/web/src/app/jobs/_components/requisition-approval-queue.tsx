@@ -22,21 +22,14 @@ export function RequisitionApprovalQueue({
     <section aria-labelledby="requisition-approval-queue-title">
       <div className="section-heading section-heading-inline">
         <div>
-          <p className="eyebrow">Requisition approver workspace</p>
-          <h2 id="requisition-approval-queue-title">대기 중인 Requisition</h2>
-          <p className="section-copy">
-            지정된 Requisition만 처리합니다. 이 화면에는 지원서, 검토 기준, 후보자 근거가 표시되지
-            않습니다.
-          </p>
+          <h2 id="requisition-approval-queue-title">승인 대기</h2>
         </div>
         <span className="count-label">{pendingJobs.length}건 대기</span>
       </div>
 
       {pendingJobs.length === 0 ? (
         <section className="empty-state" aria-labelledby="empty-requisition-queue-title">
-          <p className="eyebrow">No pending approvals</p>
-          <h3 id="empty-requisition-queue-title">처리할 Requisition이 없습니다.</h3>
-          <p>새로 제출되어 회원님에게 지정된 Requisition이 이곳에 표시됩니다.</p>
+          <h3 id="empty-requisition-queue-title">승인할 채용 요청이 없습니다.</h3>
         </section>
       ) : (
         pendingJobs.map((job) => (
@@ -55,7 +48,7 @@ export function RequisitionApprovalQueue({
               history={historiesByJobId.get(job.id) ?? []}
             />
             <Link className="back-link" href={`/jobs/${job.id}`}>
-              Requisition 원문 및 상세 보기 →
+              채용 요청 원문 및 상세 보기 →
             </Link>
           </div>
         ))

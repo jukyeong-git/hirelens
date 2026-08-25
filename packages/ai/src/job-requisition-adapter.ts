@@ -56,6 +56,10 @@ export class JobRequisitionDraftAdapterError extends Error {
   constructor(
     public readonly code: JobRequisitionDraftAdapterErrorCode,
     message: string,
+    public readonly diagnostic?: Readonly<{
+      httpStatus?: number;
+      openAiRequestId?: string;
+    }>,
   ) {
     super(message);
     this.name = "JobRequisitionDraftAdapterError";
@@ -161,7 +165,6 @@ export function createJobRequisitionDraftAdapter(
   const generate = async (input: JobRequisitionDraftPromptInput) => {
     const promptInput = jobRequisitionDraftPromptInputSchema.parse({
       ...input,
-      author_brief: input.author_brief ?? null,
     });
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -202,6 +205,10 @@ export function createJobRequisitionDraftAdapter(
       throw new JobRequisitionDraftAdapterError(
         "HTTP_ERROR",
         `OpenAI Responses request failed with status ${response.status}`,
+        {
+          httpStatus: response.status,
+          openAiRequestId: response.headers.get("x-request-id") ?? undefined,
+        },
       );
     }
 

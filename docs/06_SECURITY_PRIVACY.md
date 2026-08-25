@@ -84,8 +84,9 @@ The provided challenge document is confidential and must not be committed to the
 - minimize direct identifiers,
 - use `store: false` by default,
 - send only required pages and criteria,
-- for Job Requisition drafting, send only the human-entered title, department,
-  and optional hiring need; keep the generated text transient until an explicit
+- for Job Requisition drafting, send only the human-entered title and department;
+  retain the internal hiring need with the requisition and exclude it from the
+  model request; keep the generated text transient until an explicit
   human save,
 - no model request body in application logs,
 - provider key exists only on the web server or Supabase Edge Function secrets.

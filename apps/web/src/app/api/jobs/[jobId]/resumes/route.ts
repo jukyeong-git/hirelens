@@ -22,7 +22,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ job
   }
   const job = await getJobForScorecard(client, jobId);
   if (!job)
-    return Response.json({ error: "Job을 찾을 수 없거나 접근할 수 없습니다." }, { status: 404 });
+    return Response.json(
+      { error: "채용 요청을 찾을 수 없거나 접근할 수 없습니다." },
+      { status: 404 },
+    );
 
   const formData = await request.formData();
   const files = formData.getAll("files").filter((value): value is File => value instanceof File);
@@ -103,9 +106,9 @@ async function validateResumeFile(file: File): Promise<string | null> {
 function uploadErrorMessage(error: unknown) {
   if (error instanceof SupabaseRestError) {
     if (error.status === 401 || error.status === 403)
-      return "현재 사용자에게 이 Job의 업로드 권한이 없습니다.";
+      return "현재 사용자에게 이 채용 요청의 업로드 권한이 없습니다.";
     if (/ready for intake|approved scorecard/iu.test(error.responseBody))
-      return "승인된 Scorecard가 있는 접수 준비 Job에서만 업로드할 수 있습니다.";
+      return "승인된 지원서 검토 기준이 있는 접수 준비 채용 요청에서만 업로드할 수 있습니다.";
   }
   return "업로드에 실패했습니다. 파일을 확인한 뒤 다시 시도하세요.";
 }

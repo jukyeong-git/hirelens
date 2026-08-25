@@ -30,17 +30,12 @@ export function ApplicationEvidencePanel({
     <section className="panel" aria-labelledby="evidence-title">
       <div className="section-heading section-heading-inline">
         <div>
-          <p className="eyebrow">AI evidence · source verified</p>
-          <h2 id="evidence-title">지원서 근거 검토</h2>
+          <h2 id="evidence-title">AI 지원서 근거</h2>
         </div>
         <span className={`status-chip status-${(latestRun?.status ?? "QUEUED").toLowerCase()}`}>
           {processingLabel(latestRun?.status ?? "QUEUED")}
         </span>
       </div>
-      <p className="section-copy">
-        AI는 승인된 검토 기준별 근거와 불확실성만 정리합니다. 점수·순위·채용 결정은 만들지 않습니다.
-      </p>
-
       {latestRun?.status === "QUARANTINED" ? (
         <p className="form-alert form-alert-error" role="alert">
           모델 결과가 원문 또는 계약 검증을 통과하지 못해 격리되었습니다. 신뢰 가능한 AI 근거로
@@ -115,7 +110,6 @@ export function ApplicationEvidencePanel({
             })}
           </div>
           <aside className="source-page-list" aria-label="지원서 원문 페이지">
-            <p className="eyebrow">Submitted source</p>
             <h3>원문 페이지</h3>
             {pages.map((page) => (
               <article id={`source-page-${page.page_number}`} key={page.id} tabIndex={-1}>

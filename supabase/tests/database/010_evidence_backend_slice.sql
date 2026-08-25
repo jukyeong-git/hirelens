@@ -1,7 +1,11 @@
 begin;
-select plan(23);
+select plan(26);
 
 set local role postgres;
+update public.criteria
+set partial_evidence_guidance = '직접 책임 범위는 확인되지만 운영 규모가 명시되지 않은 경우'
+where scorecard_version_id = '20000000-0000-0000-0000-000000000001'
+  and display_order = 1;
 update public.scorecard_versions set status = 'APPROVED', approved_by = '00000000-0000-0000-0000-000000000001', approved_at = now() where id = '20000000-0000-0000-0000-000000000001' and status = 'DRAFT';
 insert into public.candidates (id, demo_label) values ('40000000-0000-0000-0000-000000000801', 'Synthetic evidence fixture');
 insert into public.applications (id, candidate_id, job_id, source, workflow_state) values ('50000000-0000-0000-0000-000000000801', '40000000-0000-0000-0000-000000000801', '10000000-0000-0000-0000-000000000001', 'TEST', 'NEW');
@@ -24,6 +28,19 @@ select lives_ok($$
 $$, 'page extraction transitions to analysis');
 select is((select status::text from public.processing_runs where id = '70000000-0000-0000-0000-000000000801'), 'ANALYZING', 'extraction enters ANALYZING');
 select ok(jsonb_array_length(public.load_evidence_analysis_context('70000000-0000-0000-0000-000000000801', (select lease_token from public.processing_runs where id = '70000000-0000-0000-0000-000000000801')) -> 'criteria') > 0, 'context loads human-approved criteria');
+select ok(
+  (public.load_evidence_analysis_context('70000000-0000-0000-0000-000000000801', (select lease_token from public.processing_runs where id = '70000000-0000-0000-0000-000000000801')) -> 'criteria' -> 0) ? 'name',
+  'analysis context includes the approved criterion name'
+);
+select is(
+  public.load_evidence_analysis_context('70000000-0000-0000-0000-000000000801', (select lease_token from public.processing_runs where id = '70000000-0000-0000-0000-000000000801')) -> 'criteria' -> 0 ->> 'partial_evidence_guidance',
+  '직접 책임 범위는 확인되지만 운영 규모가 명시되지 않은 경우',
+  'analysis context includes human-authored partial-evidence guidance'
+);
+select ok(
+  jsonb_typeof(public.load_evidence_analysis_context('70000000-0000-0000-0000-000000000801', (select lease_token from public.processing_runs where id = '70000000-0000-0000-0000-000000000801')) -> 'criteria' -> 0 -> 'evidence_fields') = 'array',
+  'analysis context includes named extraction fields'
+);
 select lives_ok($$ select public.mark_evidence_validating('70000000-0000-0000-0000-000000000801', 'evidence-extraction-prompt-v1', 'evidence-extraction-schema-v1', 'mock-model', 'resp_mock', 100, 20, 120, 300, 25, (select lease_token from public.processing_runs where id = '70000000-0000-0000-0000-000000000801')) $$, 'usage and contract metadata enter validation');
 select throws_ok($$
   select public.persist_validated_evidence('70000000-0000-0000-0000-000000000801', (

@@ -13,9 +13,8 @@ export default function Error({
         role="alert"
         aria-labelledby="jobs-error-title"
       >
-        <p className="eyebrow">Retryable error</p>
-        <h1 id="jobs-error-title">작업 공간 로드 실패</h1>
-        <p>연결 또는 권한 확인 후 재시도</p>
+        <h1 id="jobs-error-title">화면을 불러오지 못했습니다</h1>
+        <p>연결과 권한을 확인한 뒤 다시 시도하세요.</p>
         <button className="button button-primary" type="button" onClick={() => reset()}>
           다시 시도
         </button>

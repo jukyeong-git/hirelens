@@ -18,9 +18,9 @@ import type {
 import type { SupabaseRestClient } from "./rest";
 
 const jobSelect =
-  "id,title,department,status,requisition_status,recruiter_id,hiring_manager_id,requisition_approver_id,is_synthetic_demo,submitted_at,approval_reason,approved_or_returned_at,created_at,updated_at";
+  "id,title,department,hiring_need,status,requisition_status,recruiter_id,hiring_manager_id,requisition_approver_id,is_synthetic_demo,submitted_at,approval_reason,approved_or_returned_at,created_at,updated_at";
 const scorecardJobSelect =
-  "id,title,department,raw_job_description,status,requisition_status,recruiter_id,hiring_manager_id,requisition_approver_id,is_synthetic_demo,submitted_at,approval_reason,approved_or_returned_at,created_at,updated_at";
+  "id,title,department,hiring_need,raw_job_description,status,requisition_status,recruiter_id,hiring_manager_id,requisition_approver_id,is_synthetic_demo,submitted_at,approval_reason,approved_or_returned_at,created_at,updated_at";
 
 export async function listJobs(client: SupabaseRestClient): Promise<JobSummary[]> {
   const params = new URLSearchParams({
@@ -81,6 +81,7 @@ export async function createJob(
     body: JSON.stringify({
       title: input.title,
       department: input.department,
+      hiring_need: input.hiringNeed,
       raw_job_description: input.rawJobDescription,
       recruiter_id: input.recruiterId,
       hiring_manager_id: input.hiringManagerId,
@@ -160,6 +161,21 @@ export async function getJobPosting(
     `/rest/v1/job_postings?${params.toString()}`,
   );
   return postings[0] ?? null;
+}
+
+export async function listJobPostingsForJobs(
+  client: SupabaseRestClient,
+  jobIds: string[],
+): Promise<JobPostingRecord[]> {
+  if (jobIds.length === 0) return [];
+
+  const params = new URLSearchParams({
+    select:
+      "id,job_id,status,public_slug,public_title,public_summary,public_responsibilities,public_requirements,public_location,public_employment_type,created_by,published_by,published_at,closed_by,closed_at,created_at,updated_at",
+    job_id: `in.(${jobIds.join(",")})`,
+    order: "updated_at.desc",
+  });
+  return client.request<JobPostingRecord[]>(`/rest/v1/job_postings?${params.toString()}`);
 }
 
 export async function updateJobPostingContent(

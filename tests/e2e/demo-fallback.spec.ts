@@ -13,7 +13,7 @@ test("capture deterministic synthetic demo fallback screens", async ({ page }) =
   mkdirSync(outputDirectory, { recursive: true });
 
   await page.goto("/careers");
-  await expect(page.getByRole("heading", { name: "포지션 목록" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "채용 중인 포지션" })).toBeVisible();
   await page.screenshot({
     path: resolve(outputDirectory, "01-public-careers.png"),
     fullPage: true,
@@ -28,10 +28,10 @@ test("capture deterministic synthetic demo fallback screens", async ({ page }) =
   });
 
   await page.getByRole("button", { name: "로그아웃" }).click();
-  await expect(page.getByRole("heading", { name: "HireLens에 로그인" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "로그인" })).toBeVisible();
   await signIn(page, "hiring-manager@demo.hirelens.example", demoPassword!);
   await page.goto("/applications/50000000-0000-0000-0000-000000000001");
-  await expect(page.getByRole("heading", { name: "인터뷰 진행 판단" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "인터뷰 판단" })).toBeVisible();
   await page.screenshot({
     path: resolve(outputDirectory, "03-hiring-manager-review.png"),
     fullPage: true,
@@ -43,5 +43,7 @@ async function signIn(page: import("@playwright/test").Page, email: string, pass
   await page.getByLabel("이메일").fill(email);
   await page.getByLabel("비밀번호").fill(password);
   await page.getByRole("button", { name: "로그인" }).click();
-  await expect(page.getByRole("heading", { name: /Requisition 작업 공간/ })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /Recruiter 홈|Hiring Manager 홈|채용 요청 승인/ }),
+  ).toBeVisible();
 }

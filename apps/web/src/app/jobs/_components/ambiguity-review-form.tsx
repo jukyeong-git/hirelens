@@ -169,7 +169,7 @@ export function AmbiguityReviewForm({
         </label>
 
         <label htmlFor={reasonId}>
-          검토 사유 <span aria-hidden="true">*</span>
+          검토 사유
           <textarea
             id={reasonId}
             name="reason"
