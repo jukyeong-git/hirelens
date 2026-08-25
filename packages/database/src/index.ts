@@ -8,6 +8,7 @@ export {
   createJob,
   createJobPostingDraft,
   getJobPosting,
+  listJobPostingsForJobs,
   getPublicJobPosting,
   getJobForScorecard,
   getProfile,
@@ -21,21 +22,25 @@ export {
   updateJobPostingContent,
   submitRequisition,
 } from "./jobs";
-export { getApplicationForReview, listApplicationsForJob } from "./applications";
+export {
+  getApplicationForReview,
+  listApplicationsForJob,
+  listApplicationsForJobs,
+} from "./applications";
 export {
   approveScorecard,
   createScorecardDraft,
-  createScorecardRevision,
   getScorecardForJob,
   getScorecardVersion,
   getScorecardWorkspaceForJob,
   reviewScorecardAmbiguity,
+  updateScorecardDraft,
 } from "./scorecards";
 export type {
   ApproveScorecardRequest,
   CreateScorecardDraftRequest,
-  CreateScorecardRevisionRequest,
   ReviewScorecardAmbiguityRequest,
+  UpdateScorecardDraftRequest,
 } from "./scorecards";
 export {
   createHumanReview,

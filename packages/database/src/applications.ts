@@ -17,6 +17,20 @@ export async function listApplicationsForJob(
   return client.request<ApplicationReviewRecord[]>(`/rest/v1/applications?${params.toString()}`);
 }
 
+export async function listApplicationsForJobs(
+  client: SupabaseRestClient,
+  jobIds: string[],
+): Promise<ApplicationReviewRecord[]> {
+  if (jobIds.length === 0) return [];
+
+  const params = new URLSearchParams({
+    select: applicationSelect,
+    job_id: `in.(${jobIds.join(",")})`,
+    order: "submitted_at.desc",
+  });
+  return client.request<ApplicationReviewRecord[]>(`/rest/v1/applications?${params.toString()}`);
+}
+
 export async function getApplicationForReview(
   client: SupabaseRestClient,
   applicationId: string,

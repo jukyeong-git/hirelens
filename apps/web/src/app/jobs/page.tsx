@@ -1,15 +1,16 @@
 import {
+  listApplicationsForJobs,
+  listJobPostingsForJobs,
   listJobs,
   listNotifications,
   listProfiles,
-  listRequisitionStatusHistory,
 } from "@hirelens/database";
+import { buildRoleWorkspace, selectWorkspaceJobs } from "@hirelens/domain";
+import Link from "next/link";
 
-import { JobCreateForm } from "./_components/job-create-form";
 import { JobList } from "./_components/job-list";
 import { LoginForm } from "./_components/login-form";
-import { RequisitionApprovalQueue } from "./_components/requisition-approval-queue";
-import { markNotificationReadAction, signOutAction } from "./actions";
+import { markNotificationReadAction } from "./actions";
 import { getAuthenticatedViewer } from "../../lib/supabase-server";
 import { visibleCopy } from "../_components/visible-copy";
 
@@ -30,53 +31,18 @@ export default async function JobsPage() {
 
   const { client, viewer } = authenticated;
   if (viewer.role === "REQUISITION_APPROVER") {
-    const jobs = await listJobs(client);
-    const historyResults = await Promise.allSettled(
-      jobs
-        .filter((job) => job.requisition_status === "PENDING_APPROVAL")
-        .map(async (job) => [job.id, await listRequisitionStatusHistory(client, job.id)] as const),
-    );
-    const historiesByJobId = new Map<
-      string,
-      Awaited<ReturnType<typeof listRequisitionStatusHistory>>
-    >();
-    const unavailableHistoryJobIds = new Set<string>();
-
-    for (const result of historyResults) {
-      if (result.status === "fulfilled") {
-        historiesByJobId.set(result.value[0], result.value[1]);
-      }
-    }
-    for (const job of jobs.filter((job) => job.requisition_status === "PENDING_APPROVAL")) {
-      if (!historiesByJobId.has(job.id)) unavailableHistoryJobIds.add(job.id);
-    }
-
     return (
       <main className="app-shell" id="main-content">
         <header className="app-header requisition-header">
-          <div>
-            <p className="eyebrow">Approvals</p>
-            <h1>Requisition 승인 대기열</h1>
-            <p className="lede">지정 승인자 업무</p>
-          </div>
-          <div className="header-actions">
-            <div className="viewer-card" aria-label="현재 사용자">
-              <strong>{visibleCopy(viewer.displayName)}</strong>
-              <span>{viewer.role}</span>
-            </div>
-            <form action={signOutAction}>
-              <button className="button button-quiet" type="submit">
-                로그아웃
-              </button>
-            </form>
-          </div>
+          <h1>MVP에서 제공하지 않는 역할입니다.</h1>
         </header>
-        <RequisitionApprovalQueue
-          jobs={jobs}
-          viewerId={viewer.id}
-          historiesByJobId={historiesByJobId}
-          unavailableHistoryJobIds={unavailableHistoryJobIds}
-        />
+        <section className="panel" aria-labelledby="unsupported-role-title">
+          <h2 id="unsupported-role-title">Requisition Approver</h2>
+          <p className="section-copy">
+            채용 요청 승인 역할은 현재 MVP 범위에 포함되지 않습니다. Hiring Manager가 채용 요청을
+            작성하고, 승인된 검토 기준을 기준으로 다음 단계로 진행합니다.
+          </p>
+        </section>
       </main>
     );
   }
@@ -86,12 +52,28 @@ export default async function JobsPage() {
     listProfiles(client),
     listNotifications(client),
   ]);
+  const workspaceJobs = selectWorkspaceJobs(jobs, viewer.id, viewer.role);
+  const jobIds = workspaceJobs.map((job) => job.id);
+  const [applicationsResult, postingsResult] = await Promise.allSettled([
+    listApplicationsForJobs(client, jobIds),
+    listJobPostingsForJobs(client, jobIds),
+  ]);
+  const applications = applicationsResult.status === "fulfilled" ? applicationsResult.value : [];
+  const postings = postingsResult.status === "fulfilled" ? postingsResult.value : [];
+  const workspace = buildRoleWorkspace({
+    role: viewer.role,
+    jobs: workspaceJobs,
+    applications,
+    postings,
+    notifications,
+  });
+  const workspaceTitle = `${visibleCopy(viewer.displayName)} 홈`;
   const safeProfiles = profiles.map((profile) => ({
     ...profile,
     display_name: visibleCopy(profile.display_name),
   }));
   const profileById = new Map(safeProfiles.map((profile) => [profile.id, profile.display_name]));
-  const jobsWithNames = jobs.map((job) => ({
+  const jobsWithNames = workspaceJobs.map((job) => ({
     ...job,
     recruiter_name: profileById.get(job.recruiter_id) ?? null,
     hiring_manager_name: profileById.get(job.hiring_manager_id) ?? null,
@@ -102,78 +84,100 @@ export default async function JobsPage() {
 
   return (
     <main className="app-shell" id="main-content">
-      <header className="app-header requisition-header">
-        <div>
-          <p className="eyebrow">Recruiting workspace</p>
-          <h1>Requisition 작업 공간</h1>
-          <p className="lede">직무·승인·지원서 운영</p>
-        </div>
-        <div className="header-actions">
-          <div className="viewer-card" aria-label="현재 사용자">
-            <strong>{visibleCopy(viewer.displayName)}</strong>
-            <span>{viewer.role}</span>
-          </div>
-          <form action={signOutAction}>
-            <button className="button button-quiet" type="submit">
-              로그아웃
-            </button>
-          </form>
-        </div>
+      <header className="app-header requisition-header" aria-labelledby="workspace-title">
+        <h1 id="workspace-title">{workspaceTitle}</h1>
       </header>
 
-      {hasPartialParticipantData ? (
+      {hasPartialParticipantData ||
+      applicationsResult.status === "rejected" ||
+      postingsResult.status === "rejected" ? (
         <p className="form-alert form-alert-warning" role="status">
-          일부 Job의 담당자 정보를 불러오지 못했습니다. 현재 사용자의 RLS와 Profile seed를
-          확인하세요.
+          일부 작업 정보를 불러오지 못했습니다. 접근 권한과 데이터 연결을 확인한 뒤 다시 시도하세요.
         </p>
       ) : null}
 
-      <section className="panel" aria-labelledby="notifications-title">
+      <section className="workspace-summary-grid" aria-label={`${workspaceTitle} 요약`}>
+        {workspace.metrics.map((metric) => (
+          <article className="workspace-summary-card" key={metric.label}>
+            <span>{metric.label}</span>
+            <strong>{metric.value}</strong>
+          </article>
+        ))}
+      </section>
+
+      <section className="panel workspace-tasks-panel" aria-labelledby="notifications-title">
         <div className="section-heading section-heading-inline">
           <div>
-            <p className="eyebrow">In-app notifications</p>
-            <h2 id="notifications-title">업무 알림</h2>
+            <h2 id="notifications-title">내 업무</h2>
           </div>
           <span className="count-label">
-            {notifications.filter((notification) => !notification.read_at).length}개 읽지 않음
+            {workspace.notifications.filter((item) => !item.read_at).length}건 처리 필요
           </span>
         </div>
-        {notifications.length === 0 ? (
-          <p className="section-copy">현재 알림이 없습니다.</p>
+        {workspace.notifications.length === 0 ? (
+          <p className="section-copy">현재 처리할 업무가 없습니다.</p>
         ) : (
-          <div className="history-list">
-            {notifications.slice(0, 5).map((notification) => (
-              <article key={notification.id} className="history-item">
-                <strong>{notificationLabel(notification.event_type)}</strong>
-                <p>{notification.read_at ? "읽음" : "읽지 않음"}</p>
-                {!notification.read_at && notification.recipient_id === viewer.id ? (
-                  <form action={markNotificationReadAction}>
-                    <input type="hidden" name="notificationId" value={notification.id} />
-                    <button className="button button-quiet" type="submit">
-                      읽음으로 표시
-                    </button>
-                  </form>
-                ) : null}
-              </article>
+          <div className="workspace-task-list">
+            {workspace.notifications.slice(0, 5).map((notification) => (
+              <div key={notification.id} className="workspace-task-item">
+                <div>
+                  <strong>{notificationLabel(notification.event_type)}</strong>
+                  <p>{notification.read_at ? "확인 완료" : "처리 필요"}</p>
+                </div>
+                <div className="workspace-task-actions">
+                  {notification.aggregate_type === "job" ? (
+                    <Link
+                      className="button button-secondary"
+                      href={`/jobs/${notification.aggregate_id}`}
+                    >
+                      채용 요청 열기
+                    </Link>
+                  ) : notification.aggregate_type === "application" ? (
+                    <Link
+                      className="button button-secondary"
+                      href={`/applications/${notification.aggregate_id}`}
+                    >
+                      지원서 열기
+                    </Link>
+                  ) : null}
+                  {!notification.read_at && notification.recipient_id === viewer.id ? (
+                    <form action={markNotificationReadAction}>
+                      <input type="hidden" name="notificationId" value={notification.id} />
+                      <button className="button button-quiet" type="submit">
+                        확인 완료
+                      </button>
+                    </form>
+                  ) : null}
+                </div>
+              </div>
             ))}
           </div>
         )}
       </section>
 
-      {viewer.role === "HIRING_MANAGER" ? (
-        <JobCreateForm
-          viewerId={viewer.id}
-          viewerName={visibleCopy(viewer.displayName)}
-          profiles={safeProfiles}
-        />
-      ) : (
+      <div className="workspace-section-heading">
+        <div>
+          <h2>{workspace.jobsTitle}</h2>
+        </div>
+        {viewer.role === "HIRING_MANAGER" ? (
+          <Link className="button button-primary" href="/jobs/new">
+            채용 생성
+          </Link>
+        ) : null}
+      </div>
+
+      <JobList
+        jobs={jobsWithNames}
+        title={`${workspace.jobsTitle} 목록`}
+        emptyTitle={workspace.emptyJobsTitle}
+      />
+
+      {viewer.role !== "HIRING_MANAGER" ? (
         <section className="info-banner" aria-label="읽기 전용 안내">
           <strong>읽기 전용</strong>
-          <span>Hiring Manager 작성 · Recruiter 조회</span>
+          <span>채용 책임자 작성 · 채용 담당자 조회</span>
         </section>
-      )}
-
-      <JobList jobs={jobsWithNames} />
+      ) : null}
     </main>
   );
 }
@@ -185,7 +189,7 @@ function notificationLabel(eventType: string) {
       REVIEW_ASSIGNMENT: "지원서 검토가 배정되었습니다",
       PROCESSING_COMPLETED: "지원서 처리가 완료되었습니다",
       PROCESSING_FAILED: "처리에 실패했습니다",
-      DECISION_FOLLOW_UP: "결정 후속 검토가 필요합니다",
-    }[eventType] ?? eventType
+      DECISION_FOLLOW_UP: "채용 결정 후속 검토가 필요합니다",
+    }[eventType] ?? "새로운 처리 요청"
   );
 }

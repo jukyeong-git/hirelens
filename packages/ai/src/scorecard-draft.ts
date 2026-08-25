@@ -51,6 +51,7 @@ export const scorecardDraftCriterionSchema = z
     definition: textSchema(1_000),
     accepted_evidence: z.array(textSchema(500)).max(12),
     alternative_evidence: z.array(textSchema(500)).max(12),
+    partial_evidence_guidance: nullableTextSchema(1_000),
     evidence_fields: z.array(evidenceFieldSchema).max(12),
     resume_assessable: z.boolean(),
     ...ambiguityFields,
@@ -63,7 +64,7 @@ export const scorecardDraftSchema = z
     contract: z.literal("SCORECARD_DRAFT"),
     draft_only: z.literal(true),
     ambiguous_phrases: z.array(scorecardDraftAmbiguousPhraseSchema).max(32),
-    criteria: z.array(scorecardDraftCriterionSchema).min(1).max(32),
+    criteria: z.array(scorecardDraftCriterionSchema).min(1).max(30),
   })
   .strict();
 export type ScorecardDraft = z.infer<typeof scorecardDraftSchema>;
@@ -131,6 +132,36 @@ export class ScorecardDraftValidationError extends Error {
 
 function normalizeSourceText(value: string): string {
   return value.normalize("NFKC").replace(/\s+/gu, " ").trim();
+}
+
+/**
+ * Removes model-provided source phrases that cannot be proven to be an exact
+ * normalized substring of the job description. The draft remains editable,
+ * while unsupported text is never retained as a source citation.
+ */
+export function sanitizeScorecardDraftSourcePhrases(
+  draft: ScorecardDraft,
+  rawJobDescription: string,
+): ScorecardDraft {
+  const normalizedJobDescription = normalizeSourceText(rawJobDescription);
+  const keepVerifiedSourcePhrase = (sourcePhrase: string | null): string | null => {
+    if (sourcePhrase === null) return null;
+    return normalizedJobDescription.includes(normalizeSourceText(sourcePhrase))
+      ? sourcePhrase
+      : null;
+  };
+
+  return {
+    ...draft,
+    ambiguous_phrases: draft.ambiguous_phrases.map((phrase) => ({
+      ...phrase,
+      source_phrase: keepVerifiedSourcePhrase(phrase.source_phrase),
+    })),
+    criteria: draft.criteria.map((criterion) => ({
+      ...criterion,
+      source_phrase: keepVerifiedSourcePhrase(criterion.source_phrase),
+    })),
+  };
 }
 
 function collectSourcePhraseIssues(

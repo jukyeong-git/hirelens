@@ -10,7 +10,7 @@ Build a demo-quality ATS that proves this statement:
 
 ### P0
 
-1. Human-created Job Requisition and approval
+1. Human-created Job Requisition
 2. Internal Job Posting publish and close
 3. Candidate self-service PDF application; presentation fixtures remain synthetic
 4. AI-proposed application-review-criteria draft from a job description
@@ -50,7 +50,7 @@ Build a demo-quality ATS that proves this statement:
 | `ADMIN`                | manage users and roles, inspect all jobs, reset demo, manage scorecards, processing, notes, decisions, and view audit                                                                 |
 | `RECRUITER`            | prepare/publish postings, upload internal demo applications, review evidence, request manager review, manage own temporary notes, and coordinate a manager-approved interview handoff |
 | `HIRING_MANAGER`       | create requisitions and the screening criteria, review assigned candidates, decide whether to progress them to interview, and save and change human decisions                         |
-| `REQUISITION_APPROVER` | approve or return a pending requisition as the designated business approver (for example an organizational leader, budget owner, or HRBP)                                             |
+| `REQUISITION_APPROVER` | reserved for a future enterprise approval workflow; not available in the MVP                                                                                                          |
 | `CANDIDATE`            | no account in P0; may submit a PDF resume through a published public posting                                                                                                          |
 
 The exact production organization and role model is not defined by the source brief. This role model is an MVP decision.
@@ -84,9 +84,10 @@ Only authenticated human roles may create or change a decision. `HIRING_MANAGER`
 ### FR-001 — Create and manage a Job Requisition
 
 The assigned hiring manager can create a Job Requisition with title,
-department, hiring need, assigned recruiter, and raw job description. Before
-saving, they may explicitly request an AI-proposed, editable job-description
-draft from the title, department, and human-authored hiring need. The
+department, hiring need, assigned recruiter, and raw job description. The
+hiring need is retained as internal requisition context and is not sent to the
+model. Before saving, they may explicitly request an AI-proposed, editable
+job-description draft from the title and department. The
 requisition includes the initial screening-criteria workflow.
 
 Acceptance criteria:
@@ -111,9 +112,15 @@ approve it.
 
 Acceptance criteria:
 
-- The form supports criteria, types, definitions, accepted/alternative
-  evidence, evidence fields, resume-assessability, and suggested interview
-  questions.
+- The form supports criterion name, importance/type, definition, accepted and
+  alternative evidence, partial-evidence guidance, extraction fields,
+  resume-assessability, and a suggested interview question.
+- The approved Review Framework is the primary contract for resume evidence
+  analysis. The job description is supporting context only and cannot replace
+  or silently expand the approved criteria.
+- The framework produces criterion-level evidence states and follow-up
+  questions. It must not define an authoritative total score, automatic
+  ranking, knockout rule, or automatic applicant decision.
 - AI generation only fills the same editable, unsaved form. It never creates a
   version, audit event, approval, analysis run, ranking, or hiring decision.
 - A human must explicitly save the form as a draft before the existing
@@ -121,37 +128,36 @@ Acceptance criteria:
 - A manually saved draft is explicitly recorded as human-authored rather than
   being mislabeled as model output.
 
-### FR-001A — Approve a Job Requisition
+### FR-001A — Create a Job Requisition in the MVP
 
-The assigned Hiring Manager submits a Job Requisition to a designated
-`REQUISITION_APPROVER`, who approves or returns it with a reason. `ADMIN` is a
-system-operations role and is not part of the business approval path.
+The Hiring Manager creates and saves the Job Requisition. The MVP does not
+include a separate business approver or a requisition approval queue. A human-
+approved Review Framework is the gate before intake and posting operations.
+
+The `REQUISITION_APPROVER` role, requisition status fields, and append-only
+history remain in the database as dormant compatibility structures for a future
+enterprise approval slice. They are not exposed by the MVP UI or active posting
+flow. `ADMIN` remains a system-operations role.
 
 Acceptance criteria:
 
-- Requisition state is separate from Scorecard and Posting state.
-- Only the designated authenticated `REQUISITION_APPROVER` can approve or
-  return a pending requisition.
-- The assigned Hiring Manager cannot approve their own requisition. An approver
-  assignment may change only while the requisition is `DRAFT` or `RETURNED`.
-- Only the assigned Hiring Manager may resubmit a `RETURNED` requisition; a
-  pending requisition cannot be reassigned or resubmitted.
-- Submission requires at least one human-approved Scorecard version; the
-  browser and server-side workflow both enforce this gate.
-- Approval or return requires a non-empty reason and retains actor, time, and
-  prior status in the minimal change history.
-- AI and worker identities cannot approve a requisition.
+- Hiring Manager can create and save a requisition without assigning an approver.
+- Review Framework approval moves the Job to `READY_FOR_INTAKE`.
+- Posting and resume intake use the Job and Review Framework states, not a
+  dormant requisition approval state.
+- No AI, worker, or unsupported Requisition Approver path can create a hiring
+  decision.
 
 ### FR-001B — Publish an internal Job Posting
 
-The assigned Recruiter can prepare and publish a Job Posting for an approved
-requisition. A posting is public only after the requisition and one Scorecard
-version are human-approved.
+The assigned Recruiter can prepare and publish a Job Posting after the Job's
+Review Framework is human-approved. The separate requisition approval state is
+not an MVP gate.
 
 Acceptance criteria:
 
 - Posting state is `DRAFT`, `PUBLISHED`, or `CLOSED`, separate from Job and
-  Scorecard state.
+  Review Framework state.
 - Only the assigned Recruiter or Admin may publish or close a posting.
 - Recruiter or Admin must save complete candidate-facing posting content before
   publication: title, summary, responsibilities, requirements, location, and
@@ -198,7 +204,7 @@ Acceptance criteria:
 - Ambiguous human qualities default to `INTERVIEW_ONLY`.
 - AI output remains a draft and has no effect until human approval.
 
-### FR-003 — Approve and version application review criteria
+### FR-003 — Approve and lock application review criteria
 
 An authorized hiring manager or admin can edit and approve draft application
 review criteria.
@@ -206,10 +212,10 @@ review criteria.
 Acceptance criteria:
 
 - Approval requires an authenticated hiring manager or admin.
-- An approved version is immutable.
-- Editing an approved scorecard creates a new version.
+- The approved framework is immutable and final for its Job.
+- An approved framework cannot be edited, replaced, or versioned in the MVP.
 - Every analysis references exactly one approved version.
-- The UI displays version, approver, and approval time.
+- The UI displays the approver and approval time without exposing version-management controls.
 
 ### FR-004 — Upload resumes in bulk
 

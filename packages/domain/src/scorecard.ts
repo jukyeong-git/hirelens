@@ -43,6 +43,7 @@ export const scorecardCriterionSchema = z
     definition: z.string().trim().min(1).max(2_000),
     accepted_evidence: z.array(z.string().trim().min(1).max(500)).max(20),
     alternative_evidence: z.array(z.string().trim().min(1).max(500)).max(20),
+    partial_evidence_guidance: z.string().trim().min(1).max(1_000).nullable(),
     evidence_fields: z.array(evidenceFieldSchema).max(20),
     resume_assessable: z.boolean(),
     source_phrase: z.string().trim().max(500).nullable(),
@@ -181,15 +182,16 @@ export const scorecardApprovalInputSchema = z
   .strict();
 export type ScorecardApprovalInput = z.infer<typeof scorecardApprovalInputSchema>;
 
-export const scorecardRevisionInputSchema = z
+export const scorecardDraftUpdateInputSchema = z
   .object({
-    sourceScorecardVersionId: postgresUuidSchema,
+    scorecardVersionId: postgresUuidSchema,
     expectedVersionNumber: z.number().int().positive(),
-    expectedStatus: z.literal("APPROVED"),
-    reason: z.string().trim().min(1, "Revision reason is required").max(1_000),
+    expectedStatus: z.literal("DRAFT"),
+    expectedContentRevision: z.number().int().positive(),
+    reason: z.string().trim().min(1, "Update reason is required").max(1_000),
   })
   .strict();
-export type ScorecardRevisionInput = z.infer<typeof scorecardRevisionInputSchema>;
+export type ScorecardDraftUpdateInput = z.infer<typeof scorecardDraftUpdateInputSchema>;
 
 export interface ScorecardVersionRecord {
   id: string;

@@ -83,23 +83,39 @@ Candidate preview and public URL
 
 The public route must not expose internal navigation, candidate counts,
 reviewer names, processing states, requisition text, or a login requirement.
-The HL-029 submission receipt says only that the synthetic test submission was
-received and must not reveal an application ID. The form requires a
-facilitator-provided test access code; this code is verified only on the server
-and is never embedded in the public page.
+The HL-029 submission receipt says only that the application was received and
+must not reveal an application ID.
 
 ### Copy density
 
 - Use Korean nouns, status labels, and result-oriented action labels in the UI.
+- Use one concise `h1` per page and one noun-based `h2` per section. Do not
+  repeat the same concept as an eyebrow, heading, and description.
 - Remove ticket IDs, decorative English eyebrow text, and explanatory prose
   when the same meaning is already conveyed by the heading, field label, state,
   or disabled control.
+- Use `채용 담당자`, `채용 책임자`, `채용 요청`, `채용 공고`, and `지원서
+검토 기준` in user-facing copy; keep English domain names in code only.
 - Keep complete sentences only for safety, authorization, validation, error,
   and AI-versus-human responsibility boundaries.
 - Do not ask users to classify uploaded content. Keep the distinction between
   live OpenAI results and preprocessed synthetic results.
 
 ## 4. Core workspace patterns
+
+### Review Framework editor
+
+- Start with two explicit methods: `직접 작성` and `AI 초안`. Both open the
+  same unsaved structured editor; AI does not create a separate workflow.
+- Present one collapsible card per criterion. The collapsed row shows the
+  criterion name, importance, and whether it can be evaluated from a resume.
+- Keep criterion definition, accepted evidence, alternative evidence,
+  partial-evidence guidance, extraction fields, and interview question in the
+  expanded card. Do not hide validation errors when the card is collapsed.
+- Put `기준 추가`, `AI 초안`, and `초안 저장` in a stable action area at the
+  bottom. Saving is always an explicit human action.
+- Do not display or request a total score, rank, automatic filter, knockout, or
+  hiring recommendation.
 
 ### Requisition workspace
 

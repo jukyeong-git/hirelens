@@ -14,9 +14,7 @@ export default async function PublicCareersPage() {
     <main className="public-careers-shell" id="main-content">
       <header className="public-careers-header requisition-header">
         <div>
-          <p className="eyebrow">Careers</p>
           <h1>채용 공고</h1>
-          <p className="public-careers-lede">현재 공개된 포지션</p>
         </div>
         <div className="header-actions">
           <span className="count-label">{postings.length}개 공고</span>
@@ -26,8 +24,7 @@ export default async function PublicCareersPage() {
       <section className="public-careers-list" aria-labelledby="public-careers-list-title">
         <div className="section-heading section-heading-inline">
           <div>
-            <p className="eyebrow">Open positions</p>
-            <h2 id="public-careers-list-title">포지션 목록</h2>
+            <h2 id="public-careers-list-title">채용 중인 포지션</h2>
           </div>
           <span className="count-label">{postings.length}개</span>
         </div>

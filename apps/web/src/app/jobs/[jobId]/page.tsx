@@ -9,23 +9,34 @@ import {
   listEvidenceItemsForRuns,
   listResumeProcessingRunsForApplication,
   listJobPostingStatusHistory,
-  listProfiles,
-  listRequisitionStatusHistory,
 } from "@hirelens/database";
 
 import { LoginForm } from "../_components/login-form";
 import { ScorecardDraftPanel } from "../_components/scorecard-draft-panel";
 import { ResumeUploadPanel } from "../_components/resume-upload-panel";
-import { RequisitionWorkflow } from "../_components/requisition-workflow";
 import { JobPostingWorkflow } from "../_components/job-posting-workflow";
 import { CandidateTriageList } from "../_components/candidate-triage-list";
-import { signOutAction } from "../actions";
 import { getAuthenticatedViewer } from "../../../lib/supabase-server";
-import { visibleCopy } from "../../_components/visible-copy";
+import { visibleCopy, visibleMultilineCopy } from "../../_components/visible-copy";
 
 export const dynamic = "force-dynamic";
 
-export default async function JobDetailPage({ params }: { params: Promise<{ jobId: string }> }) {
+type JobDetailTab = "overview" | "review-framework" | "posting" | "applications";
+
+const JOB_DETAIL_TABS: ReadonlyArray<{ id: JobDetailTab; label: string }> = [
+  { id: "overview", label: "기본 정보" },
+  { id: "review-framework", label: "검토 기준" },
+  { id: "posting", label: "공고" },
+  { id: "applications", label: "지원자" },
+];
+
+export default async function JobDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ jobId: string }>;
+  searchParams: Promise<{ tab?: string | string[] | undefined }>;
+}) {
   const authenticated = await getAuthenticatedViewer();
 
   if (!authenticated) {
@@ -39,6 +50,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
   }
 
   const { jobId } = await params;
+  const requestedTab = (await searchParams).tab;
   const { client, viewer } = authenticated;
   const job = await getJobForScorecard(client, jobId);
 
@@ -46,27 +58,35 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
     notFound();
   }
 
-  const isRequisitionApprover = viewer.role === "REQUISITION_APPROVER";
-  const requisitionHistory = await listRequisitionStatusHistory(client, job.id);
-  const [scorecardWorkspace, applications, profiles, jobPosting, postingHistory] =
-    isRequisitionApprover
-      ? [null, [], [], null, []]
-      : await Promise.all([
-          getScorecardWorkspaceForJob(client, job.id),
-          listApplicationsForJob(client, job.id),
-          listProfiles(client),
-          getJobPosting(client, job.id),
-          listJobPostingStatusHistory(client, job.id),
-        ]);
+  if (viewer.role === "REQUISITION_APPROVER") {
+    return (
+      <main className="app-shell" id="main-content">
+        <header className="app-header requisition-header">
+          <h1>MVP에서 제공하지 않는 역할입니다.</h1>
+        </header>
+        <section className="panel" aria-labelledby="unsupported-role-title">
+          <h2 id="unsupported-role-title">Requisition Approver</h2>
+          <p className="section-copy">
+            채용 요청 승인 역할은 현재 MVP 화면과 진행 흐름에서 비활성화되어 있습니다.
+          </p>
+        </section>
+      </main>
+    );
+  }
+  const visibleTabs = JOB_DETAIL_TABS;
+  const activeTab = visibleTabs.some(
+    (tab) => tab.id === (Array.isArray(requestedTab) ? requestedTab[0] : requestedTab),
+  )
+    ? ((Array.isArray(requestedTab) ? requestedTab[0] : requestedTab) as JobDetailTab)
+    : "overview";
+  const [scorecardWorkspace, applications, jobPosting, postingHistory] = await Promise.all([
+    getScorecardWorkspaceForJob(client, job.id),
+    listApplicationsForJob(client, job.id),
+    getJobPosting(client, job.id),
+    listJobPostingStatusHistory(client, job.id),
+  ]);
   const isAssignedHiringManager =
     viewer.role === "HIRING_MANAGER" && viewer.id === job.hiring_manager_id;
-  const safeProfiles = profiles.map((profile) => ({
-    ...profile,
-    display_name: visibleCopy(profile.display_name),
-  }));
-  const requisitionApprovers = safeProfiles.filter(
-    (profile) => profile.role === "REQUISITION_APPROVER",
-  );
   const triageItems = await Promise.all(
     applications.map(async (application) => {
       const runs = await listResumeProcessingRunsForApplication(client, application.id);
@@ -88,44 +108,53 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
       <header className="app-header requisition-header">
         <div>
           <Link className="back-link" href="/jobs">
-            ← Job 목록으로
+            ← 채용 요청 목록으로
           </Link>
-          <p className="eyebrow">Requisition</p>
           <h1>{visibleCopy(job.title)}</h1>
           <p className="lede">
             {visibleCopy(job.department)} · <strong>{jobStatusLabel(job.status)}</strong>
           </p>
         </div>
-        <div className="header-actions">
-          <div className="viewer-card" aria-label="현재 사용자">
-            <strong>{visibleCopy(viewer.displayName)}</strong>
-            <span>{viewer.role}</span>
-          </div>
-          <form action={signOutAction}>
-            <button className="button button-quiet" type="submit">
-              로그아웃
-            </button>
-          </form>
-        </div>
       </header>
 
-      <nav className="section-navigation" aria-label="Requisition 섹션">
-        <a href={`#requisition-workflow-title-${job.id}`}>승인</a>
-        {!isRequisitionApprover ? <a href="#job-posting-title">공고</a> : null}
-        {!isRequisitionApprover ? <a href="#job-description-title">직무 설명</a> : null}
-        {!isRequisitionApprover ? <a href="#applications-title">지원서</a> : null}
+      <nav className="section-navigation" aria-label="채용 요청 섹션">
+        {visibleTabs.map((tab) => (
+          <Link
+            key={tab.id}
+            href={`/jobs/${job.id}?tab=${tab.id}`}
+            className={activeTab === tab.id ? "active" : undefined}
+            aria-current={activeTab === tab.id ? "page" : undefined}
+          >
+            {tab.label}
+          </Link>
+        ))}
       </nav>
 
-      <RequisitionWorkflow
-        job={job}
-        viewerId={viewer.id}
-        viewerRole={viewer.role}
-        approvers={requisitionApprovers}
-        history={requisitionHistory}
-        scorecardWorkspace={scorecardWorkspace ?? undefined}
-      />
+      {activeTab === "overview" ? (
+        <section className="panel-stack" aria-label="기본 정보">
+          <section className="panel job-source-panel" aria-labelledby="job-description-title">
+            <div className="section-heading section-heading-inline">
+              <div>
+                <h2 id="job-description-title">직무 설명</h2>
+              </div>
+              <span className="status-chip status-draft">검토 기준 입력</span>
+            </div>
+            <p className="job-description">{visibleMultilineCopy(job.raw_job_description)}</p>
+          </section>
+          <section className="panel" aria-labelledby="request-reason-title">
+            <div className="section-heading section-heading-inline">
+              <h2 id="request-reason-title">요청 사유</h2>
+            </div>
+            {job.hiring_need ? (
+              <p className="job-description">{visibleMultilineCopy(job.hiring_need)}</p>
+            ) : (
+              <p className="section-copy">등록된 요청 사유가 없습니다.</p>
+            )}
+          </section>
+        </section>
+      ) : null}
 
-      {!isRequisitionApprover && scorecardWorkspace ? (
+      {activeTab === "posting" && scorecardWorkspace ? (
         <JobPostingWorkflow
           job={job}
           posting={jobPosting}
@@ -136,18 +165,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
         />
       ) : null}
 
-      <section className="panel job-source-panel" aria-labelledby="job-description-title">
-        <div className="section-heading section-heading-inline">
-          <div>
-            <p className="eyebrow">Source</p>
-            <h2 id="job-description-title">직무 설명 원문</h2>
-          </div>
-          <span className="status-chip status-draft">검토 기준 입력</span>
-        </div>
-        <p className="job-description">{visibleCopy(job.raw_job_description)}</p>
-      </section>
-
-      {!isRequisitionApprover && scorecardWorkspace ? (
+      {activeTab === "review-framework" && scorecardWorkspace ? (
         <ScorecardDraftPanel
           jobId={job.id}
           viewerRole={viewer.role}
@@ -156,8 +174,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
         />
       ) : null}
 
-      {!isRequisitionApprover &&
-      scorecardWorkspace &&
+      {activeTab === "applications" && scorecardWorkspace &&
       (viewer.role === "ADMIN" || viewer.role === "RECRUITER") ? (
         <ResumeUploadPanel
           jobId={job.id}
@@ -167,12 +184,11 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
         />
       ) : null}
 
-      {!isRequisitionApprover ? (
+      {activeTab === "applications" ? (
         <section className="panel" aria-labelledby="applications-title">
           <div className="section-heading section-heading-inline">
             <div>
-              <p className="eyebrow">Applications</p>
-              <h2 id="applications-title">검토 가능한 지원서</h2>
+              <h2 id="applications-title">지원자</h2>
             </div>
             <span className="count-label">{applications.length}개</span>
           </div>

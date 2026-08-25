@@ -76,16 +76,15 @@ export function RequisitionWorkflow({
     <section className="panel" aria-labelledby={`requisition-workflow-title-${job.id}`}>
       <div className="section-heading section-heading-inline">
         <div>
-          <p className="eyebrow">Requisition · human business approval</p>
-          <h2 id={`requisition-workflow-title-${job.id}`}>Requisition 승인 준비</h2>
+          <h2 id={`requisition-workflow-title-${job.id}`}>채용 요청 승인</h2>
         </div>
         <span className={`status-chip status-${job.requisition_status.toLowerCase()}`}>
           {labels[job.requisition_status]}
         </span>
       </div>
-      <dl className="metadata-grid" aria-label="Requisition 상태">
+      <dl className="metadata-grid" aria-label="채용 요청 상태">
         <div>
-          <span>Requisition 상태</span>
+          <span>채용 요청 상태</span>
           <strong>{labels[job.requisition_status]}</strong>
         </div>
         {viewerRole !== "REQUISITION_APPROVER" ? (
@@ -114,14 +113,13 @@ export function RequisitionWorkflow({
       ) : null}
       {!isAssignedHiringManager && viewerRole !== "REQUISITION_APPROVER" ? (
         <p className="info-banner" role="status">
-          이 영역은 읽기 전용입니다. 배정된 Hiring Manager만 승인자 지정 및 제출을 수행할 수
-          있습니다.
+          이 영역은 읽기 전용입니다. 배정된 채용 책임자만 승인자를 지정하고 제출할 수 있습니다.
         </p>
       ) : null}
       {canAssign ? (
         <form action={assignAction} className="scorecard-workflow-form">
           <input type="hidden" name="jobId" value={job.id} />
-          <label htmlFor="requisition-approver">Requisition Approver</label>
+          <label htmlFor="requisition-approver">채용 요청 승인자</label>
           <select
             id="requisition-approver"
             name="approverId"
@@ -166,7 +164,7 @@ export function RequisitionWorkflow({
             type="submit"
             disabled={!canSubmit || submitPending}
           >
-            {submitPending ? "제출 중…" : "Requisition 제출"}
+            {submitPending ? "제출 중…" : "채용 요청 제출"}
           </button>
           <span className="form-help">승인자와 승인된 검토 기준이 있어야 제출할 수 있습니다.</span>
           {submitState.status === "error" ? (
@@ -195,7 +193,7 @@ export function RequisitionWorkflow({
         >
           <input type="hidden" name="jobId" value={job.id} />
           <fieldset disabled={resolutionPending}>
-            <legend>Requisition 처리</legend>
+            <legend>채용 요청 처리</legend>
             <p id={`approval-help-${job.id}`} className="form-help">
               승인 또는 반려를 선택하고, 판단 근거를 남겨주세요. 이는 채용 결정이 아닙니다.
             </p>
@@ -235,23 +233,22 @@ export function RequisitionWorkflow({
       ) : null}
       {viewerRole === "REQUISITION_APPROVER" && !isDesignatedApprover ? (
         <p className="form-alert form-alert-error" role="alert">
-          이 Requisition의 지정 승인자가 아니므로 처리할 수 없습니다.
+          이 채용 요청의 지정 승인자가 아니므로 처리할 수 없습니다.
         </p>
       ) : null}
       {job.requisition_status === "APPROVED" ? (
         <p className="info-banner" role="status">
-          Requisition이 승인되었습니다. 검토 기준 승인과는 별개의 업무 승인입니다.
+          채용 요청이 승인되었습니다. 검토 기준 승인과는 별개의 업무 승인입니다.
         </p>
       ) : null}
       <section aria-labelledby={`requisition-history-title-${job.id}`}>
         <div className="section-heading">
-          <p className="eyebrow">Append-only status history</p>
-          <h3 id={`requisition-history-title-${job.id}`}>Requisition 상태 이력</h3>
+          <h3 id={`requisition-history-title-${job.id}`}>채용 요청 상태 이력</h3>
         </div>
         {chronologicalHistory.length === 0 ? (
           <p className="section-copy">아직 기록된 상태 변경이 없습니다.</p>
         ) : (
-          <ol className="history-list" aria-label="시간 순 Requisition 상태 이력">
+          <ol className="history-list" aria-label="시간 순 채용 요청 상태 이력">
             {chronologicalHistory.map((event) => (
               <li key={event.id} className="history-item">
                 <strong>

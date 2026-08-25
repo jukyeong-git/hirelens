@@ -7,6 +7,12 @@ const uuidSchema = z
   .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu);
 const nonEmptyText = (max: number) => z.string().trim().min(1).max(max);
 const nullableText = (max: number) => nonEmptyText(max).nullable();
+const evidenceFieldSchema = z
+  .object({
+    field_name: nonEmptyText(80),
+    description: nonEmptyText(500),
+  })
+  .strict();
 
 export const evidenceStatusSchema = z.enum([
   "SUPPORTED",
@@ -82,10 +88,13 @@ export const evidenceExtractionResponseFormat = {
 export const evidencePromptCriterionSchema = z
   .object({
     criterion_id: uuidSchema,
+    name: nonEmptyText(200),
     type: z.enum(["REQUIRED", "PREFERRED", "INTERVIEW_ONLY"]),
     definition: nonEmptyText(2_000),
     accepted_evidence: z.array(nonEmptyText(500)).max(32),
     alternative_evidence: z.array(nonEmptyText(500)).max(32),
+    partial_evidence_guidance: nullableText(1_000),
+    evidence_fields: z.array(evidenceFieldSchema).max(20),
     resume_assessable: z.boolean(),
     suggested_interview_question: nullableText(1_000),
   })
