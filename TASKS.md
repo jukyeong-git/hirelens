@@ -35,10 +35,10 @@ This is the execution checklist. Product behavior is defined in `docs/01_PRD.md`
 
 ## Phase 2 — Job and scorecard
 
-- [x] Add `REQUISITION_APPROVER` role, independent Job Requisition approval state, designated business approval/return, and append-only minimal change history (HL-024; Alpha rollback-only pgTAP and authenticated role E2E complete).
-- [x] Build the Hiring Manager Requisition workspace: HM-only creation, recruiter and approver assignment, approved-Review Framework handoff gate, and submission UI (HL-025; Alpha rollback-only pgTAP and authenticated role E2E complete).
-- [x] Build the designated Requisition Approver queue, required-reason approval/return form, append-only status history UI, and safe audit events (HL-026; Alpha rollback-only pgTAP and authenticated role E2E complete).
-- [x] Add Job Posting draft/publish/close state gated by Requisition and Review Framework approval (HL-027; Recruiter default with Admin operational override; `CLOSED` is terminal; Alpha rollback-only pgTAP and authenticated role E2E complete).
+- [x] Add `REQUISITION_APPROVER` role and independent Job Requisition approval structures for future enterprise use (HL-024; database compatibility retained, MVP UI/workflow deferred).
+- [x] Build the Hiring Manager Requisition workspace and Review Framework handoff gate (HL-025; approver assignment/submission UI deferred from MVP).
+- [x] Build the designated Requisition Approver queue and approval/return history as a deferred future slice (HL-026; not exposed in the MVP).
+- [x] Add Job Posting draft/publish/close state gated by an approved Review Framework (HL-027; requisition approval is not an MVP gate).
 - [x] Add HL-028 public careers route, candidate-facing posting editor/preview, and opaque slug (anonymous read projection; no upload).
 - [x] Supersede synthetic-only intake: accept valid PDFs without content classification; keep presentation fixtures synthetic.
 - [x] Add HL-029 anonymous submission form, private server-side upload flow, and public-route/RLS/E2E tests for submission denial and no internal-data leakage (Alpha rollback-only pgTAP and public E2E complete).
@@ -49,11 +49,17 @@ This is the execution checklist. Product behavior is defined in `docs/01_PRD.md`
 - [x] Add a shared structured Review Framework draft editor: manual entry and
       explicit AI proposals fill the unsaved editor; Hiring Manager/Admin save
       explicitly and Recruiter remains read-only.
+- [x] Make the approved Review Framework the primary evidence-analysis
+      contract, including partial-evidence guidance and named extraction fields;
+      retain criterion-level evidence without total scores or automatic ranking.
 - [x] Implement ambiguous phrase detection.
 - [x] Implement criterion types: `REQUIRED`, `PREFERRED`, `INTERVIEW_ONLY`.
 - [x] Implement HL-022 human ambiguity review and resolution audit path.
 - [x] Implement human scorecard approval.
-- [x] Implement immutable scorecard versions.
+- [x] Lock the single approved Review Framework for each Job and remove replacement-version controls.
+- [x] Allow an assigned Hiring Manager or Admin to reopen and revise a saved
+      Review Framework draft with optimistic concurrency, a required reason,
+      and append-only audit history; approved versions remain immutable.
 - [x] Block Job intake and expose no analysis-ready version when no approved scorecard exists; Phase 3 enqueue repeats this gate.
 - [x] Add unit, integration, and E2E tests.
 
@@ -98,6 +104,9 @@ This is the execution checklist. Product behavior is defined in `docs/01_PRD.md`
 - [x] Show Recruiter note history separately from AI evidence and human decisions.
 - [x] Show audit timeline.
 - [x] Prove AI processing never writes a human decision.
+- [x] Split the internal home workspace by role: Recruiter sees assigned requisitions, new applications, published postings, and operational tasks; Hiring Manager sees assigned requisitions, Review Framework work, and candidate-review requests; Admin sees all operational work and processing failures.
+- [x] Move Hiring Manager requisition drafting to a separate `/jobs/new` screen; keep the workspace page focused on overview and assigned requisitions.
+- [x] Simplify the system-wide UI copy hierarchy: one page title, concise section titles, Korean role/workflow terms, and prose only for state, safety, authorization, validation, and AI/human boundaries.
 
 ## Phase 6 — Demo hardening
 

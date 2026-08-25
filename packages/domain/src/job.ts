@@ -34,6 +34,7 @@ const postgresUuidSchema = z
 export const createJobInputSchema = z.object({
   title: z.string().trim().min(1).max(120),
   department: z.string().trim().min(1).max(120),
+  hiringNeed: z.string().trim().min(1).max(4_000),
   rawJobDescription: z.string().trim().min(1).max(20_000),
   recruiterId: postgresUuidSchema,
   hiringManagerId: postgresUuidSchema,
@@ -41,14 +42,14 @@ export const createJobInputSchema = z.object({
 export type CreateJobInput = z.infer<typeof createJobInputSchema>;
 
 /**
- * Human-authored context for a transient AI requisition draft. This is never
- * persisted until the Hiring Manager explicitly saves the resulting Job.
+ * Minimal human-authored inputs for a transient AI requisition draft. Hiring
+ * need is persisted with the requisition but deliberately excluded from the
+ * AI request.
  */
 export const jobRequisitionDraftInputSchema = z.object({
   title: z.string().trim().min(1).max(120),
   department: z.string().trim().min(1).max(120),
-  authorBrief: z.string().trim().max(4_000).optional(),
-});
+}).strict();
 export type JobRequisitionDraftInput = z.infer<typeof jobRequisitionDraftInputSchema>;
 
 const requisitionReasonSchema = z.string().trim().min(1).max(1000);
@@ -97,6 +98,7 @@ export interface JobRecord {
   id: string;
   title: string;
   department: string;
+  hiring_need: string;
   raw_job_description: string;
   status: JobStatus;
   requisition_status: RequisitionStatus;

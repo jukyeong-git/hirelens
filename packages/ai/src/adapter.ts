@@ -1,5 +1,6 @@
 import {
   parseScorecardDraft,
+  sanitizeScorecardDraftSourcePhrases,
   scorecardDraftResponseFormat,
   validateScorecardDraft,
   ScorecardDraftValidationError,
@@ -14,6 +15,11 @@ import {
 } from "./versions";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
+const MAX_TIMEOUT_MS = 45_000;
+const MAX_OUTPUT_TOKENS = 8_000;
+
+type ReasoningEffort = "none" | "low" | "medium" | "high" | "xhigh" | "max";
+type TextVerbosity = "low" | "medium" | "high";
 
 export interface ScorecardDraftAdapterOptions {
   /** Pass the server-held key; never source this from browser input or logs. */
@@ -23,6 +29,9 @@ export interface ScorecardDraftAdapterOptions {
   /** Configure the API URL through server environment/configuration. */
   endpoint?: string;
   timeoutMs?: number;
+  maxOutputTokens?: number;
+  reasoningEffort?: ReasoningEffort;
+  verbosity?: TextVerbosity;
   fetchImpl?: typeof fetch;
 }
 
@@ -53,6 +62,10 @@ export class ScorecardDraftAdapterError extends Error {
   constructor(
     public readonly code: ScorecardDraftAdapterErrorCode,
     message: string,
+    public readonly diagnostic?: Readonly<{
+      httpStatus?: number;
+      openAiRequestId?: string;
+    }>,
   ) {
     super(message);
     this.name = "ScorecardDraftAdapterError";
@@ -159,10 +172,21 @@ export function createScorecardDraftAdapter(
 
   const endpoint = resolveEndpoint(options.endpoint);
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  if (!Number.isInteger(timeoutMs) || timeoutMs <= 0) {
+  if (!Number.isInteger(timeoutMs) || timeoutMs <= 0 || timeoutMs > MAX_TIMEOUT_MS) {
     throw new ScorecardDraftAdapterError(
       "INVALID_CONFIGURATION",
-      "timeoutMs must be a positive integer",
+      `timeoutMs must be a positive integer no greater than ${MAX_TIMEOUT_MS}`,
+    );
+  }
+  if (
+    options.maxOutputTokens !== undefined &&
+    (!Number.isInteger(options.maxOutputTokens) ||
+      options.maxOutputTokens <= 0 ||
+      options.maxOutputTokens > MAX_OUTPUT_TOKENS)
+  ) {
+    throw new ScorecardDraftAdapterError(
+      "INVALID_CONFIGURATION",
+      `maxOutputTokens must be a positive integer no greater than ${MAX_OUTPUT_TOKENS}`,
     );
   }
 
@@ -205,11 +229,16 @@ export function createScorecardDraftAdapter(
         body: JSON.stringify({
           model: options.model,
           store: false,
+          ...(options.maxOutputTokens ? { max_output_tokens: options.maxOutputTokens } : {}),
+          ...(options.reasoningEffort ? { reasoning: { effort: options.reasoningEffort } } : {}),
           input: [
             { role: "system", content: SCORECARD_DRAFT_SYSTEM_PROMPT },
             { role: "user", content: prompt },
           ],
-          text: { format: scorecardDraftResponseFormat },
+          text: {
+            format: scorecardDraftResponseFormat,
+            ...(options.verbosity ? { verbosity: options.verbosity } : {}),
+          },
         }),
         signal: controller.signal,
       });
@@ -230,6 +259,10 @@ export function createScorecardDraftAdapter(
       throw new ScorecardDraftAdapterError(
         "HTTP_ERROR",
         `OpenAI Responses request failed with status ${response.status}`,
+        {
+          httpStatus: response.status,
+          openAiRequestId: response.headers.get("x-request-id") ?? undefined,
+        },
       );
     }
 
@@ -278,7 +311,12 @@ export function createScorecardDraftAdapter(
 
     let draft: ScorecardDraft;
     try {
-      draft = validateScorecardDraft(decoded, promptInput);
+      const schemaValidDraft = parseScorecardDraft(decoded);
+      const sourceSafeDraft = sanitizeScorecardDraftSourcePhrases(
+        schemaValidDraft,
+        promptInput.raw_job_description,
+      );
+      draft = validateScorecardDraft(sourceSafeDraft, promptInput);
     } catch (error) {
       if (error instanceof ScorecardDraftValidationError) {
         const hasInvalidSourcePhrase = error.issues.some((issue) =>

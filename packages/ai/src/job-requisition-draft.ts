@@ -6,14 +6,12 @@ import {
 } from "./versions";
 
 const textSchema = (max: number) => z.string().trim().min(1).max(max);
-const nullableTextSchema = (max: number) => z.string().trim().min(1).max(max).nullable();
 
 /** Human-authored inputs for an explicit, editable requisition draft request. */
 export const jobRequisitionDraftPromptInputSchema = z
   .object({
     title: textSchema(160),
     department: textSchema(160),
-    author_brief: nullableTextSchema(4_000),
   })
   .strict();
 export type JobRequisitionDraftPromptInput = z.infer<typeof jobRequisitionDraftPromptInputSchema>;

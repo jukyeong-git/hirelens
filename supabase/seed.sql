@@ -156,11 +156,11 @@ values
 
 insert into public.profiles (id, display_name, role)
 values
-  ('00000000-0000-0000-0000-000000000001', 'Demo Admin', 'ADMIN'),
-  ('00000000-0000-0000-0000-000000000002', 'Demo Recruiter', 'RECRUITER'),
-  ('00000000-0000-0000-0000-000000000003', 'Demo Hiring Manager', 'HIRING_MANAGER'),
-  ('00000000-0000-0000-0000-000000000004', 'Demo Platform Hiring Manager', 'HIRING_MANAGER'),
-  ('00000000-0000-0000-0000-000000000005', 'Demo Requisition Approver', 'REQUISITION_APPROVER');
+  ('00000000-0000-0000-0000-000000000001', 'Admin', 'ADMIN'),
+  ('00000000-0000-0000-0000-000000000002', 'Recruiter', 'RECRUITER'),
+  ('00000000-0000-0000-0000-000000000003', 'Hiring Manager', 'HIRING_MANAGER'),
+  ('00000000-0000-0000-0000-000000000004', 'Platform Hiring Manager', 'HIRING_MANAGER'),
+  ('00000000-0000-0000-0000-000000000005', 'Requisition Approver', 'REQUISITION_APPROVER');
 
 insert into public.jobs (
   id,

@@ -863,8 +863,9 @@ AI to change a workflow state.
 ### Decision
 
 An authenticated Hiring Manager may explicitly request an AI-generated Job
-Requisition/job-description draft after entering title, department, and an
-optional human author brief. The result is visibly labeled AI-generated,
+Requisition/job-description draft after entering title and department. The
+result contains exactly four editable sections—역할 개요, 주요 책임, 자격 요건,
+and 우대 사항—and is visibly labeled AI-generated,
 editable, and transient. Only the existing explicit `Job 초안 저장` action
 persists a requisition and creates the existing human-authored audit event.
 
@@ -1040,3 +1041,77 @@ singleton database consumer-mode gate enforces this rule at dequeue time.
   and human-only decision boundary are unchanged.
 - Edge runtime limits remain a release gate; failed Alpha smoke testing causes
   a rollback to the retained Node entrypoint rather than silent degradation.
+
+## ADR-024 — Defer Requisition Approver from the MVP
+
+- Status: Accepted
+- Date: 2026-08-25
+- Decision owner: Product team
+
+The MVP keeps the requisition-approval tables, state enum, history, and legacy
+RPCs for future enterprise approval requirements, but removes the
+`REQUISITION_APPROVER` role from the active product flow. Hiring Manager creates
+and saves the requisition; human approval of the Review Framework moves the Job
+to `READY_FOR_INTAKE`. Posting and resume intake do not depend on the dormant
+requisition status.
+
+The role is not deleted from the database because that would be a destructive
+compatibility change. It is denied an active workspace and detail flow in the
+MVP, and the former approval queue is not presented to users.
+
+## ADR-031 — Review Framework as the primary evidence-analysis contract
+
+- Status: Accepted
+- Date: 2026-08-25
+- Decision owner: Product team
+
+### Decision
+
+The approved immutable Review Framework is the primary input for resume
+evidence analysis. The job description is supporting context and cannot create
+or silently expand evaluation criteria. Each resume-assessable criterion stores
+its name, importance/type, definition, accepted evidence, optional alternative
+evidence, optional partial-evidence guidance, and named extraction fields.
+
+The authoring UI offers `직접 작성` and `AI 초안`, but both populate the same
+editable unsaved form. A human explicitly saves, resolves ambiguity, and
+approves the framework before analysis. AI generation never saves or approves
+it.
+
+### Consequences
+
+- Evidence extraction returns criterion-level evidence states and source
+  traceability only.
+- `REQUIRED` describes importance; it is not an automatic knockout rule.
+- No authoritative total score, automatic ranking, automatic filtering,
+  acceptance, rejection, or advancement is introduced.
+- Evidence prompt/schema versions advance to v2 so partial-evidence guidance
+  and extraction fields are traceable inputs.
+
+## ADR-032 — One final Review Framework per Job
+
+- Status: Accepted
+- Date: 2026-08-25
+- Decision owner: Product team
+- Supersedes: the replacement-version workflow in ADR-018
+
+### Decision
+
+Each Job uses one Review Framework. The assigned Hiring Manager or Admin may
+edit the saved draft until approval. Approval permanently locks the framework
+for that Job; the MVP provides no replacement draft, reapproval, or visible
+version-history workflow. All applications received for the Job are analyzed
+against that single approved framework.
+
+Internal identifiers remain on the approved framework and processing records
+only to reproduce which contract an analysis used. They are not presented as a
+user-managed version history. Existing records are preserved rather than
+destructively rewritten.
+
+### Consequences
+
+- The `create_scorecard_revision` RPC and all UI/server entry points are removed.
+- The Review Framework history panel and version labels are removed from the UI.
+- A changed hiring need requires a new Job rather than changing the approved
+  criteria for applicants already entering the current Job.
+- AI remains draft-only and the human approval gate remains unchanged.

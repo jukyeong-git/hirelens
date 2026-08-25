@@ -63,10 +63,22 @@ export const claimedEvidenceRunSchema = z
 export const evidenceCriterionSchema = z
   .object({
     criterion_id: uuidSchema,
+    name: boundedText(200),
     type: z.enum(["REQUIRED", "PREFERRED", "INTERVIEW_ONLY"]),
     definition: boundedText(2_000),
     accepted_evidence: z.array(boundedText(500)).max(32),
     alternative_evidence: z.array(boundedText(500)).max(32),
+    partial_evidence_guidance: nullableBoundedText(1_000),
+    evidence_fields: z
+      .array(
+        z
+          .object({
+            field_name: boundedText(80),
+            description: boundedText(500),
+          })
+          .strict(),
+      )
+      .max(20),
     resume_assessable: z.boolean(),
     suggested_interview_question: nullableBoundedText(1_000),
   })

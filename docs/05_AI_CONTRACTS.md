@@ -19,11 +19,14 @@ Input:
 
 - human-provided job title,
 - department,
-- optional hiring need or author brief.
+- no hiring need or other internal rationale.
 
 Output:
 
 - one editable raw job-description draft.
+- exactly four sections: 역할 개요, 주요 책임, 자격 요건, 우대 사항;
+- no benefits, working conditions, compensation, location, employment, or
+  company-policy section.
 
 The Hiring Manager explicitly requests this capability before a requisition is
 saved. The output is transient and cannot create, save, submit, approve, return,
@@ -86,6 +89,8 @@ Rules:
 
 - all object schemas use strict validation and reject unknown keys;
 - the raw description is an editable drafting suggestion, never a saved record;
+- the model receives only title and department; internal hiring need remains on
+  the requisition record and is excluded from the request;
 - prompts and schemas are versioned independently from the Review Framework
   contract; and
 - refusal, timeout, incomplete, or invalid output leaves the requisition form
@@ -296,8 +301,8 @@ Minimum checks:
 ## 14. Implemented evidence contract versions
 
 - pipeline: `evidence-pipeline-v1`
-- prompt: `evidence-extraction-prompt-v1`
-- schema: `evidence-extraction-schema-v1`
+- prompt: `evidence-extraction-prompt-v2`
+- schema: `evidence-extraction-schema-v2`
 - model: supplied only by server-side `OPENAI_MODEL`
 
 The worker enforces `store: false`, per-run input/output/total token caps, a
@@ -305,3 +310,23 @@ configured micro-USD budget, one retry after the initial attempt, direct
 identifier minimization, and exact normalized quote validation before the
 transactional persistence RPC. Schema/source failures are quarantined and do
 not enter the trusted evidence UI.
+
+Evidence contract v2 supplies each approved criterion's name, definition,
+accepted evidence, alternative evidence, partial-evidence guidance, and named
+extraction fields. The model must evaluate only those approved criteria. It may
+use `PARTIAL` only when the submitted material supports part of the criterion
+under the supplied guidance; absence remains `NOT_FOUND`, never a claim that
+the candidate lacks the capability. The contract exposes no total score,
+ranking, knockout, pass, reject, or advancement field.
+
+The Review Framework draft contract uses
+`scorecard-draft-prompt-v3` and `scorecard-draft-schema-v2`. It requests 3–6
+concise criteria and uses low reasoning effort, low text verbosity, a 3,500-token
+output cap, and one 45-second request timeout for the interactive draft flow.
+Timeouts are not retried, so the user can immediately choose to retry or write
+the framework directly. AI proposals must return the same human-editable fields
+as manual authoring, including optional partial-evidence guidance and extraction
+fields. The `ai-pipeline-v2` normalization step preserves only source phrases
+that are exact normalized substrings of the job description; unsupported model
+phrases are replaced with `null` rather than retained as citations. Generation
+itself never saves or approves the framework.

@@ -13,15 +13,19 @@ const statusLabels: Record<JobListItem["status"], string> = {
 
 interface JobListProps {
   jobs: JobListItem[];
+  title?: string;
+  emptyTitle?: string;
 }
 
-export function JobList({ jobs }: JobListProps) {
+export function JobList({
+  jobs,
+  title = "채용 요청 목록",
+  emptyTitle = "아직 채용 요청이 없습니다.",
+}: JobListProps) {
   if (jobs.length === 0) {
     return (
       <section className="empty-state" aria-labelledby="empty-jobs-title">
-        <p className="eyebrow">No openings yet</p>
-        <h2 id="empty-jobs-title">아직 Job이 없습니다.</h2>
-        <p>첫 Job 초안을 저장하면 이곳에서 담당자와 상태를 확인할 수 있습니다.</p>
+        <h2 id="empty-jobs-title">{emptyTitle}</h2>
       </section>
     );
   }
@@ -30,22 +34,21 @@ export function JobList({ jobs }: JobListProps) {
     <section className="panel" aria-labelledby="job-list-title">
       <div className="section-heading section-heading-inline">
         <div>
-          <p className="eyebrow">Openings</p>
-          <h2 id="job-list-title">Job 목록</h2>
+          <h2 id="job-list-title">{title}</h2>
         </div>
         <span className="count-label">{jobs.length}개</span>
       </div>
 
       <div className="table-wrap">
         <table className="job-table">
-          <caption className="sr-only">접근 가능한 Job 목록</caption>
+          <caption className="sr-only">접근 가능한 채용 요청 목록</caption>
           <thead>
             <tr>
               <th scope="col">직무</th>
               <th scope="col">부서</th>
               <th scope="col">상태</th>
-              <th scope="col">Recruiter</th>
-              <th scope="col">Hiring Manager</th>
+              <th scope="col">채용 담당자</th>
+              <th scope="col">채용 책임자</th>
               <th scope="col">최근 변경</th>
             </tr>
           </thead>

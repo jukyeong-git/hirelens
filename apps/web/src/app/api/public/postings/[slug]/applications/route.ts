@@ -1,4 +1,4 @@
-import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import {
   cancelPublicResumeSubmission,
@@ -6,7 +6,7 @@ import {
   finalizePublicResumeSubmission,
   SupabaseRestError,
 } from "@hirelens/database";
-import { parseEnvironment, publicResumeSubmissionInputSchema } from "@hirelens/domain";
+import { publicResumeSubmissionInputSchema } from "@hirelens/domain";
 
 import {
   getSupabaseServiceClient,
@@ -18,19 +18,8 @@ const maximumResumeBytes = 10_485_760;
 export async function POST(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const formData = await request.formData();
-  const demoAccessCode = String(formData.get("demoAccessCode") ?? "");
   const file = formData.get("resume");
 
-  const demoAccess = validateDemoAccessCode(demoAccessCode);
-  if (demoAccess === "disabled") {
-    return Response.json(
-      { error: "지원서 접수 서비스가 아직 활성화되지 않았습니다." },
-      { status: 503 },
-    );
-  }
-  if (demoAccess === "invalid") {
-    return Response.json({ error: "접속 코드를 확인하세요." }, { status: 403 });
-  }
   if (!(file instanceof File)) {
     return Response.json({ error: "PDF 이력서 파일을 선택하세요." }, { status: 400 });
   }
@@ -148,13 +137,4 @@ function publicSubmissionStatus(error: unknown) {
     return 404;
   }
   return 400;
-}
-
-function validateDemoAccessCode(submittedCode: string): "valid" | "invalid" | "disabled" {
-  const configuredCode = parseEnvironment().DEMO_PUBLIC_SUBMISSION_CODE;
-  if (!configuredCode) return "disabled";
-  const submitted = Buffer.from(submittedCode);
-  const expected = Buffer.from(configuredCode);
-  if (submitted.length !== expected.length) return "invalid";
-  return timingSafeEqual(submitted, expected) ? "valid" : "invalid";
 }

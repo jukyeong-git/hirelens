@@ -55,12 +55,19 @@ describe("job requisition draft contract", () => {
     const prompt = buildJobRequisitionDraftPrompt({
       title: "Backend Engineer",
       department: "Platform Engineering",
-      author_brief: null,
     });
 
     expect(prompt).toContain(JOB_REQUISITION_DRAFT_CONTRACT_VERSIONS.prompt);
     expect(prompt).toContain("JOB_REQUISITION_DRAFT");
     expect(prompt).toContain("<department>");
+    expect(prompt).not.toContain("author_brief");
+    expect(JOB_REQUISITION_DRAFT_SYSTEM_PROMPT).toContain("Do not repeat the supplied title");
+    expect(JOB_REQUISITION_DRAFT_SYSTEM_PROMPT).toContain('"역할 개요"');
+    expect(JOB_REQUISITION_DRAFT_SYSTEM_PROMPT).toContain('"주요 책임"');
+    expect(JOB_REQUISITION_DRAFT_SYSTEM_PROMPT).toContain('"자격 요건"');
+    expect(JOB_REQUISITION_DRAFT_SYSTEM_PROMPT).toContain('"우대 사항"');
+    expect(JOB_REQUISITION_DRAFT_SYSTEM_PROMPT).toContain("Do not add any other section");
+    expect(JOB_REQUISITION_DRAFT_SYSTEM_PROMPT).not.toContain("복지 및 지원");
     expect(JOB_REQUISITION_DRAFT_SYSTEM_PROMPT).toContain(
       JOB_REQUISITION_DRAFT_CONTRACT_VERSIONS.prompt,
     );
@@ -73,7 +80,7 @@ describe("job requisition draft contract", () => {
       buildJobRequisitionDraftPrompt({
         title: "Backend Engineer",
         department: "Platform Engineering",
-        author_brief: null,
+        hiring_need: "Expand the backend team.",
         status: "APPROVED",
       } as never),
     ).toThrow();
@@ -95,7 +102,7 @@ describe("job requisition draft contract", () => {
       jobRequisitionDraftPromptInputSchema.safeParse({
         title: "Backend Engineer",
         department: "Platform Engineering",
-        author_brief: "x".repeat(4_001),
+        author_brief: "Keep this out of the AI request.",
       }).success,
     ).toBe(false);
   });

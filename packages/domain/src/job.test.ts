@@ -15,6 +15,7 @@ import {
 const validInput = {
   title: "Backend Engineer",
   department: "Engineering",
+  hiringNeed: "Expand the backend team for the next release.",
   rawJobDescription: "Build reliable backend services for the synthetic demo.",
   recruiterId: "00000000-0000-0000-0000-000000000002",
   hiringManagerId: "00000000-0000-0000-0000-000000000003",
@@ -26,11 +27,13 @@ describe("createJobInputSchema", () => {
       ...validInput,
       title: "  Backend Engineer  ",
       department: " Engineering ",
+      hiringNeed: " Expand the backend team. ",
       rawJobDescription: "  Synthetic description  ",
     });
 
     expect(result.title).toBe("Backend Engineer");
     expect(result.department).toBe("Engineering");
+    expect(result.hiringNeed).toBe("Expand the backend team.");
     expect(result.rawJobDescription).toBe("Synthetic description");
   });
 
@@ -57,21 +60,19 @@ describe("createJobInputSchema", () => {
 });
 
 describe("jobRequisitionDraftInputSchema", () => {
-  it("accepts bounded human authoring context without persisting it", () => {
+  it("accepts only title and department for an AI draft request", () => {
     expect(
       jobRequisitionDraftInputSchema.parse({
         title: " Backend Engineer ",
         department: " Engineering ",
-        authorBrief: " Build dependable platform services for the synthetic demo. ",
       }),
     ).toEqual({
       title: "Backend Engineer",
       department: "Engineering",
-      authorBrief: "Build dependable platform services for the synthetic demo.",
     });
   });
 
-  it("requires title and department and bounds the optional author brief", () => {
+  it("rejects a hiring need from the AI draft boundary", () => {
     expect(
       jobRequisitionDraftInputSchema.safeParse({
         title: " ",
@@ -82,12 +83,12 @@ describe("jobRequisitionDraftInputSchema", () => {
       jobRequisitionDraftInputSchema.safeParse({
         title: "Backend Engineer",
         department: "Engineering",
-        authorBrief: "x".repeat(4_001),
+        hiringNeed: "Expand the backend team.",
       }).success,
     ).toBe(false);
   });
 
-  it("enforces the same bounded authoring fields at the web-domain boundary", () => {
+  it("enforces title and department bounds at the AI draft boundary", () => {
     expect(
       jobRequisitionDraftInputSchema.safeParse({
         title: "x".repeat(121),
@@ -104,12 +105,10 @@ describe("jobRequisitionDraftInputSchema", () => {
       jobRequisitionDraftInputSchema.parse({
         title: "x".repeat(120),
         department: "x".repeat(120),
-        authorBrief: "x".repeat(4_000),
       }),
     ).toMatchObject({
       title: "x".repeat(120),
       department: "x".repeat(120),
-      authorBrief: "x".repeat(4_000),
     });
   });
 });

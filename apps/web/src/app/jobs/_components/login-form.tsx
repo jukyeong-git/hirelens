@@ -12,9 +12,7 @@ export function LoginForm() {
   return (
     <form className="login-form" action={formAction}>
       <div className="section-heading">
-        <p className="eyebrow">Internal workspace</p>
-        <h1 id="login-title">HireLens에 로그인</h1>
-        <p>채용 담당자 전용</p>
+        <h1 id="login-title">로그인</h1>
       </div>
 
       {state.status === "error" ? (

@@ -15,64 +15,66 @@ test.describe("Job and scorecard workspace", () => {
   }) => {
     await signIn(page, "recruiter@demo.hirelens.example");
 
-    await expect(page.getByRole("heading", { name: "Requisition 작업 공간" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Job 목록" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Recruiter 홈" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "진행 중인 채용 요청 목록" })).toBeVisible();
+    await expect(page.getByText("게시 중 공고", { exact: true })).toBeVisible();
+    await expect(page.getByText("후보자 검토", { exact: true })).toHaveCount(0);
     await expect(page.locator(`a[href="${seededBackendJobPath}"]`)).toBeVisible();
     await expect(page.getByRole("region", { name: "읽기 전용 안내" })).toContainText(
-      "Hiring Manager 작성 · Recruiter 조회",
+      "채용 책임자 작성 · 채용 담당자 조회",
     );
-    await expect(page.getByRole("heading", { name: "Job 초안 생성" })).toHaveCount(0);
-    await expect(
-      page.getByRole("button", { name: "AI로 Job Requisition 초안 만들기" }),
-    ).toHaveCount(0);
-    await expect(
-      page.getByText("AI는 편집 가능한 Job Requisition/직무 설명 초안만 제안합니다."),
-    ).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "기본 정보" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "AI 초안" })).toHaveCount(0);
   });
 
   test("hiring manager can access the requisition creation workspace", async ({ page }) => {
     await signIn(page, "hiring-manager@demo.hirelens.example");
 
-    await expect(page.getByRole("heading", { name: "Requisition 작업 공간" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Job 초안 생성" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Hiring Manager 홈" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "기본 정보" })).toHaveCount(0);
+    await expect(page.getByText("후보자 검토", { exact: true })).toBeVisible();
+    await page.getByRole("link", { name: "채용 생성" }).click();
+    await expect(page).toHaveURL(/\/jobs\/new$/);
+    await expect(page.getByRole("heading", { name: "채용 생성" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "기본 정보" })).toBeVisible();
     await expect(page.getByLabel("직무명")).toBeEditable();
     await expect(page.getByLabel("채용 필요성 / 추가 요청")).toBeEditable();
+    await expect(page.getByRole("button", { name: "AI 초안" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "AI 초안" })).toBeEnabled();
+    await expect(page.getByLabel("채용 책임자")).toHaveValue("Hiring Manager");
+    await expect(page.getByLabel("채용 책임자")).not.toBeEditable();
+    await expect(page.getByRole("link", { name: "Hiring Manager 홈" })).toBeVisible();
+    await expect(page.getByText("채용 담당자는 이 채용 요청의 운영 담당자입니다.")).toHaveCount(0);
+    await expect(page.getByText("현재 로그인한 채용 책임자로 고정됩니다.")).toHaveCount(0);
+    await expect(page.getByText(/AI 초안의 입력값입니다/)).toHaveCount(0);
+    await expect(page.getByText(/AI 초안은 편집 가능한 제안입니다/)).toHaveCount(0);
     await expect(
-      page.getByRole("button", { name: "AI로 Job Requisition 초안 만들기" }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "AI로 Job Requisition 초안 만들기" }),
-    ).toBeEnabled();
-    await expect(page.getByText("자동 저장·승인·제출·공고 게시에는 관여하지 않으며")).toBeVisible();
-    await expect(page.getByLabel("Hiring Manager")).toHaveValue("Test Hiring Manager");
-    await expect(page.getByLabel("Hiring Manager")).not.toBeEditable();
-    await expect(page.locator(`a[href="${seededBackendJobPath}"]`)).toBeVisible();
+      page.getByText("AI 초안 또는 직접 작성한 필수 항목을 모두 입력해야 저장할 수 있습니다."),
+    ).toHaveCount(0);
   });
 
   test("designated approver sees an isolated approval queue", async ({ page }) => {
     await signIn(page, "requisition-approver@demo.hirelens.example");
 
-    await expect(page.getByRole("heading", { name: "Requisition 승인 대기열" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "대기 중인 Requisition" })).toBeVisible();
-    await expect(
-      page.getByText("이 화면에는 지원서, 검토 기준, 후보자 근거가 표시되지 않습니다."),
-    ).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Requisition 작업 공간" })).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: "Job 목록" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "채용 요청 승인" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "승인 대기" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Recruiter 홈" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Hiring Manager 홈" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "진행 중인 채용 요청 목록" })).toHaveCount(0);
   });
 
   test("hiring manager sees separate requisition and review-criteria gates", async ({ page }) => {
     await signIn(page, "hiring-manager@demo.hirelens.example");
     await openSeededJob(page, seededBackendJobPath);
 
-    await expect(page.getByRole("heading", { name: "Requisition 승인 준비" })).toBeVisible();
-    await expect(page.getByLabel("Requisition 상태", { exact: true })).toContainText(
-      "Requisition 상태",
+    await expect(page.getByRole("heading", { name: "채용 요청 승인" })).toBeVisible();
+    await expect(page.getByLabel("채용 요청 상태", { exact: true })).toContainText(
+      "채용 요청 상태",
     );
-    await expect(page.getByLabel("Requisition 상태", { exact: true })).toContainText(
+    await expect(page.getByLabel("채용 요청 상태", { exact: true })).toContainText(
       "검토 기준 상태",
     );
-    await expect(page.getByRole("button", { name: "Requisition 제출" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "채용 요청 제출" })).toBeDisabled();
     await expect(
       page.getByText("승인자와 승인된 검토 기준이 있어야 제출할 수 있습니다."),
     ).toBeVisible();
@@ -85,17 +87,17 @@ test.describe("Job and scorecard workspace", () => {
 
     await openSeededJob(page, seededBackendJobPath);
 
-    await expect(page.getByRole("heading", { name: "Requisition 승인 준비" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "채용 요청 승인" })).toBeVisible();
     await expect(
       page.getByText(
-        "이 영역은 읽기 전용입니다. 배정된 Hiring Manager만 승인자 지정 및 제출을 수행할 수 있습니다.",
+        "이 영역은 읽기 전용입니다. 배정된 채용 책임자만 승인자를 지정하고 제출할 수 있습니다.",
       ),
     ).toBeVisible();
     await expect(page.getByRole("button", { name: "승인자 저장" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Requisition 제출" })).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: "최종 결정" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "채용 요청 제출" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "사람의 최종 결정" })).toHaveCount(0);
     await expect(
-      page.getByRole("heading", { name: /지원서 검토 기준 (?:초안|승인본) v1/ }),
+      page.getByRole("heading", { name: /지원서 검토 기준 (?:초안|승인본)/ }),
     ).toBeVisible();
     await expect(page.getByText("면접에서 확인").first()).toBeVisible();
     await expect(page.getByText("gpt-5.6-luna")).toBeVisible();
@@ -104,7 +106,7 @@ test.describe("Job and scorecard workspace", () => {
     await expect(page.getByRole("button", { name: "빈 검토 기준 초안 만들기" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "AI로 검토 기준 제안 받기" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "사람이 검토한 초안 저장" })).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: "검토 기준 버전 이력" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "검토 기준 버전 이력" })).toHaveCount(0);
   });
 
   test("posting management is visible to the assigned recruiter with both publication gates", async ({
@@ -113,8 +115,8 @@ test.describe("Job and scorecard workspace", () => {
     await signIn(page, "recruiter@demo.hirelens.example");
     await openSeededJob(page, seededBackendJobPath);
 
-    await expect(page.getByRole("heading", { name: "공고 관리" })).toBeVisible();
-    await expect(page.getByLabel("공고 게시 조건")).toContainText("Requisition 승인");
+    await expect(page.getByRole("heading", { name: "채용 공고" })).toBeVisible();
+    await expect(page.getByLabel("공고 게시 조건")).toContainText("채용 요청 승인");
     await expect(page.getByLabel("공고 게시 조건")).toContainText("지원서 검토 기준");
     await expect(page.getByRole("button", { name: "공고 초안 만들기" })).toBeVisible();
     await expect(page.getByText("게시 후 공개 경로 활성화")).toBeVisible();
@@ -151,8 +153,8 @@ test.describe("Job and scorecard workspace", () => {
     await signIn(page, "hiring-manager@demo.hirelens.example");
     await openSeededJob(page, seededBackendJobPath);
 
-    await expect(page.getByRole("heading", { name: "공고 관리" })).toBeVisible();
-    await expect(page.getByText("배정 Recruiter 전용 · Admin 운영 예외")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "채용 공고" })).toBeVisible();
+    await expect(page.getByText("배정된 채용 담당자 전용 · 관리자 운영 예외")).toBeVisible();
     await expect(page.getByRole("button", { name: "공고 초안 만들기" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "공고 게시" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "공고 종료" })).toHaveCount(0);
@@ -162,7 +164,7 @@ test.describe("Job and scorecard workspace", () => {
     await signIn(page, "admin@demo.hirelens.example");
     await openSeededJob(page, seededBackendJobPath);
 
-    await expect(page.getByRole("heading", { name: "공고 관리" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "채용 공고" })).toBeVisible();
     await expect(page.getByRole("button", { name: "공고 초안 만들기" })).toBeVisible();
     await expect(page.getByText("Admin은 운영상 예외로만 처리할 수 있습니다.")).toHaveCount(0);
   });
@@ -170,7 +172,7 @@ test.describe("Job and scorecard workspace", () => {
   test("requisition approver has no posting-management surface", async ({ page }) => {
     await signIn(page, "requisition-approver@demo.hirelens.example");
 
-    await expect(page.getByRole("heading", { name: "공고 관리" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "채용 공고" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "공고 초안 만들기" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "공고 게시" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "공고 종료" })).toHaveCount(0);
@@ -199,17 +201,17 @@ test.describe("Job and scorecard workspace", () => {
     await signIn(page, "recruiter@demo.hirelens.example");
     await page.goto(seededBackendApplicationPath);
 
-    await expect(page.getByRole("heading", { name: "지원서 근거 검토" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "AI 지원서 근거" })).toBeVisible();
     await expect(page.getByText("직접 근거")).toBeVisible();
     await expect(page.getByText("사람 확인 전용")).toBeVisible();
     await expect(page.getByRole("link", { name: "원문 1페이지 보기" })).toBeVisible();
     await expect(page.getByText("사전 처리 합성 결과")).toBeVisible();
     await expect(page.locator("body")).not.toContainText(/demo|데모/i);
     await expect(page.locator("body")).not.toContainText(/100점|fit score|적합도 점수/i);
-    await expect(page.getByRole("heading", { name: "Hiring Manager 검토 요청" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "인터뷰 진행 판단" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "최종 결정" })).toBeVisible();
-    await expect(page.getByText(/최종 결정은 인터뷰 진행 판단과 분리됩니다/)).toBeVisible();
+    await expect(page.getByRole("heading", { name: "검토 요청" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "인터뷰 판단" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "사람의 최종 결정" })).toBeVisible();
+    await expect(page.getByText(/최종 결정은 인터뷰 판단과 분리됩니다/)).toBeVisible();
     await expect(page.getByRole("button", { name: "최종 결정 저장" })).toHaveCount(0);
     await expect(page.getByLabel("새 임시 의견")).toBeEditable();
   });
@@ -221,10 +223,10 @@ test.describe("Job and scorecard workspace", () => {
     await openSeededJob(page, seededBackendJobPath);
     await page.locator(`a[href="${seededBackendApplicationPath}"]`).click();
 
-    await expect(page.getByRole("heading", { name: "지원서 근거 검토" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "인터뷰 진행 판단" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "최종 결정" })).toBeVisible();
-    await expect(page.getByText(/최종 결정은 인터뷰 진행 판단과 분리됩니다/)).toBeVisible();
+    await expect(page.getByRole("heading", { name: "AI 지원서 근거" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "인터뷰 판단" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "사람의 최종 결정" })).toBeVisible();
+    await expect(page.getByText(/최종 결정은 인터뷰 판단과 분리됩니다/)).toBeVisible();
     await expect(page.getByLabel("새 임시 의견")).toHaveCount(0);
   });
 
@@ -232,7 +234,7 @@ test.describe("Job and scorecard workspace", () => {
     await signIn(page, "recruiter@demo.hirelens.example");
     await openSeededJob(page, seededBackendJobPath);
 
-    await expect(page.getByRole("heading", { name: "PDF 이력서 접수" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "이력서 업로드" })).toBeVisible();
     const uploadButton = page.getByRole("button", { name: "선택한 PDF 업로드" });
     if ((await uploadButton.count()) === 1) {
       await expect(uploadButton).toBeVisible();
@@ -240,7 +242,7 @@ test.describe("Job and scorecard workspace", () => {
     } else {
       await expect(
         page.getByText(
-          "승인된 지원서 검토 기준이 있는 ‘접수 준비’ Job에서만 업로드할 수 있습니다.",
+          "승인된 지원서 검토 기준이 있는 ‘접수 준비’ 채용 요청에서만 업로드할 수 있습니다.",
         ),
       ).toBeVisible();
     }
@@ -253,7 +255,7 @@ test("anonymous users see only the narrow published career posting and no intern
   const indexResponse = await page.goto("/careers");
 
   expect(indexResponse?.status()).toBe(200);
-  await expect(page.getByRole("heading", { name: "포지션 목록" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "채용 중인 포지션" })).toBeVisible();
   await expect(page.getByRole("link", { name: "내부 작업 공간" })).toHaveCount(0);
   await expect(page.locator("body")).not.toContainText(/demo|데모/i);
   const publicPostingLink = page.locator('a[href^="/careers/"]').first();
@@ -265,7 +267,7 @@ test("anonymous users see only the narrow published career posting and no intern
 
   expect(publicResponse?.status()).toBe(200);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-  await expect(page.getByRole("complementary", { name: "공개 포지션 목록" })).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "채용 중인 포지션" })).toBeVisible();
   await expect(page.getByRole("link", { name: /Senior Backend Engineer/ })).toHaveAttribute(
     "aria-current",
     "page",
@@ -274,11 +276,12 @@ test("anonymous users see only the narrow published career posting and no intern
   await expect(page.getByRole("button", { name: "지원하기" })).toBeVisible();
   await page.getByRole("button", { name: "지원하기" }).click();
   await expect(page.getByRole("dialog", { name: "지원 방식 선택" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "이력서로 자동 채움" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "이력서로 지원" })).toBeVisible();
   await expect(page.getByRole("button", { name: "수기 지원" })).toBeVisible();
-  await page.getByRole("button", { name: "이력서로 자동 채움" }).click();
-  await expect(page.getByRole("heading", { name: "이력서로 자동 채움" })).toBeVisible();
-  await page.getByRole("button", { name: "지원 창 닫기" }).click();
+  await page.getByRole("button", { name: "이력서로 지원" }).click();
+  await expect(page).toHaveURL(/\/careers\/[0-9a-f]{32}\/apply\?mode=resume$/);
+  await expect(page.getByRole("heading", { name: "이력서로 지원" })).toBeVisible();
+  await expect(page.locator('input[name="resume"]')).toBeAttached();
   await expect(page.getByText(/합성·익명화 테스트 자료만 사용합니다/)).toHaveCount(0);
   await expect(page.getByText(/실제 개인정보·이력서는 제출하지 마세요/)).toHaveCount(0);
   await expect(page.locator("body")).not.toContainText(/demo|데모/i);
@@ -287,49 +290,7 @@ test("anonymous users see only the narrow published career posting and no intern
     /job_id|requisition_status|scorecard|reviewer/i,
   );
   await expect(page.getByRole("heading", { name: "이력서 제출" })).toHaveCount(0);
-  await expect(page.getByLabel("접속 코드")).toHaveCount(0);
-  await expect(page.getByLabel("PDF 이력서")).toHaveCount(0);
   await expect(page.getByLabel(/실제 지원서|테스트 자료|합성|익명화/)).toHaveCount(0);
-
-  const deniedSubmission = await page.request.post(
-    "/api/public/postings/" + publicPostingPath!.split("/").pop() + "/applications",
-    {
-      multipart: {
-        demoAccessCode: "invalid-demo-access-code",
-        resume: {
-          name: "synthetic-test.pdf",
-          mimeType: "application/pdf",
-          buffer: Buffer.from("%PDF-1.4\n%%EOF"),
-        },
-      },
-    },
-  );
-  expect([403, 503]).toContain(deniedSubmission.status());
-  await expect(deniedSubmission.json()).resolves.toEqual({
-    error:
-      deniedSubmission.status() === 403
-        ? "접속 코드를 확인하세요."
-        : "지원서 접수 서비스가 아직 활성화되지 않았습니다.",
-  });
-  const missingCodeSubmission = await page.request.post(
-    "/api/public/postings/" + publicPostingPath!.split("/").pop() + "/applications",
-    {
-      multipart: {
-        resume: {
-          name: "synthetic-test.pdf",
-          mimeType: "application/pdf",
-          buffer: Buffer.from("%PDF-1.4\n%%EOF"),
-        },
-      },
-    },
-  );
-  expect([403, 503]).toContain(missingCodeSubmission.status());
-  await expect(missingCodeSubmission.json()).resolves.toEqual({
-    error:
-      missingCodeSubmission.status() === 403
-        ? "접속 코드를 확인하세요."
-        : "지원서 접수 서비스가 아직 활성화되지 않았습니다.",
-  });
   await expect(page.locator("body")).not.toContainText("10000000-0000-0000-0000-000000000002");
 
   const missingResponse = await page.goto("/careers/not-a-real-public-slug");
@@ -360,7 +321,9 @@ async function signIn(page: import("@playwright/test").Page, email: string) {
   await page.getByLabel("비밀번호").fill(demoPassword!);
   await page.getByRole("button", { name: "로그인" }).click();
   await expect(
-    page.getByRole("heading", { name: /Requisition 작업 공간|Requisition 승인 대기열/ }),
+    page.getByRole("heading", {
+      name: /Recruiter 홈|Hiring Manager 홈|채용 요청 승인/,
+    }),
   ).toBeVisible();
 }
 
