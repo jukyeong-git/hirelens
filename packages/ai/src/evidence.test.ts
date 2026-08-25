@@ -9,7 +9,7 @@ import {
 const validEvidence = {
   results: [
     {
-      criterion_id: "criterion-1",
+      criterion_id: "10000000-0000-0000-0000-000000000001",
       status: "SUPPORTED",
       evidence: [{ page_number: 2, exact_quote: "Built reliable backend services." }],
       interpretation: "The resume states backend service delivery.",
@@ -17,7 +17,7 @@ const validEvidence = {
       suggested_interview_question: "What was your operational responsibility?",
     },
     {
-      criterion_id: "criterion-2",
+      criterion_id: "10000000-0000-0000-0000-000000000002",
       status: "NOT_FOUND",
       evidence: [],
       interpretation: "No supporting evidence was found in the submitted material.",
@@ -41,8 +41,7 @@ describe("evidence contract boundary", () => {
 
   it("rejects unknown criteria, out-of-range pages, and fabricated quotes", () => {
     const context = {
-      allowedCriterionIds: new Set(["criterion-1"]),
-      pageCount: 2,
+      allowedCriterionIds: new Set(["10000000-0000-0000-0000-000000000001"]),
       pageTextByNumber: new Map([
         [1, "Summary"],
         [2, "Built reliable backend services."],
@@ -74,7 +73,7 @@ describe("evidence contract boundary", () => {
         },
         context,
       ),
-    ).toThrow(/page bounds/iu);
+    ).toThrow(/resume bounds/iu);
 
     expect(() =>
       validateEvidenceExtraction(

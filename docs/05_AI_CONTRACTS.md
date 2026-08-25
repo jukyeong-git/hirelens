@@ -13,7 +13,26 @@ Model output is always untrusted input.
 
 ## 2. Allowed AI capabilities
 
-### Capability A — Scorecard draft
+### Capability A — Job Requisition draft
+
+Input:
+
+- human-provided job title,
+- department,
+- optional hiring need or author brief.
+
+Output:
+
+- one editable raw job-description draft.
+
+The Hiring Manager explicitly requests this capability before a requisition is
+saved. The output is transient and cannot create, save, submit, approve, return,
+publish, assign, rank, or make any candidate or hiring decision. It may not
+invent compensation, legal/eligibility language, company policy, or
+protected-trait preferences. A human must review and explicitly save the final
+description.
+
+### Capability B — Review Framework draft
 
 Input:
 
@@ -28,9 +47,13 @@ Output:
 - accepted and alternative evidence,
 - whether the criterion is resume-assessable.
 
-A human must edit and approve the draft.
+A Hiring Manager or Admin may generate this proposal explicitly. The result is
+transient and fills the same structured editor used for manual drafting; it is
+not persisted until a human explicitly saves the edited draft. Recruiters are
+read-only for this workflow. A human must edit as needed and approve the saved
+version before it can be used for analysis.
 
-### Capability B — Resume evidence extraction
+### Capability C — Resume evidence extraction
 
 Input:
 
@@ -46,6 +69,27 @@ Output:
 - suggested interview question.
 
 The output never includes a final hiring decision.
+
+## 2A. Job Requisition draft contract
+
+Illustrative structure:
+
+```json
+{
+  "contract": "JOB_REQUISITION_DRAFT",
+  "draft_only": true,
+  "raw_job_description": "..."
+}
+```
+
+Rules:
+
+- all object schemas use strict validation and reject unknown keys;
+- the raw description is an editable drafting suggestion, never a saved record;
+- prompts and schemas are versioned independently from the Review Framework
+  contract; and
+- refusal, timeout, incomplete, or invalid output leaves the requisition form
+  and its state unchanged.
 
 ## 3. Prohibited AI behavior
 
@@ -79,13 +123,8 @@ Illustrative structure:
       "name": "운영 환경 백엔드 개발 경험",
       "type": "REQUIRED",
       "definition": "운영 서비스에서 백엔드 시스템을 개발·운영한 경험",
-      "accepted_evidence": [
-        "운영 서비스 책임 범위가 명시됨",
-        "배포 또는 장애 대응 사례가 명시됨"
-      ],
-      "alternative_evidence": [
-        "유사한 고가용성 서비스 운영 경험"
-      ],
+      "accepted_evidence": ["운영 서비스 책임 범위가 명시됨", "배포 또는 장애 대응 사례가 명시됨"],
+      "alternative_evidence": ["유사한 고가용성 서비스 운영 경험"],
       "resume_assessable": true
     }
   ]
@@ -227,15 +266,15 @@ The demo must use synthetic resumes even with minimization.
 
 ## 12. Runtime failure behavior
 
-| Failure | Processing state | Retry |
-|---|---|---|
-| network timeout | `RETRY_PENDING` | bounded |
-| rate limit | `RETRY_PENDING` | bounded/backoff |
-| refusal | `FAILED` or reviewed category | no blind retry |
-| incomplete output | `RETRY_PENDING` once, then `FAILED` | bounded |
-| schema invalid | `QUARANTINED` | controlled re-analysis |
-| fabricated quote | `QUARANTINED` | controlled re-analysis |
-| source has no text | `NEEDS_OCR` | not in P0 |
+| Failure            | Processing state                    | Retry                  |
+| ------------------ | ----------------------------------- | ---------------------- |
+| network timeout    | `RETRY_PENDING`                     | bounded                |
+| rate limit         | `RETRY_PENDING`                     | bounded/backoff        |
+| refusal            | `FAILED` or reviewed category       | no blind retry         |
+| incomplete output  | `RETRY_PENDING` once, then `FAILED` | bounded                |
+| schema invalid     | `QUARANTINED`                       | controlled re-analysis |
+| fabricated quote   | `QUARANTINED`                       | controlled re-analysis |
+| source has no text | `NEEDS_OCR`                         | not in P0              |
 
 No AI failure may create or change a human decision.
 
@@ -253,3 +292,16 @@ Minimum checks:
 - correct `NOT_FOUND` language,
 - no decision field,
 - no protected-trait inference.
+
+## 14. Implemented evidence contract versions
+
+- pipeline: `evidence-pipeline-v1`
+- prompt: `evidence-extraction-prompt-v1`
+- schema: `evidence-extraction-schema-v1`
+- model: supplied only by server-side `OPENAI_MODEL`
+
+The worker enforces `store: false`, per-run input/output/total token caps, a
+configured micro-USD budget, one retry after the initial attempt, direct
+identifier minimization, and exact normalized quote validation before the
+transactional persistence RPC. Schema/source failures are quarantined and do
+not enter the trusted evidence UI.

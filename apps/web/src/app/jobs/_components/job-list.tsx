@@ -2,9 +2,11 @@ import Link from "next/link";
 
 import type { JobListItem } from "@hirelens/domain";
 
+import { visibleCopy } from "../../_components/visible-copy";
+
 const statusLabels: Record<JobListItem["status"], string> = {
   DRAFT: "초안",
-  SCORECARD_PENDING_APPROVAL: "Scorecard 승인 대기",
+  SCORECARD_PENDING_APPROVAL: "검토 기준 승인 대기",
   READY_FOR_INTAKE: "접수 준비",
   ARCHIVED: "보관됨",
 };
@@ -52,18 +54,17 @@ export function JobList({ jobs }: JobListProps) {
               <tr key={job.id}>
                 <th scope="row">
                   <Link className="job-title job-title-link" href={`/jobs/${job.id}`}>
-                    {job.title}
+                    {visibleCopy(job.title)}
                   </Link>
-                  <span className="job-id">ID {job.id.slice(0, 8)}</span>
                 </th>
-                <td>{job.department}</td>
+                <td>{visibleCopy(job.department)}</td>
                 <td>
                   <span className={`status-chip status-${job.status.toLowerCase()}`}>
                     {statusLabels[job.status]}
                   </span>
                 </td>
-                <td>{job.recruiter_name ?? "담당자 정보 없음"}</td>
-                <td>{job.hiring_manager_name ?? "담당자 정보 없음"}</td>
+                <td>{visibleCopy(job.recruiter_name ?? "담당자 정보 없음")}</td>
+                <td>{visibleCopy(job.hiring_manager_name ?? "담당자 정보 없음")}</td>
                 <td>{formatUpdatedAt(job.updated_at)}</td>
               </tr>
             ))}

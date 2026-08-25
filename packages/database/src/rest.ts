@@ -1,7 +1,7 @@
 export interface SupabaseRestClientOptions {
   url: string;
   publishableKey: string;
-  accessToken: string;
+  accessToken?: string;
 }
 
 export interface SupabaseRestClient {
@@ -27,7 +27,11 @@ export function createSupabaseRestClient(options: SupabaseRestClientOptions): Su
       const headers = new Headers(init.headers);
       headers.set("Accept", "application/json");
       headers.set("apikey", options.publishableKey);
-      headers.set("Authorization", `Bearer ${options.accessToken}`);
+      if (options.accessToken) {
+        headers.set("Authorization", `Bearer ${options.accessToken}`);
+      } else {
+        headers.delete("Authorization");
+      }
 
       const response = await fetch(`${baseUrl}${path}`, {
         ...init,

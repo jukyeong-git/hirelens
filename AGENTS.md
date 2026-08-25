@@ -20,6 +20,13 @@ Use this source-of-truth order:
 
 When documents conflict, stop and report the conflict. Do not silently choose one.
 
+## Git branch policy
+
+- Do not commit or push ordinary work unless the user explicitly requests it.
+- When explicitly requested, commit and push ordinary work to `develop` only.
+- Do not merge, fast-forward, push, or otherwise update `alpha` or `main`
+  unless the user explicitly requests that branch operation.
+
 ## Non-negotiable product invariants
 
 1. **Human-only final decision**
