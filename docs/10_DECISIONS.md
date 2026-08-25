@@ -103,7 +103,7 @@ Extract and preserve page text before the AI call. Validate every quote against 
 
 ## ADR-005 — Web application plus background worker
 
-- Status: Accepted
+- Status: Superseded by ADR-030
 - Date: Starter
 - Decision owner: Engineering
 
@@ -1009,3 +1009,34 @@ new real submissions are never falsely marked as synthetic.
 - Privacy notice ownership, retention/deletion/withdrawal, abuse controls,
   provider review, and production environment separation remain release risks
   and `TBD`; this decision alone does not establish production legal readiness.
+
+## ADR-030 — Supabase Edge Function evidence consumer
+
+- Status: Accepted
+- Date: 2026-08-25
+- Decision owner: Product/Engineering
+- Supersedes: ADR-005's long-running Node deployment choice; the asynchronous
+  queue boundary itself remains accepted
+
+### Decision
+
+Use a secret-protected Supabase Edge Function, invoked every minute by
+Vault-backed `pg_cron`/`pg_net`, as the P0 `resume_analysis` queue consumer.
+Each invocation reads at most one message. Processing uses a database lease and
+fenced service-role RPCs with a periodic heartbeat; a message is archived only after a durable terminal
+state, explicit retry handoff, or safe malformed-message quarantine.
+
+The existing Node processor remains a rollback path until deployed Alpha proves
+PDF.js bundle, CPU, memory, duration, retry, and 20-file partial-batch behavior.
+Node polling and Edge Cron must never consume the same queue concurrently. A
+singleton database consumer-mode gate enforces this rule at dequeue time.
+
+### Consequences
+
+- Alpha no longer requires Railway or another always-on Worker host.
+- Forced Edge termination is recoverable through an expiring lease and still
+  obeys the two-attempt maximum.
+- The AI prompt, Structured Output schema, source validation, model version,
+  and human-only decision boundary are unchanged.
+- Edge runtime limits remain a release gate; failed Alpha smoke testing causes
+  a rollback to the retained Node entrypoint rather than silent degradation.

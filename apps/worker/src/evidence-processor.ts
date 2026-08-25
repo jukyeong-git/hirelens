@@ -1,8 +1,14 @@
 import { createHash } from "node:crypto";
 
-import { EvidenceAdapterError, type EvidenceAdapter } from "@hirelens/ai/server";
-import { EvidenceValidationError, validateEvidenceExtraction } from "@hirelens/ai";
-import type { SupabaseRestClient } from "@hirelens/database";
+import {
+  EvidenceAdapterError,
+  type EvidenceAdapter,
+} from "../../../packages/ai/src/evidence-adapter.ts";
+import {
+  EvidenceValidationError,
+  validateEvidenceExtraction,
+} from "../../../packages/ai/src/evidence.ts";
+import type { SupabaseRestClient } from "../../../packages/database/src/rest.ts";
 import {
   claimEvidenceProcessingRun,
   completeExtractionForEvidence,
@@ -11,9 +17,10 @@ import {
   markEvidenceNeedsOcr,
   persistValidatedEvidence,
   recordProcessingFailure,
-} from "@hirelens/database";
-import type { ProcessingFailureCategory } from "@hirelens/domain";
-import { extractPdfPages, PdfExtractionError } from "@hirelens/pdf";
+  renewEvidenceProcessingLease,
+} from "../../../packages/database/src/evidence.ts";
+import type { ProcessingFailureCategory } from "../../../packages/domain/src/evidence.ts";
+import { extractPdfPages, PdfExtractionError } from "../../../packages/pdf/src/index.ts";
 
 export function minimizeDirectIdentifiers(value: string): string {
   const lines = value.split(/\r?\n/u);
@@ -140,18 +147,44 @@ export function createEvidenceRunProcessor(dependencies: EvidenceProcessorDepend
   ): Promise<"IGNORED" | "NEEDS_OCR" | "COMPLETED" | "FAILED"> => {
     const claimed = await claimEvidenceProcessingRun(dependencies.client, processingRunId);
     if (!claimed) return "IGNORED";
+    let heartbeatFailure: unknown;
+    let heartbeatInFlight = false;
+    const heartbeat = setInterval(() => {
+      if (heartbeatInFlight) return;
+      heartbeatInFlight = true;
+      void renewEvidenceProcessingLease(dependencies.client, processingRunId, claimed.lease_token)
+        .catch((error: unknown) => {
+          heartbeatFailure = error;
+        })
+        .finally(() => {
+          heartbeatInFlight = false;
+        });
+    }, 60_000);
+    const assertHeartbeat = () => {
+      if (heartbeatFailure) throw heartbeatFailure;
+    };
     try {
       if (claimed.stage === "EXTRACTING") {
         const pages = await extractPdfPages(
           await dependencies.downloadResume(claimed.storage_path),
         );
+        assertHeartbeat();
         if (pages.every((page) => page.normalizedText.length === 0)) {
-          await markEvidenceNeedsOcr(dependencies.client, processingRunId);
+          await markEvidenceNeedsOcr(dependencies.client, processingRunId, claimed.lease_token);
           return "NEEDS_OCR";
         }
-        await completeExtractionForEvidence(dependencies.client, { processingRunId, pages });
+        await completeExtractionForEvidence(
+          dependencies.client,
+          { processingRunId, pages },
+          claimed.lease_token,
+        );
       }
-      const context = await loadEvidenceAnalysisContext(dependencies.client, processingRunId);
+      const context = await loadEvidenceAnalysisContext(
+        dependencies.client,
+        processingRunId,
+        claimed.lease_token,
+      );
+      assertHeartbeat();
       const result = await dependencies.adapter({
         criteria: context.criteria,
         pages: context.pages.map((page) => ({
@@ -159,6 +192,7 @@ export function createEvidenceRunProcessor(dependencies: EvidenceProcessorDepend
           text: minimizeDirectIdentifiers(page.normalized_text),
         })),
       });
+      assertHeartbeat();
       validateEvidenceExtraction(result.evidence, {
         allowedCriterionIds: new Set(context.criteria.map((criterion) => criterion.criterion_id)),
         humanOnlyCriterionIds: new Set(
@@ -175,21 +209,26 @@ export function createEvidenceRunProcessor(dependencies: EvidenceProcessorDepend
         processingRunId,
         result.versions,
         result.usage,
+        claimed.lease_token,
       );
       const pageHashes = new Map(
         context.pages.map((page) => [page.page_number, page.normalized_text_sha256]),
       );
-      await persistValidatedEvidence(dependencies.client, {
-        processingRunId,
-        results: result.evidence.results.map((criterion) => ({
-          ...criterion,
-          evidence: criterion.evidence.map((source) => ({
-            ...source,
-            source_quote_hash: sha256(source.exact_quote),
-            source_page_hash: pageHashes.get(source.page_number)!,
+      await persistValidatedEvidence(
+        dependencies.client,
+        {
+          processingRunId,
+          results: result.evidence.results.map((criterion) => ({
+            ...criterion,
+            evidence: criterion.evidence.map((source) => ({
+              ...source,
+              source_quote_hash: sha256(source.exact_quote),
+              source_page_hash: pageHashes.get(source.page_number)!,
+            })),
           })),
-        })),
-      });
+        },
+        claimed.lease_token,
+      );
       return "COMPLETED";
     } catch (error) {
       const failure = classifyFailure(error);
@@ -198,8 +237,11 @@ export function createEvidenceRunProcessor(dependencies: EvidenceProcessorDepend
         processingRunId,
         failure.category,
         failure,
+        claimed.lease_token,
       );
       return "FAILED";
+    } finally {
+      clearInterval(heartbeat);
     }
   };
 }

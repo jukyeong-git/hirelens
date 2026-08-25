@@ -56,6 +56,7 @@ export const claimedEvidenceRunSchema = z
     attempt_count: z.number().int().min(1).max(2),
     stage: z.enum(["EXTRACTING", "ANALYZING"]),
     pipeline_version: boundedText(100),
+    lease_token: uuidSchema,
   })
   .strict();
 

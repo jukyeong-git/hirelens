@@ -1,5 +1,5 @@
-import { evidencePromptInputSchema, type EvidencePromptInput } from "./evidence";
-import { EVIDENCE_CONTRACT_VERSIONS } from "./versions";
+import { evidencePromptInputSchema, type EvidencePromptInput } from "./evidence.ts";
+import { EVIDENCE_CONTRACT_VERSIONS } from "./versions.ts";
 
 export const EVIDENCE_SYSTEM_PROMPT = `You are HireLens's evidence extraction component.
 Contract version: ${EVIDENCE_CONTRACT_VERSIONS.prompt}.

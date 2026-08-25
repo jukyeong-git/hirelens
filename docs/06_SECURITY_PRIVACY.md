@@ -55,7 +55,7 @@ The provided challenge document is confidential and must not be committed to the
 ### Supabase keys
 
 - browser: publishable key only,
-- server/worker: secret key only in server environments,
+- server/Edge worker: secret key only in server environments,
 - never place secret keys in `NEXT_PUBLIC_*`,
 - rotate immediately if exposed,
 - privileged server access still performs application authorization.
@@ -88,7 +88,19 @@ The provided challenge document is confidential and must not be committed to the
   and optional hiring need; keep the generated text transient until an explicit
   human save,
 - no model request body in application logs,
-- provider key exists only on server/worker.
+- provider key exists only on the web server or Supabase Edge Function secrets.
+
+The Edge evidence endpoint disables gateway JWT verification only because it
+is invoked by `pg_cron`/`pg_net`; it requires a separate 32+ character
+invocation secret stored in both Function secrets and Vault. The endpoint
+accepts no caller-provided processing ID and obtains work only through a
+service-role queue RPC. Browser roles cannot dequeue, claim, settle, or inspect
+quarantined messages.
+
+Cutover also requires `APP_ENV=alpha` and matching project ref, public URL, and
+database connection. A database-owned consumer mode gates every dequeue, and a
+fenced heartbeat prevents a live long-running invocation from being recovered
+by another consumer.
 
 ### Logging and monitoring
 

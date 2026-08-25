@@ -28,6 +28,8 @@ const environmentSchema = z.object({
   WORKER_CONCURRENCY: z.coerce.number().int().positive().default(3),
   WORKER_MAX_ATTEMPTS: z.coerce.number().int().positive().max(2).default(2),
   WORKER_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(2000),
+  EVIDENCE_CONSUMER_CRON_SECRET: z.string().min(32).optional(),
+  EVIDENCE_QUEUE_VISIBILITY_SECONDS: z.coerce.number().int().min(60).max(900).default(360),
   SENTRY_DSN: z.string().url().optional(),
 });
 
