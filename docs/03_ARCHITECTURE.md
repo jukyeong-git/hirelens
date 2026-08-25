@@ -23,8 +23,8 @@ Recruiter / Hiring Manager / Admin
  Auth/Postgres      resume PDFs       scorecard/evidence
      │                 │                   ▲
      │                 ▼                   │
-     └────────── Supabase Queue ──► Node Worker
-                           PDF.js + validation
+     └────────── Supabase Queue ──► Edge Function
+                      Cron + PDF.js + validation
 ```
 
 ## 3. Component responsibilities
@@ -39,14 +39,19 @@ Recruiter / Hiring Manager / Admin
 - human decision forms,
 - audit timeline.
 
-### `apps/worker`
+### `supabase/functions/process-evidence-queue`
 
-- queue polling,
+- authenticated, scheduled single-message queue consumption,
 - PDF extraction,
 - model calls,
 - structured output validation,
 - evidence source validation,
-- processing status updates.
+- processing status updates,
+- durable settlement only after a terminal result or explicit retry handoff.
+
+`apps/worker` retains the shared processor and a temporarily available Node
+poller solely as the rollback path until the deployed Alpha Edge smoke test
+passes. It must not consume the queue at the same time as the Edge Function.
 
 ### `packages/domain`
 
@@ -116,13 +121,13 @@ The worker should:
 | Auth | Supabase Auth | role-backed demo authentication |
 | Files | Supabase Storage | private PDF storage |
 | Queue | Supabase Queues | durable background jobs near the data |
-| Worker | Node.js TypeScript | shared schemas and libraries |
+| Worker | Supabase Edge Function | queue-local deployment without a separate always-on host |
 | PDF | PDF.js | page-aware text extraction and rendering |
 | AI | OpenAI Responses API | direct structured model requests |
 | Runtime validation | Zod + JSON Schema | untrusted boundary validation |
 | Unit tests | Vitest | fast TypeScript tests |
 | E2E | Playwright | real browser flow |
-| Hosting | Vercel + Railway-equivalent worker | simple demo deployment |
+| Hosting | Vercel + Supabase Edge Functions | web and bounded background processing without a third host |
 
 Package and service versions must be verified and pinned during scaffolding.
 
@@ -133,12 +138,12 @@ Package and service versions must be verified and pinned during scaffolding.
 2. Web creates candidate/application/file records in a transaction.
 3. Web uploads PDF to private storage.
 4. Web enqueues task containing opaque IDs, not resume text.
-5. Worker reads task and creates processing attempt.
-6. Worker extracts and stores page text.
-7. Worker calls AI with minimum required data.
-8. Worker validates strict output.
-9. Worker verifies each quote against page text.
-10. Worker stores evidence and marks attempt complete.
+5. Cron invokes the secret-protected Edge consumer only while the database consumer mode is `EDGE`; it reads one task and creates a leased processing attempt.
+6. The Edge consumer extracts and stores page text.
+7. The Edge consumer calls AI with minimum required data.
+8. The Edge consumer validates strict output.
+9. The Edge consumer verifies each quote against page text.
+10. A fenced heartbeat renews the lease during long extraction or model calls. The Edge consumer stores evidence, marks the attempt complete, and only then archives the queue message.
 11. Web subscribes or polls for progress.
 12. Human reviews and writes a decision through an authorized path.
 13. Audit event is appended.
@@ -202,12 +207,12 @@ A batch is not all-or-nothing.
 ### Shared developer and Alpha backend
 
 - one hosted Alpha Supabase project,
-- local Next.js and worker for development,
-- deployed web and worker for Alpha,
+- local Next.js for development and a remotely invoked Alpha Edge consumer,
+- deployed web and Supabase Edge consumer for Alpha,
 - shared synthetic seed, Auth users, PostgreSQL, and private Storage,
 - no Docker Supabase containers during normal development.
 
-Local development and Alpha use the same project ref, URL, publishable key, server key, database, Auth users, and Storage bucket. Only `APP_ENV` differs: `development` locally and `alpha` in the Alpha deployment. The repository still keeps a local Supabase configuration for on-demand migration and pgTAP authorization tests; it is not the application database.
+Local development and Alpha use the same project ref, URL, publishable key, server key, database, Auth users, and Storage bucket. Only `APP_ENV` differs: `development` locally and `alpha` during Alpha deployment operations. The Edge consumer uses Supabase-managed server secrets, a custom Cron invocation secret, service-role-only fenced RPCs, and a database-owned `NODE`/`EDGE` consumer-mode gate. The repository still keeps a local Supabase configuration for migration metadata; it is not the application database and Docker is not used by this workflow.
 
 Because the environments share data, all data remains synthetic for the demo. Destructive reset is never allowed against the hosted Alpha project; migrations are forward-only and operational reset is a separate guarded workflow.
 

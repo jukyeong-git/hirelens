@@ -1,22 +1,14 @@
-import pg from "pg";
-
 import { createEvidenceAdapter } from "@hirelens/ai/server";
 
-import { createSupabaseRestClient } from "@hirelens/database";
+import {
+  createSupabaseRestClient,
+  dequeueEvidenceQueueMessage,
+  quarantineMalformedEvidenceQueueMessage,
+  settleEvidenceQueueMessage,
+} from "@hirelens/database";
 import { DOMAIN_PACKAGE_NAME, parseEnvironment } from "@hirelens/domain";
+import { consumeOneEvidenceQueueMessage } from "./edge-consumer";
 import { createEvidenceRunProcessor } from "./evidence-processor";
-
-interface QueueMessage {
-  msg_id: number;
-  message: { processing_run_id?: string };
-}
-
-function isOpaqueUuid(value: unknown): value is string {
-  return (
-    typeof value === "string" &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(value)
-  );
-}
 
 async function downloadResume(url: string, secret: string, path: string): Promise<Uint8Array> {
   const response = await fetch(`${url.replace(/\/+$/, "")}/storage/v1/object/resumes/${path}`, {
@@ -56,7 +48,6 @@ export function startWorker() {
     throw new Error("WORKER_MAX_ATTEMPTS must be 2 for the Phase 3 processing contract");
   }
 
-  const database = new pg.Client({ connectionString: environment.DATABASE_URL });
   const serviceClient = createSupabaseRestClient({
     url: environment.NEXT_PUBLIC_SUPABASE_URL,
     publishableKey: environment.SUPABASE_SECRET_KEY,
@@ -88,29 +79,26 @@ export function startWorker() {
   });
   let polling = false;
 
-  const processMessage = async (message: QueueMessage) => {
-    const runId = message.message.processing_run_id;
-    if (!isOpaqueUuid(runId)) return;
-    await processEvidenceRun(runId);
-  };
-
   const poll = async () => {
     if (polling) return;
     polling = true;
     try {
-      const result = await database.query<QueueMessage>(
-        "select msg_id, message from pgmq.read($1, $2, $3)",
-        [environment.PROCESSING_QUEUE, 30, environment.WORKER_CONCURRENCY],
-      );
-      await Promise.all(
-        result.rows.map(async (message) => {
-          await processMessage(message);
-          await database.query("select pgmq.archive($1, $2)", [
-            environment.PROCESSING_QUEUE,
-            message.msg_id,
-          ]);
-        }),
-      );
+      for (let index = 0; index < environment.WORKER_CONCURRENCY; index += 1) {
+        const result = await consumeOneEvidenceQueueMessage({
+          dequeue: () =>
+            dequeueEvidenceQueueMessage(
+              serviceClient,
+              environment.EVIDENCE_QUEUE_VISIBILITY_SECONDS,
+              "NODE",
+            ),
+          quarantineMalformed: (messageId) =>
+            quarantineMalformedEvidenceQueueMessage(serviceClient, messageId),
+          processRun: processEvidenceRun,
+          settle: (messageId, processingRunId) =>
+            settleEvidenceQueueMessage(serviceClient, messageId, processingRunId),
+        });
+        if (result.status === "EMPTY") break;
+      }
     } catch {
       console.error(
         JSON.stringify({
@@ -132,11 +120,10 @@ export function startWorker() {
     }),
   );
 
-  void database.connect().then(poll);
+  void poll();
   const heartbeat = setInterval(() => void poll(), environment.WORKER_POLL_INTERVAL_MS);
   const stop = () => {
     clearInterval(heartbeat);
-    void database.end();
     process.exitCode = 0;
   };
 

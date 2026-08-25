@@ -73,9 +73,14 @@ export {
   markEvidenceValidating,
   persistValidatedEvidence,
   recordProcessingFailure,
+  renewEvidenceProcessingLease,
   listEvidenceItemsForRuns,
   listResumePagesForRuns,
+  dequeueEvidenceQueueMessage,
+  quarantineMalformedEvidenceQueueMessage,
+  settleEvidenceQueueMessage,
 } from "./evidence";
+export type { EvidenceQueueMessage } from "./evidence";
 export type {
   CreateResumeUploadReservationRequest,
   PublicResumeSubmissionRequest,

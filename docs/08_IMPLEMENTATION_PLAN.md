@@ -26,13 +26,13 @@ checklist.
 ### Outcome
 
 Synthetic demo users can sign in, authorized access is enforced, and the web
-app and worker can use the hosted Alpha backend without exposing secrets.
+app and Supabase Edge worker can use the hosted Alpha backend without exposing secrets.
 
 ### Exit criteria
 
 - roles, synthetic users, RLS, private resume Storage, and append-only audit
   protection are present;
-- local web and worker use validated environment variables;
+- local web and deployed Edge worker use validated environment variables;
 - unauthorized reads and writes are denied in tests; and
 - the shared Alpha presentation dataset remains synthetic-only.
 
@@ -96,6 +96,8 @@ available to the Recruiter, who can request Hiring Manager review.
 - `HL-033` Versioned OpenAI evidence contract and cost gate
 - `HL-034` Quote validation and evidence persistence
 - `HL-035` Bounded retry, quarantine, and failure notification
+- `HL-036` Supabase Edge queue consumer, fenced leases, Cron/Vault activation,
+  and retained Node rollback
 - `HL-040` Evidence-first Recruiter list and review-request action
 
 ### Exit criteria

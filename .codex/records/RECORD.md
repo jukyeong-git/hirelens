@@ -2267,3 +2267,124 @@ Alpha에는 순방향 migration 026~032를 적용했습니다. 검증 결과: Vi
 ## Output — 2026-08-24 23:56:43 +0800
 
 현재 작업 내용을 `develop` 브랜치에 커밋하고 `origin/develop`으로 푸시했습니다. 커밋: `58bf7f8 feat: complete hiring workflow and public careers intake`.
+
+## Input — 2026-08-25 00:00:00 +0800
+
+Alpha 서버 올리려고 하는데 Vercel 에 만들면 되겠지?
+
+## Output — 2026-08-25 00:01:12 +0800
+
+Alpha의 웹 앱은 Vercel에 배포하는 것이 맞지만, 장기 실행 Node.js Worker는 Vercel이 아닌 Railway 등 별도 컨테이너 호스팅에 배포해야 한다고 안내했다. Supabase는 Alpha의 DB/Auth/Storage/Queue로 사용하고, 마이그레이션은 별도 forward-only 절차로 적용한다.
+
+## Input — 2026-08-25 00:03:10 +0800
+
+지금 MVP 단계에서 Vercel 에 worker 올리기 힘든 구조인가?
+
+## Output — 2026-08-25 00:04:02 +0800
+
+현재 Worker는 `pg.Client` 장기 연결, `setInterval` 기반 무한 Queue polling, SIGINT/SIGTERM 종료 처리를 사용하는 장기 실행 Node.js 프로세스라 Vercel에 그대로 올리기 어렵다고 설명했다. MVP에서는 웹만 Vercel에 배포하고 Worker는 Railway 등 컨테이너 호스팅에 두는 방식을 권장하며, Vercel Cron/Serverless 방식으로 전환하려면 배치 단위 실행·타임아웃·재호출·중복 실행·큐 claim 계약을 별도로 리팩터링해야 한다고 안내했다.
+
+## Input — 2026-08-25 00:05:10 +0800
+
+그럼 Railway에 웹도 같이 배포 할 수 있어?
+
+## Output — 2026-08-25 00:06:03 +0800
+
+Railway에 Web과 Worker를 함께 배포할 수 있으며, 하나의 Railway Project 안에 `web`과 `worker` 두 개의 서비스를 분리해 구성하는 방식을 권장한다고 안내했다. Web은 Next.js `build/start`, Worker는 장기 실행 `start` 프로세스로 배포하고, 두 서비스는 Alpha Supabase를 공유하되 Worker는 공개 도메인을 만들지 않는 구성을 제안했다.
+
+## Input — 2026-08-25 00:07:10 +0800
+
+Railway가 무료 버전이 있었나?
+
+## Output — 2026-08-25 00:08:25 +0800
+
+Railway 공식 요금 페이지를 확인해, Free 플랜은 30일간 5달러 크레딧으로 시작한 뒤 월 1달러 조건이며, 서비스당 0.5GB RAM·1 vCPU 제한과 무료/커스텀 도메인 제한이 있다고 안내했다. Hobby는 월 사용액 최소 5달러이고 5달러 크레딧이 포함되어 Alpha MVP의 공개 Web과 상시 Worker를 함께 운영하기에 현실적인 최소 선택이라고 설명했다.
+
+## Input — 2026-08-25 00:09:10 +0800
+
+Worker 의 개념이 뭐지?
+
+## Output — 2026-08-25 00:09:48 +0800
+
+HireLens의 Worker는 브라우저 화면 요청을 처리하는 Web 서버와 별도로 백그라운드에서 오래 실행되는 Node.js 프로세스이며, 지원서 PDF 처리·페이지 텍스트 추출·OpenAI 분석·근거 검증·결과 저장을 Queue에서 가져와 수행한다고 설명했다. 사용자는 업로드 후 화면을 떠나도 작업이 계속되고, Worker는 최종 채용 결정을 내리지 않는다고 안내했다.
+
+## Input — 2026-08-25 00:10:30 +0800
+
+별도 스레드 개념인가? 아니면 배치?
+
+## Output — 2026-08-25 00:11:06 +0800
+
+Worker는 별도 OS 스레드라기보다 별도 장기 실행 프로세스/서비스이며, Queue에서 비동기 작업을 가져와 처리하는 구조라고 설명했다. 현재 구현은 하나의 Worker 프로세스가 주기적으로 Queue를 polling하고, `WORKER_CONCURRENCY=3`으로 여러 처리 작업을 동시에 수행한다. 여러 이력서를 한꺼번에 업로드할 수 있지만 처리 단위는 지원서별 processing run이고, 전체를 하나의 일괄 트랜잭션으로 처리하는 배치는 아니라고 안내했다.
+
+## Input — 2026-08-25 00:12:20 +0800
+
+Vercel 에 Worker 올리고 싶은데 작업 범위와 난이도는?
+
+## Output — 2026-08-25 00:14:18 +0800
+
+현재 장기 polling Worker를 Vercel에 그대로 올리는 것은 불가능에 가깝고, Queue polling을 단일 배치 실행 API로 추출한 뒤 Vercel Cron이 호출하도록 바꾸는 중간 규모 작업이라고 산정했다. 범위는 batch processor 추출, 내부 API와 CRON_SECRET, `vercel.json` 스케줄, DB 연결 정리, 실행 시간·재시도·중복 처리·PDF 번들 검증, E2E/장애 테스트다. MVP 최소 구현은 약 1.5~3일, 안정화 포함은 약 4~7일로 제안했고, Vercel Hobby Cron은 일 1회 제한이라 Queue 처리용이면 Pro 또는 별도 호출 방식이 필요하다고 안내했다.
+
+## Input — 2026-08-25 00:15:20 +0800
+
+Supabase 에서는 Worker와 같은 그런 기능이 없나?
+
+## Output — 2026-08-25 00:17:04 +0800
+
+Supabase Queues/PGMQ 자체는 메시지를 저장·전달하는 기능이고, 별도의 소비자가 필요하다고 설명했다. Supabase에는 Edge Functions를 Queue consumer로 실행하고 `pg_cron`/`pg_net`으로 주기 호출하는 공식 패턴이 있으며, 저용량 MVP에서는 기존 Worker를 배치형 Edge Function으로 옮길 수 있다고 안내했다. 다만 현재 HireLens Worker는 장기 Node 프로세스, `pg` 직접 연결, PDF.js 처리 구조이므로 Deno Edge 호환성·RPC 기반 DB 접근·실행 시간·재시도 테스트를 포함한 마이그레이션이 필요하고, 가장 안전한 단기 선택은 기존 Node Worker를 유지하는 것이라고 제안했다.
+
+## Input — 2026-08-25 09:30:19 +0800
+
+Worker의 기능을 Supabase Edge Function 방식으로 변경해줘
+
+## Input — 2026-08-25 09:39:56 +0800
+
+Repository: /Users/jukyeong.kim/.vscode/projects/hirelens. Implement the approved replacement slice: preserve the current evidence pipeline contract but add a Supabase Edge Function queue consumer instead of relying on the long-running Node poller. You own the backend/runtime slice and may edit: supabase/functions/**, one new forward migration after 20260824003200, supabase/config.toml, packages/database evidence queue access, shared processing placement if needed, package scripts/env example, relevant SQL/unit tests, and docs/TASKS/README needed to supersede ADR-005. Do not edit UI. Do not change AI prompt/schema/model contract. Acceptance: one message per invocation; custom invocation secret; service-role-only dequeue/archive; archive only after durable terminal outcome; malformed messages safely archived or quarantined without run ID injection; add lease/stale active-run recovery so forced termination cannot strand EXTRACTING/ANALYZING/VALIDATING; max two attempts; Edge credentials retain no human decision path; Cron config as code using pg_cron/pg_net and Vault lookups without hardcoded URLs/secrets; Node worker remains documented rollback until Alpha smoke passes. Supabase hosted Alpha is used; do not use local Docker. Add tests. You are not alone in the codebase: preserve existing changes, especially .codex/records/RECORD.md, and do not revert unrelated work. Edit files directly and report changed files and tests.
+
+## Input — 2026-08-25 09:48:55 +0800
+
+Stop additional work now. Return whatever complete patch you have, list remaining gaps, and finish immediately.
+
+## Output — 2026-08-25 09:48:55 +0800
+
+Stopped immediately as requested. The workspace contains a partial, not deployable implementation: a new forward migration adding leases, stale-run recovery, service-role queue RPCs, malformed-message quarantine, settlement checks, and Vault-backed cron; database/domain lease plumbing; and lease propagation through the Node evidence processor. No Edge Function, config/env/docs, or new tests were completed, and no tests were run. The migration is unvalidated, existing worker queue polling is incompatible with revoked legacy RPCs, and existing mocks/tests likely need lease-token updates. Do not deploy or apply this patch until those gaps are closed.
+
+## Input — 2026-08-25 10:12:59 +0800
+
+Repository: /Users/jukyeong.kim/.vscode/projects/hirelens. 현재 작업 트리의 Supabase Edge Function evidence consumer 구현에 대해 테스트만 보강해 주세요. AGENTS.md를 먼저 읽으세요. 소유 범위는 apps/worker/src/*.test.ts 및 supabase/tests/database/014_edge_evidence_queue_consumer.sql만입니다. 제품/런타임 코드는 수정하지 마세요. 반드시 검증할 항목: (1) DB consumer mode가 NODE일 때 EDGE dequeue가 거부되고 반대도 동일, (2) lease heartbeat RPC가 올바른 token만 연장하며 만료/외부 token은 거부, (3) 정상 {processing_run_id} payload는 malformed quarantine RPC로 archive할 수 없음, (4) heartbeat가 장시간 processing 동안 호출되고 종료 시 timer가 정리됨—기존 구조에서 신뢰성 있게 가능한 범위. pgTAP plan 수를 맞추고 테스트 이름을 명확히 하세요. 다른 작업자의 변경을 되돌리지 말고, 변경 파일과 실행 결과를 보고하세요.
+
+## Output — 2026-08-25 10:17:23 +0800
+
+테스트 보강을 완료했고 제품/런타임 코드는 수정하지 않았다. `apps/worker/src/evidence-processor.test.ts`에 fake timer와 지연된 synthetic adapter를 사용해 장시간 처리 중 60초 heartbeat가 반복 호출되고 완료 후 interval이 제거되어 추가 갱신이 없는지 검증했다. `supabase/tests/database/014_edge_evidence_queue_consumer.sql`에는 NODE/EDGE consumer mode 상호 거부, 올바른 lease token 갱신과 외부/만료 token 거부, 정상 processing-run payload의 malformed quarantine 및 archive 차단을 추가했고 pgTAP plan과 assertion 수를 31로 일치시켰다.
+
+실행 결과: 대상 Vitest 2개 파일 10개 테스트 통과, `pnpm typecheck` 통과, `pnpm test` 15개 파일 81개 테스트 통과, `pnpm lint` 통과. `pnpm test:integration`은 exit 1로 실패했다. Hosted Alpha에 현재 작업 트리의 신규 Edge migration이 아직 적용되지 않아 `lease_token` 컬럼과 `public.evidence_consumer_control` 테이블이 없었고, 따라서 014는 line 30에서 assertion 실행 전에 중단됐다. 동일한 Alpha 스키마 불일치로 여러 기존 DB suite도 실패했다. 단위 테스트 skip은 없었으며 E2E/build/AI eval은 이번 테스트 전용 범위와 무관해 실행하지 않았다. 다른 작업자의 변경은 되돌리지 않았고 온라인 AI eval 명령도 변경하지 않았다.
+## Output — 2026-08-25 10:29:44 +0800
+
+Supabase Edge Function 기반으로 Worker 구조를 변경하고 Alpha에 함수 배포 및 DB 마이그레이션 적용까지 완료했습니다. 단일 메시지 소비, lease/heartbeat, 최대 2회 시도, 안전한 settlement/quarantine, DB 기반 NODE/EDGE 소비자 모드 잠금, Vault-backed Cron, Alpha 프로젝트 식별자 교차 검증을 포함합니다. 현재 OpenAI API 키와 Cron 호출 시크릿이 설정되지 않아 consumer는 의도적으로 비활성 상태입니다(`consumer_mode=NODE`, activation Vault 값 0개). lint, typecheck, 단위 테스트 81개, Edge pgTAP 31개, 개인정보 스캔, AI eval, build, 공개 E2E 2개가 통과했습니다. 전체 integration 중 신규 Edge 관련 007/010/014는 통과했지만 기존 requisition/posting/interview suite는 Alpha 시드 역할 불일치로 실패했습니다. Alpha Edge PDF.js 실제 처리 smoke와 20-file partial batch는 활성화 후 남은 release gate입니다. 커밋/푸시는 하지 않았습니다.
+## Input — 2026-08-25 10:34:00 +0800
+
+vercel에 넣어야 할 .env 목록 알려줘
+2026-08-25 10:29:44 +0800
+
+## Output — 2026-08-25 10:34:30 +0800
+
+Vercel Web 배포에 필요한 환경변수와 Supabase Edge 전용 변수를 구분해 안내했다. Vercel에는 APP_ENV, NEXT_PUBLIC_APP_URL, Supabase URL·publishable key·server secret, OpenAI API endpoint·key·model·contract/cost 설정을 넣고, DATABASE_URL·Worker 변수·Edge Cron secret은 넣지 않도록 설명했다. OpenAI 공식 문서 링크를 포함했다.
+
+## Input — 2026-08-25 10:51:37 +0800
+
+오류 확인 해줘. 첨부된 Vercel 빌드 로그를 기준으로 확인 요청.
+
+## Output — 2026-08-25 10:51:50 +0800
+
+Vercel 로그의 빌드 자체는 성공했고, Next.js 15.5.0 취약 버전 경고와 pnpm audit 결과를 확인했다. Next.js를 최소 15.5.21 이상으로 업데이트하는 것이 필요하다고 안내할 예정이다. 코드 수정이나 커밋은 하지 않았다.
+
+## Input — 2026-08-25 10:55:00 +0800
+
+Next.js를 `15.5.21` 이상으로 올려줘 버전은 제안 해줘
+
+## Output — 2026-08-25 11:10:55 +0800
+
+Next.js를 같은 15.5 계열의 최신 패치 버전인 15.5.23으로 업데이트하고 pnpm lockfile을 갱신했다. lint, typecheck, 단위 테스트 81개, production build가 통과했다. pnpm audit에서 Next.js 관련 취약점은 제거됐고, Playwright·sharp·PostCSS의 별도 취약점 6개가 남아 있다. 커밋·푸시는 하지 않았다.
+
+## Input — 2026-08-25 11:15:00 +0800
+
+develop에 커밋/푸시 후 alpha 에 머지 해줘

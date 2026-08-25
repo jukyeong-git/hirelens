@@ -147,4 +147,9 @@ Business targets for coverage and turnaround remain `TBD` until confirmed by the
 
 ## 6. Current implementation note
 
-The current Worker implements PDF page-text extraction, hashes, processing states, and bounded retries. The versioned evidence contract and its OpenAI-backed runtime persistence are a later P0 implementation step. A PDF extraction state of `COMPLETED` must not be presented as completed AI evidence analysis until that step is implemented.
+The current evidence pipeline implements PDF page-text extraction, hashes,
+versioned OpenAI Structured Output, exact source validation, evidence
+persistence, bounded retries, and Admin-only terminal failure notification.
+The queue consumer is moving to a one-message Supabase Edge Function with
+lease recovery. The Node poller remains only as an Alpha rollback path until
+the deployed Edge smoke and partial-batch gates pass.

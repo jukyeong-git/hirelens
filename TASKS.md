@@ -10,7 +10,7 @@ This is the execution checklist. Product behavior is defined in `docs/01_PRD.md`
 - [x] Apply the committed migrations and synthetic seed to the shared hosted Alpha project.
 - [x] Initialize pnpm workspace.
 - [x] Scaffold `apps/web` with Next.js App Router and strict TypeScript.
-- [x] Scaffold `apps/worker` as a long-running TypeScript worker.
+- [x] Scaffold the original long-running TypeScript worker; retain it only as an Edge cutover rollback path.
 - [x] Create `packages/domain`, `packages/ai`, `packages/database`, `packages/pdf`.
 - [x] Add shared lint, format, typecheck, test, and build commands.
 - [x] Add environment validation and `.env.example`.
@@ -71,6 +71,8 @@ This is the execution checklist. Product behavior is defined in `docs/01_PRD.md`
 - [x] Add environment-configured model, per-attempt token caps, usage tracking, and demo cost budget gate.
 - [x] Notify Admin in-app after the bounded retry is exhausted.
 - [x] Prove duplicate delivery does not duplicate results.
+- [x] Add the Supabase Edge single-message consumer, service-role dequeue/settlement, lease recovery, malformed-message quarantine, and Vault-backed Cron configuration.
+- [ ] Pass deployed Alpha Edge PDF.js smoke and 20-file partial-batch test, then retire the Node polling rollback path.
 
 ## Phase 4 — Evidence extraction
 

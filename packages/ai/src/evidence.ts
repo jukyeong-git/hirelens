@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { EVIDENCE_CONTRACT_VERSIONS, EVIDENCE_SCHEMA_NAME } from "./versions";
+import { EVIDENCE_CONTRACT_VERSIONS, EVIDENCE_SCHEMA_NAME } from "./versions.ts";
 
 const uuidSchema = z
   .string()

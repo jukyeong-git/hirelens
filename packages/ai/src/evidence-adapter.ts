@@ -7,9 +7,9 @@ import {
   EvidenceValidationError,
   type EvidenceExtraction,
   type EvidencePromptInput,
-} from "./evidence";
-import { buildEvidencePrompt, EVIDENCE_SYSTEM_PROMPT } from "./evidence-prompt";
-import { EVIDENCE_CONTRACT_VERSIONS, type EvidenceContractVersions } from "./versions";
+} from "./evidence.ts";
+import { buildEvidencePrompt, EVIDENCE_SYSTEM_PROMPT } from "./evidence-prompt.ts";
+import { EVIDENCE_CONTRACT_VERSIONS, type EvidenceContractVersions } from "./versions.ts";
 
 export type EvidenceAdapterErrorCode =
   | "INVALID_CONFIGURATION"

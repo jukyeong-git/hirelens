@@ -313,13 +313,24 @@ For P0, avoid duplicating raw name/email fields unless required for the demo. Us
 Its idempotency key binds application, file, approved Review Framework version,
 and pipeline version. It stores model/prompt/schema identifiers, bounded token
 usage, estimated micro-USD cost, and a safe error category without raw resume
-text.
+text. Edge processing also stores a short-lived `lease_token` and
+`lease_expires_at`. Every worker RPC is fenced by that token, and a periodic
+heartbeat extends only the currently owned unexpired lease. Expired active
+runs become the one allowed retry or a terminal Admin-visible failure, so an
+Edge runtime shutdown cannot leave a run permanently active. The singleton
+`evidence_consumer_control` row selects `NODE` or `EDGE`; dequeue rejects the
+inactive runtime so rollback and Edge consumers cannot race.
 
 `evidence_items` stores one criterion result and zero or more source rows.
 `NOT_FOUND` and `HUMAN_ONLY` use a source-free row. Evidence-bearing statuses
 retain the exact quote, source page, quote hash, and page hash. Browser roles
 have read-only RLS access through the assigned application; only worker RPCs
 can persist validated rows.
+
+`evidence_queue_quarantine` stores only queue message ID, payload SHA-256, and
+a bounded safe reason for malformed or unknown queue messages. It stores no
+resume text and exposes no browser policy. Queue messages are archived only
+after a durable terminal state, retry handoff, or quarantine record exists.
 
 `interview_progression_reviews` is append-only and distinct from
 `human_reviews`. A Recruiter review request creates an active
