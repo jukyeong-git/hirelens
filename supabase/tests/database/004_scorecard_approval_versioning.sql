@@ -1,6 +1,6 @@
 begin;
 
-select plan(22);
+select plan(20);
 
 set local role authenticated;
 
@@ -96,44 +96,11 @@ select set_config(
   true
 );
 
-select throws_ok(
-  $$
-    select public.approve_scorecard(
-      '20000000-0000-0000-0000-000000000001',
-      1,
-      'DRAFT',
-      1,
-      '   '
-    )
-  $$,
-  '22023',
-  'approval reason is required',
-  'Assigned Hiring Manager must provide an approval reason'
-);
-
 set local role postgres;
 update public.criteria
 set ambiguity_status = 'AMBIGUOUS'
 where scorecard_version_id = '20000000-0000-0000-0000-000000000001'
   and client_id = 'criterion-draft-1';
-set local role authenticated;
-
-select throws_ok(
-  $$
-    select public.approve_scorecard(
-      '20000000-0000-0000-0000-000000000001',
-      1,
-      'DRAFT',
-      (select content_revision from public.scorecard_versions where id = '20000000-0000-0000-0000-000000000001'),
-      'Ambiguity must be resolved first'
-    )
-  $$,
-  '22023',
-  'ambiguous criteria must be resolved before approval',
-  'Approval is blocked while a criterion remains AMBIGUOUS'
-);
-
-set local role postgres;
 update public.criteria
 set ambiguity_status = 'CLEAR'
 where scorecard_version_id = '20000000-0000-0000-0000-000000000001'
@@ -193,6 +160,19 @@ select throws_ok(
   'Approval rejects a stale criterion-content revision token'
 );
 
+set local role postgres;
+update public.scorecard_versions version
+set confirmed_job_description_issue_keys = coalesce(
+  (
+    select jsonb_agg((entries.ordinal - 1)::text)
+    from jsonb_array_elements(version.ambiguous_phrases) with ordinality entries(item, ordinal)
+    where entries.item->>'ambiguity_status' <> 'CLEAR'
+  ),
+  '[]'::jsonb
+)
+where version.id = '20000000-0000-0000-0000-000000000001';
+set local role authenticated;
+
 select lives_ok(
   $$
     select public.approve_scorecard(
@@ -237,7 +217,7 @@ select ok(
       and aggregate_id = '10000000-0000-0000-0000-000000000001'
       and actor_id = '00000000-0000-0000-0000-000000000003'
       and safe_metadata->>'actor_role' = 'HIRING_MANAGER'
-      and reason = 'Assigned manager reviewed all criteria'
+      and reason is null
       and correlation_id is not null
       and source = 'scorecard_approval'
       and result = 'SUCCESS'
@@ -245,7 +225,7 @@ select ok(
       and before_data->>'target_status' = 'DRAFT'
       and after_data->>'approved_status' = 'APPROVED'
   ),
-  'Approval appends complete safe actor, reason, transition, and trace metadata'
+  'Approval appends complete safe actor, transition, and trace metadata without a reason'
 );
 
 select ok(

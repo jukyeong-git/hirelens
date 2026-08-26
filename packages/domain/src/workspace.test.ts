@@ -81,6 +81,21 @@ const notifications: NotificationRecord[] = [
 ];
 
 describe("role workspace", () => {
+  it("shows Recruiters only assigned jobs that reached intake while Hiring Managers retain drafts", () => {
+    const draftJob: JobSummary = {
+      ...jobs[0]!,
+      id: "10000000-0000-0000-0000-000000000002",
+      status: "DRAFT",
+      requisition_status: "DRAFT",
+    };
+    const assignedJobs = [...jobs, draftJob];
+
+    expect(selectWorkspaceJobs(assignedJobs, recruiterId, "RECRUITER")).toEqual(jobs);
+    expect(selectWorkspaceJobs(assignedJobs, hiringManagerId, "HIRING_MANAGER")).toEqual(
+      assignedJobs,
+    );
+  });
+
   it("keeps recruiter and hiring-manager job collections scoped to their assignment", () => {
     expect(selectWorkspaceJobs(jobs, recruiterId, "RECRUITER")).toEqual(jobs);
     expect(selectWorkspaceJobs(jobs, hiringManagerId, "HIRING_MANAGER")).toEqual(jobs);

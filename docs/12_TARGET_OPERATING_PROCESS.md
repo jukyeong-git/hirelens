@@ -55,7 +55,7 @@ reveals no internal IDs or processing details.
 
 After the Hiring Manager explicitly requests it, HireLens creates a draft
 screening-criteria version from the job description. The user-facing term is
-`지원서 검토 기준` (`Scorecard` is the internal contract name). The Hiring Manager
+`지원서 평가 기준` (`Scorecard` is the internal contract name). The Hiring Manager
 reviews it, resolves ambiguous language,
 and approves a version with a reason.
 

@@ -6,7 +6,7 @@ import { visibleCopy } from "../../_components/visible-copy";
 
 const statusLabels: Record<JobListItem["status"], string> = {
   DRAFT: "초안",
-  SCORECARD_PENDING_APPROVAL: "검토 기준 승인 대기",
+  SCORECARD_PENDING_APPROVAL: "채용 요청 대기",
   READY_FOR_INTAKE: "접수 준비",
   ARCHIVED: "보관됨",
 };
@@ -81,11 +81,10 @@ export function JobList({
 function formatUpdatedAt(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return "시간 정보 없음";
+    return "날짜 정보 없음";
   }
 
   return new Intl.DateTimeFormat("ko-SG", {
     dateStyle: "medium",
-    timeStyle: "short",
   }).format(date);
 }

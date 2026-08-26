@@ -33,7 +33,7 @@ Avoid: full HRIS navigation, global fit scores, copied layouts or labels
    valid PDFs without asking for or displaying a data classification. Product
    UI does not use `Demo`, `demo`, or `데모` labels.
 7. **AI proposes; humans define the policy.** The internal concept is `Review
-Framework`; label the user-facing artifact `지원서 검토 기준`. The AI draft
+Framework`; label the user-facing artifact `지원서 평가 기준`. The AI draft
    action is explicit, never automatic, and the resulting criteria remain a
    draft until a human approves them.
 
@@ -95,7 +95,7 @@ must not reveal an application ID.
   when the same meaning is already conveyed by the heading, field label, state,
   or disabled control.
 - Use `채용 담당자`, `채용 책임자`, `채용 요청`, `채용 공고`, and `지원서
-검토 기준` in user-facing copy; keep English domain names in code only.
+평가 기준` in user-facing copy; keep English domain names in code only.
 - Keep complete sentences only for safety, authorization, validation, error,
   and AI-versus-human responsibility boundaries.
 - Do not ask users to classify uploaded content. Keep the distinction between
@@ -103,8 +103,34 @@ must not reveal an application ID.
 
 ## 4. Core workspace patterns
 
+### Basic information editor
+
+- The basic-information tab uses the same explicit `수정` → `저장` pattern as
+  the Review Framework. The assigned Hiring Manager or Admin may edit the job
+  title, department, recruiter, job description, and request reason before the
+  hiring request is completed; the Hiring Manager assignment stays read-only.
+- Keep the edit action at the right edge of the tab row. While editing, replace
+  it with `저장` and provide a separate `취소` action in the form.
+- A changed job description clears prior description confirmation items and
+  confirmations. Basic information is locked after the hiring request.
+
 ### Review Framework editor
 
+- Editing a saved draft uses an explicit `수정` → `저장` action. Do not ask for
+  a free-text modification reason; the system audit records actor, time, and
+  revision metadata.
+- Show Job Description and Evaluation Criteria confirmation items separately.
+  Each outstanding item has a `확인` action. Confirmed items leave the list and
+  increase the completed count. Disable `채용 요청` until both lists have no
+  outstanding items. `채용 요청` does not collect a free-text reason.
+
+- Separate AI review metadata by concern. Put `직무 설명 확인 사항` at the
+  top of the basic-information tab and show only ambiguous source phrases from
+  the job description. Put `평가 기준 확인 사항` at the top of the
+  evaluation-criteria tab and show criterion-level ambiguity or
+  interview-only handling there.
+- Keep the request reason outside both AI checks. It is operational context,
+  not source material for the job description or evaluation criteria.
 - Start with two explicit methods: `직접 작성` and `AI 초안`. Both open the
   same unsaved structured editor; AI does not create a separate workflow.
 - Present one collapsible card per criterion. The collapsed row shows the

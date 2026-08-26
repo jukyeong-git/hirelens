@@ -128,7 +128,7 @@ export function ApplicationEvidencePanel({
       {latestRun?.status === "COMPLETED" &&
       criteria.some((criterion) => !grouped.has(criterion.id)) ? (
         <p className="form-alert form-alert-error" role="alert">
-          완료된 실행에 일부 검토 기준 결과가 없어 해당 항목을 결과 대기로 표시했습니다.
+          완료된 실행에 일부 평가 기준 결과가 없어 해당 항목을 결과 대기로 표시했습니다.
         </p>
       ) : null}
     </section>

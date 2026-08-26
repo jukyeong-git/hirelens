@@ -89,7 +89,7 @@ export function RequisitionWorkflow({
         </div>
         {viewerRole !== "REQUISITION_APPROVER" ? (
           <div>
-            <span>검토 기준 상태</span>
+            <span>평가 기준 상태</span>
             <strong>{hasApprovedScorecard ? "승인됨" : "승인 전"}</strong>
           </div>
         ) : null}
@@ -166,7 +166,7 @@ export function RequisitionWorkflow({
           >
             {submitPending ? "제출 중…" : "채용 요청 제출"}
           </button>
-          <span className="form-help">승인자와 승인된 검토 기준이 있어야 제출할 수 있습니다.</span>
+          <span className="form-help">승인자와 승인된 평가 기준이 있어야 제출할 수 있습니다.</span>
           {submitState.status === "error" ? (
             <p className="form-alert form-alert-error" role="alert">
               {visibleCopy(submitState.message)}
@@ -238,7 +238,7 @@ export function RequisitionWorkflow({
       ) : null}
       {job.requisition_status === "APPROVED" ? (
         <p className="info-banner" role="status">
-          채용 요청이 승인되었습니다. 검토 기준 승인과는 별개의 업무 승인입니다.
+          채용 요청이 승인되었습니다. 평가 기준 승인과는 별개의 업무 승인입니다.
         </p>
       ) : null}
       <section aria-labelledby={`requisition-history-title-${job.id}`}>
@@ -255,7 +255,7 @@ export function RequisitionWorkflow({
                   {labels[event.prior_status]} → {labels[event.new_status]}
                 </strong>
                 <span>
-                  처리자: {event.actor_id} · 역할: {event.actor_role} · 시각:{" "}
+                  처리자: {event.actor_id} · 역할: {event.actor_role} · 날짜:{" "}
                   {formatDate(event.created_at)}
                 </span>
                 <span>사유: {event.reason ?? "사유 없음"}</span>
@@ -269,7 +269,5 @@ export function RequisitionWorkflow({
 }
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short" }).format(
-    new Date(value),
-  );
+  return new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium" }).format(new Date(value));
 }

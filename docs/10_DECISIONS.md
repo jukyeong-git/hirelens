@@ -273,6 +273,8 @@ Use two linked workflows:
 
 Job states are `DRAFT`, `SCORECARD_PENDING_APPROVAL`, `READY_FOR_INTAKE`, and `ARCHIVED`. Scorecard version states are `DRAFT`, `PENDING_APPROVAL`, `APPROVED`, and `SUPERSEDED`.
 
+An assigned Hiring Manager or Admin may remove an unsubmitted draft from the active workspace. The UI labels this action `삭제`, while the database transitions the job to `ARCHIVED`, hides it from active lists, and appends an audit event. A job with a posting, an application, or a completed hiring request cannot be deleted through this path.
+
 Recruiters may create and edit job drafts and request a scorecard draft. Hiring Managers normally edit and approve scorecards. Admins may perform all operations, including approval override, with an audit event and a reason for the override.
 
 Ambiguous criteria must be resolved, redefined, classified as `INTERVIEW_ONLY`, or excluded before approval. Human qualities that cannot be verified from a resume default to `INTERVIEW_ONLY`. An unresolved ambiguity blocks approval.
@@ -606,7 +608,9 @@ needs an immutable history while a replacement is prepared.
 
 - The assigned `HIRING_MANAGER` or `ADMIN` may approve a `DRAFT`. Recruiters,
   unassigned managers, anonymous users, AI, and worker identities cannot
-  approve. Every approval requires a non-empty human reason.
+  approve. The user-facing action is `채용 요청`; it requires all Job
+  Description and Evaluation Criteria confirmation items to be acknowledged
+  and does not collect a free-text reason.
 - Approval is a direct `DRAFT → APPROVED` transition. `PENDING_APPROVAL`
   remains reserved until a distinct submission action and owner are defined.
 - Approval is blocked while any criterion is `AMBIGUOUS`. `HUMAN_ONLY` is a
@@ -826,12 +830,12 @@ the Hiring Manager's role-specific review.
 `Scorecard` is a common ATS term, but it suggests a numerical score, ranking,
 or automated pass/fail outcome. HireLens instead keeps a versioned set of
 criteria, evidence definitions, resume-assessability rules, and human approval
-history. Its user-facing term is `지원서 검토 기준`.
+history. Its user-facing term is `지원서 평가 기준`.
 
 ### Decision
 
 The internal product concept is `Review Framework` and its user-facing label is
-`지원서 검토 기준`. An AI may explicitly propose a draft Review Framework; a
+`지원서 평가 기준`. An AI may explicitly propose a draft Review Framework; a
 human must resolve ambiguity and approve a version before it affects resume
 analysis.
 
@@ -842,7 +846,7 @@ P0 workflow is stable.
 
 ### Consequences
 
-- New product documentation and UI use `Review Framework` or `지원서 검토 기준`.
+- New product documentation and UI use `Review Framework` or `지원서 평가 기준`.
 - No AI output is represented as a score, rank, recommendation, or decision.
 - A future terminology migration must preserve version IDs, RLS, immutable
   history, AI prompt/schema version references, and existing integrations.
@@ -900,6 +904,19 @@ AI to propose content. AI output fills that same editor but is never persisted
 automatically; the person must explicitly save the edited form before the
 existing ambiguity-review, approval, immutable-version, and audit path starts.
 Recruiters are read-only for Review Framework creation and approval.
+
+Editing an already saved draft does not ask for or store a free-text change
+reason. The append-only audit event records the actor, time, version, content
+revision, and before/after criterion counts. The final draft activation action
+is labeled `채용 요청`; it also does not collect a free-text reason and records
+the actor, time, version, and state transition.
+
+AI-generated confirmation items are split into Job Description and Evaluation
+Criteria scopes. The assigned Hiring Manager or Admin confirms each item
+individually. Confirmed items leave the outstanding list but remain preserved
+in the AI source metadata and append-only audit trail. `채용 요청` is blocked
+until every outstanding item in both scopes is confirmed. Editing the draft
+resets all prior confirmations so changed content must be reviewed again.
 
 ### Consequences
 
@@ -1115,3 +1132,20 @@ destructively rewritten.
 - A changed hiring need requires a new Job rather than changing the approved
   criteria for applicants already entering the current Job.
 - AI remains draft-only and the human approval gate remains unchanged.
+
+## ADR-033 — Editable Job basic information before hiring request
+
+- Status: Accepted
+- Date: 2026-08-26
+- Decision owner: Product team
+
+The assigned Hiring Manager or Admin may edit the Job title, department,
+Recruiter, job description, and internal request reason until the Review
+Framework is approved. The Hiring Manager assignment remains fixed. The UI
+uses the same explicit `수정` → `저장` interaction as the Review Framework.
+
+A job-description change removes description confirmation items derived from
+the prior text, clears prior confirmations, updates the source hash, and
+advances the draft Review Framework revision. Approved, intake-ready, and
+archived Jobs remain immutable. The update is concurrency checked and audited
+without storing raw job-description or request-reason text in audit payloads.
