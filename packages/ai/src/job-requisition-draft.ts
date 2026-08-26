@@ -22,9 +22,10 @@ export type JobRequisitionDraftPromptInput = z.infer<typeof jobRequisitionDraftP
  */
 export const jobRequisitionDraftSchema = z
   .object({
-    contract: z.literal("JOB_REQUISITION_DRAFT"),
-    draft_only: z.literal(true),
-    raw_job_description: textSchema(20_000),
+    role_summary: textSchema(4_000),
+    responsibilities: textSchema(5_000),
+    requirements: textSchema(5_000),
+    preferred_qualifications: textSchema(5_000),
   })
   .strict();
 export type JobRequisitionDraft = z.infer<typeof jobRequisitionDraftSchema>;

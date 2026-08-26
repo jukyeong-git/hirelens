@@ -37,12 +37,13 @@ describe("job requisition draft contract", () => {
     expect(jobRequisitionDraftJsonSchema).toMatchObject({
       type: "object",
       additionalProperties: false,
-      required: ["contract", "draft_only", "raw_job_description"],
+      required: ["role_summary", "responsibilities", "requirements", "preferred_qualifications"],
     });
     expect(Object.keys(jobRequisitionDraftJsonSchema.properties)).toEqual([
-      "contract",
-      "draft_only",
-      "raw_job_description",
+      "role_summary",
+      "responsibilities",
+      "requirements",
+      "preferred_qualifications",
     ]);
     expect(jobRequisitionDraftContract.responseFormat).toMatchObject({
       name: JOB_REQUISITION_DRAFT_SCHEMA_NAME,
@@ -62,17 +63,42 @@ describe("job requisition draft contract", () => {
     expect(prompt).toContain("<department>");
     expect(prompt).not.toContain("author_brief");
     expect(JOB_REQUISITION_DRAFT_SYSTEM_PROMPT).toContain("Do not repeat the supplied title");
-    expect(JOB_REQUISITION_DRAFT_SYSTEM_PROMPT).toContain('"역할 개요"');
-    expect(JOB_REQUISITION_DRAFT_SYSTEM_PROMPT).toContain('"주요 책임"');
-    expect(JOB_REQUISITION_DRAFT_SYSTEM_PROMPT).toContain('"자격 요건"');
-    expect(JOB_REQUISITION_DRAFT_SYSTEM_PROMPT).toContain('"우대 사항"');
-    expect(JOB_REQUISITION_DRAFT_SYSTEM_PROMPT).toContain("Do not add any other section");
+    expect(JOB_REQUISITION_DRAFT_SYSTEM_PROMPT).toContain("role_summary");
+    expect(JOB_REQUISITION_DRAFT_SYSTEM_PROMPT).toContain("responsibilities");
+    expect(JOB_REQUISITION_DRAFT_SYSTEM_PROMPT).toContain("requirements");
+    expect(JOB_REQUISITION_DRAFT_SYSTEM_PROMPT).toContain("preferred_qualifications");
+    expect(JOB_REQUISITION_DRAFT_SYSTEM_PROMPT).toContain("Do not add extra sections");
     expect(JOB_REQUISITION_DRAFT_SYSTEM_PROMPT).not.toContain("복지 및 지원");
+    expect(JOB_REQUISITION_DRAFT_SYSTEM_PROMPT).toContain("internal hiring reason");
     expect(JOB_REQUISITION_DRAFT_SYSTEM_PROMPT).toContain(
       JOB_REQUISITION_DRAFT_CONTRACT_VERSIONS.prompt,
     );
     expect(jobRequisitionDraftContract.versions).toEqual(JOB_REQUISITION_DRAFT_CONTRACT_VERSIONS);
     expect(jobRequisitionDraftContract.schemaName).toBe(JOB_REQUISITION_DRAFT_SCHEMA_NAME);
+  });
+
+  it.each(["role_summary", "responsibilities", "requirements", "preferred_qualifications"])(
+    "rejects an empty %s property",
+    (field) => {
+      expect(jobRequisitionDraftSchema.safeParse({ ...fixture, [field]: "   " }).success).toBe(
+        false,
+      );
+    },
+  );
+
+  it("keeps the role summary within the saveable domain limit", () => {
+    expect(
+      jobRequisitionDraftSchema.safeParse({
+        ...fixture,
+        role_summary: "x".repeat(4_000),
+      }).success,
+    ).toBe(true);
+    expect(
+      jobRequisitionDraftSchema.safeParse({
+        ...fixture,
+        role_summary: "x".repeat(4_001),
+      }).success,
+    ).toBe(false);
   });
 
   it("rejects unknown and oversized human prompt inputs", () => {

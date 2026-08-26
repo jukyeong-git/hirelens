@@ -67,6 +67,18 @@ export default async function JobsPage() {
     postings,
     notifications,
   });
+  const recruiterIntakeJobs =
+    viewer.role === "RECRUITER"
+      ? workspaceJobs.filter(
+          (job) =>
+            job.status === "READY_FOR_INTAKE" &&
+            !postings.some(
+              (posting) => posting.job_id === job.id && posting.status === "PUBLISHED",
+            ),
+        )
+      : [];
+  const pendingWorkCount =
+    recruiterIntakeJobs.length + workspace.notifications.filter((item) => !item.read_at).length;
   const workspaceTitle = `${visibleCopy(viewer.displayName)} 홈`;
   const safeProfiles = profiles.map((profile) => ({
     ...profile,
@@ -110,14 +122,25 @@ export default async function JobsPage() {
           <div>
             <h2 id="notifications-title">내 업무</h2>
           </div>
-          <span className="count-label">
-            {workspace.notifications.filter((item) => !item.read_at).length}건 처리 필요
-          </span>
+          <span className="count-label">{pendingWorkCount}건 처리 필요</span>
         </div>
-        {workspace.notifications.length === 0 ? (
+        {recruiterIntakeJobs.length === 0 && workspace.notifications.length === 0 ? (
           <p className="section-copy">현재 처리할 업무가 없습니다.</p>
         ) : (
           <div className="workspace-task-list">
+            {recruiterIntakeJobs.map((job) => (
+              <div key={`intake-${job.id}`} className="workspace-task-item">
+                <div>
+                  <strong>{job.title} 공고 준비</strong>
+                  <p>접수 준비 · 처리 필요</p>
+                </div>
+                <div className="workspace-task-actions">
+                  <Link className="button button-secondary" href={`/jobs/${job.id}?tab=posting`}>
+                    공고 준비 열기
+                  </Link>
+                </div>
+              </div>
+            ))}
             {workspace.notifications.slice(0, 5).map((notification) => (
               <div key={notification.id} className="workspace-task-item">
                 <div>
@@ -171,13 +194,6 @@ export default async function JobsPage() {
         title={`${workspace.jobsTitle} 목록`}
         emptyTitle={workspace.emptyJobsTitle}
       />
-
-      {viewer.role !== "HIRING_MANAGER" ? (
-        <section className="info-banner" aria-label="읽기 전용 안내">
-          <strong>읽기 전용</strong>
-          <span>채용 책임자 작성 · 채용 담당자 조회</span>
-        </section>
-      ) : null}
     </main>
   );
 }

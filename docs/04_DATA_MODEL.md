@@ -145,6 +145,12 @@ candidate, resume, or evidence data.
 - `updated_at`
 
 `jobs` is the implementation's current name for the Job Requisition aggregate.
+Hiring Manager UI and AI contracts author the description as four explicit
+fields: role summary, responsibilities, requirements, and preferred
+qualifications. The application serializes those fields deterministically into
+`raw_job_description` for compatibility with the approved Review Framework,
+source hashing, and existing records. Unstructured legacy descriptions remain
+readable and are presented as the role summary when edited.
 Before its Review Framework is approved, the assigned Hiring Manager or Admin
 may update basic information through `update_job_basic_info`. The RPC uses the
 row timestamp as a concurrency token, keeps the Hiring Manager assignment
@@ -174,7 +180,10 @@ may publish only after its Requisition and an immutable Review Framework version
 are approved. `CLOSED` is terminal in P0. Only Jobs explicitly classified as
 synthetic demo data can be published to the public projection. There is no anonymous table access in
 HL-027. The public fields are candidate-facing content and must not copy the
-internal `raw_job_description` implicitly. HL-028 exposes only a separately
+internal `raw_job_description` as public state implicitly. The posting editor
+may prefill an unsaved draft from the structured Hiring Manager description,
+but it never overwrites or saves Recruiter-owned candidate-facing content
+without an explicit Recruiter action. HL-028 exposes only a separately
 approved narrow projection through `/careers/[slug]`; HL-029 owns candidate
 submission and private upload.
 

@@ -3335,3 +3335,65 @@ Recruiter 홈의 채용 목록과 상단 집계를 배정된 `접수 준비(READ
 ## Output — 2026-08-26 08:10:06 +0800
 
 누적 변경 사항을 `develop`에 커밋(`965425d`, `feat: refine hiring workflow and role workspaces`)하고 원격에 푸시했다. 이어서 `develop`을 `alpha`에 병합(`bd1c98e`, `merge: develop into alpha`)하고 원격 `alpha`에 푸시했다. 전체 테스트 104개와 production build가 통과했고, diff 검사와 비밀정보 패턴 검사도 통과했다. 최종 작업 브랜치는 `develop`로 복귀했다.
+## Input — 2026-08-26 08:13:49 +0800
+
+Recruiter 홈 하단의 `읽기 전용 · 채용 책임자 작성 · 채용 담당자 조회` 안내 필드를 제거하도록 요청.
+## Output — 2026-08-26 08:14:38 +0800
+
+Recruiter 및 Admin 홈의 채용 목록 하단에 표시되던 `읽기 전용 · 채용 책임자 작성 · 채용 담당자 조회` 안내 블록을 제거했다. 실제 역할별 조회·작성 권한 로직은 변경하지 않았다. lint, typecheck, diff 검사를 통과했고 커밋과 푸시는 수행하지 않았다.
+## Input — 2026-08-26 08:25:41 +0800
+
+Recruiter에게 배정된 `접수 준비` 상태 채용을 Recruiter 홈의 `내 업무`에서 처리할 업무로 표시하도록 요청.
+## Output — 2026-08-26 08:27:00 +0800
+
+Recruiter에게 배정된 `접수 준비` 채용 중 아직 게시된 공고가 없는 건을 Recruiter 홈의 `내 업무`에 `공고 준비` 업무로 표시하도록 변경했다. 업무에서 공고 탭으로 바로 이동할 수 있고, 상단 `새 업무` 및 `처리 필요` 집계에도 포함된다. 공고가 게시되면 해당 업무는 자동으로 사라진다. 전체 테스트 105개, lint, typecheck, diff 검사를 통과했으며 커밋과 푸시는 수행하지 않았다.
+## Input — 2026-08-26 08:58:24 +0800
+
+`직무 설명 확인 사항`과 `평가 기준 확인 사항`은 Hiring Manager가 해결할 업무이므로 Recruiter 화면에서는 숨기도록 요청.
+## Output — 2026-08-26 08:59:21 +0800
+
+Recruiter 채용 상세 화면에서 `직무 설명 확인 사항`과 `평가 기준 확인 사항` 블록 전체를 숨겼다. Hiring Manager와 Admin에게는 기존 확인 상태 및 조작 기능을 유지했다. 전체 테스트 105개, lint, typecheck, diff 검사를 통과했으며 커밋과 푸시는 수행하지 않았다.
+## Input — 2026-08-26 09:01:59 +0800
+
+Recruiter가 공고 내용을 작성할 때 Hiring Manager가 이미 작성한 직무 설명을 참고해 공개 요약, 주요 업무, 필수 자격 필드를 미리 채우도록 요청.
+## Output — 2026-08-26 09:04:50 +0800
+
+Recruiter의 공고 초안 편집 화면에서 Hiring Manager가 작성한 직무 설명의 `역할 개요`, `주요 책임`, `자격 요건`을 각각 `공개 요약`, `주요 업무`, `필수 자격` 초기값으로 자동 채우도록 변경했다. 기존에 저장된 공고 문구가 있으면 해당 값을 우선해 덮어쓰지 않으며, 직무명은 기존처럼 채용 직무명을 사용한다. 근무지와 고용 형태는 직무 설명에서 확정적으로 추출할 수 없어 수기 입력 상태를 유지했다. 전체 테스트 106개, lint, typecheck, diff 검사를 통과했으며 커밋과 푸시는 수행하지 않았다.
+## Input — 2026-08-26 09:11:22 +0800
+
+Hiring Manager의 직무 설명이 단일 일반 텍스트 필드인 반면 Recruiter 공고는 구조화된 필드로 나뉘어 있어 데이터 불일치 가능성이 있으므로, 시스템 구조와 UI 개선 방향을 제안하도록 요청.
+
+## Output — 2026-08-26 09:11:22 +0800
+
+Hiring Manager 입력 단계부터 `역할 개요`, `주요 책임`, `자격 요건`, `우대 사항`을 구조화된 원본 필드로 저장하고, Recruiter 공고 초안은 그 원본에서 자동 생성하되 별도 공개용 사본으로 관리하는 방식을 권장했다. `요청 사유`는 공고와 AI 직무 설명 생성에서 분리하고, Recruiter가 수정한 공고는 Hiring Manager 원본을 변경하지 않도록 제안했다. 현재 단일 `raw_job_description` 파싱 방식은 기존 데이터 호환용으로만 유지하고 신규 입력의 정상 경로에서는 제거하는 단계적 전환안을 제시했다.
+## Input — 2026-08-26 09:12:46 +0800
+
+Hiring Manager의 채용 작성 시 AI 초안도 제안된 구조화 필드에 맞춰 적절히 분리해 적용할 수 있는지와 기존 제안에 이를 고려했는지 확인 요청.
+
+## Output — 2026-08-26 09:12:46 +0800
+
+AI 초안도 동일한 구조를 전제로 고려했으며, AI는 `역할 개요`, `주요 책임`, `자격 요건`, `우대 사항`만 Structured Output으로 반환하고 각 Hiring Manager 필드에 개별 적용하도록 제안했다. 직무명, 부서, 채용 담당자, 채용 책임자, 요청 사유, 근무지, 고용 형태는 입력값을 유지하고 AI가 덮어쓰지 않도록 구분했다. 구현 시 프롬프트·스키마 버전 상향, 런타임 검증, fixture 및 AI eval 갱신이 필요하다고 안내했다.
+
+## Input — 2026-08-26 09:16:02 +0800
+
+Hiring Manager 채용 작성 화면의 구조화 필드와 AI 초안 분리, Recruiter 공고 자동 상속을 포함한 수정 작업 진행 요청.
+
+## Input — 2026-08-26 09:20:33 +0800
+
+Repository `/Users/jukyeong.kim/.vscode/projects/hirelens`의 `develop` 브랜치에서 지정된 6개 AI 파일만 수정하여 직무 요청 AI의 strict output을 `raw_job_description` 대신 비어 있지 않은 `role_summary`, `responsibilities`, `requirements`, `preferred_qualifications` 네 속성으로 변경하고, 프롬프트·스키마 버전 및 fixture/tests를 갱신한 뒤 가능한 경우 AI 패키지 테스트를 실행하도록 요청. 다른 사용자 변경을 보존하고 commit/push는 하지 않음.
+
+## Output — 2026-08-26 09:21:50 +0800
+
+지정된 6개 AI 파일에서 직무 요청 strict output을 비어 있지 않은 `role_summary`, `responsibilities`, `requirements`, `preferred_qualifications` 네 속성만 허용하도록 변경했다. 입력은 title/department만 유지했고 추가 섹션, 복지, 위치, 고용 형태, 내부 요청 사유 등을 금지했으며 prompt를 v4, schema를 v2로 상향했다. fixture와 계약/adapter 테스트를 갱신했다. AI typecheck, 집중 테스트 20개, golden eval 및 diff check가 통과했다. 패키지 로컬 test script는 repository-root Vitest glob 때문에 파일을 찾지 못했으나 동일 테스트를 root runner로 재실행해 통과했다. 커밋과 푸시는 수행하지 않았다.
+## Input — 2026-08-26 00:00:00 +0800 (+08)
+
+Repository: /Users/jukyeong.kim/.vscode/projects/hirelens. Read AGENTS.md and inspect current uncommitted diff for structured Hiring Manager job description fields, four-field AI draft contract, compatibility serialization, and Recruiter posting prefill. Read-only test-gap review only; do not edit. Existing checks passed: 112 unit tests, typecheck, lint, AI eval, build. Identify concrete missing test cases or regressions, prioritized, or state coverage is sufficient for this slice.
+## Output — 2026-08-26 09:32:41 +0800 (+08)
+
+Read-only review found one P1 contract mismatch and three P1/P2 test gaps. P1: the AI contract permits a 5,000-character `role_summary`, while the domain and UI accept only 4,000, so schema-valid AI output can populate a draft that cannot be saved; add a boundary compatibility test (4,000 accepted, 4,001 rejected end-to-end) and align the limits. P1: add parser compatibility cases for every documented alias/Markdown/colon heading and partial legacy structure; current fallback protects only wholly unstructured text, and once any recognized heading exists, preamble or absent sections can be silently empty. P1: add Recruiter posting-prefill coverage proving empty fields derive from Hiring Manager sections, partially persisted Recruiter fields remain untouched while only blanks are filled, and no prefill is persisted before explicit save. P2: add UI/action coverage for all four AI fields, including no auto-save and preserving a field edited while the request is pending; current E2E checks only that the AI button exists. Existing unit coverage is otherwise solid for strict four-field shape, prohibited extra fields, version bumps, canonical serialize/parse round-trip, input trimming, and one canonical posting derivation. No test commands were rerun because the request was a read-only gap review and the stated 112 unit tests, typecheck, lint, AI eval, and build were accepted as prior results. No product/test files were edited; only the required append-only `.codex/records/RECORD.md` entry was added.
+## Output — 2026-08-26 09:34:30 +0800
+
+Hiring Manager 채용 작성 화면과 AI 초안을 역할 개요, 주요 책임, 자격 요건, 우대 사항의 네 필드로 구조화했습니다. AI 요청은 직무명과 부서만 사용하며 요청 사유 및 기존 담당자 정보는 유지합니다. 응답 대기 중 사람이 수정한 필드는 AI가 덮어쓰지 않습니다. 기존 raw_job_description은 평가 기준 및 기존 데이터 호환을 위한 결정적 직렬화 값으로 유지했습니다. Recruiter 공고 초안은 비어 있는 공개 필드만 Hiring Manager 직무 설명에서 미리 채우며 명시적 저장 전에는 영속화하지 않고, 근무지와 고용 형태는 Recruiter가 작성합니다. 관련 PRD, AI 계약, 데이터 모델, 결정 기록, TASKS를 동기화했습니다. 전체 112개 단위 테스트, 타입 검사, 린트, AI eval, 프로덕션 빌드와 최종 집중 테스트 40개를 통과했습니다. DB 마이그레이션, Alpha 반영, Git 커밋·푸시는 수행하지 않았습니다. 기존 RLS의 Recruiter jobs 직접 UPDATE 범위와 기본 정보 수정 시 평가 기준 원본 해시 처리 문제는 별도 보안 후속 작업이 필요합니다.
+## Input — 2026-08-26 09:38:03 +0800
+
+develop에 커밋/푸시 해주고 끝나면 alpha에 머지해줘

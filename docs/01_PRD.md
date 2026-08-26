@@ -84,10 +84,12 @@ Only authenticated human roles may create or change a decision. `HIRING_MANAGER`
 ### FR-001 — Create and manage a Job Requisition
 
 The assigned hiring manager can create a Job Requisition with title,
-department, hiring need, assigned recruiter, and raw job description. The
+department, hiring need, assigned recruiter, and a structured job description
+containing role summary, responsibilities, requirements, and preferred
+qualifications. The
 hiring need is retained as internal requisition context and is not sent to the
 model. Before saving, they may explicitly request an AI-proposed, editable
-job-description draft from the title and department. The
+job-description draft for those four fields from the title and department. The
 requisition includes the initial screening-criteria workflow.
 
 Acceptance criteria:

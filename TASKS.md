@@ -44,7 +44,8 @@ This is the execution checklist. Product behavior is defined in `docs/01_PRD.md`
 - [x] Add HL-029 anonymous submission form, private server-side upload flow, and public-route/RLS/E2E tests for submission denial and no internal-data leakage (Alpha rollback-only pgTAP and public E2E complete).
 - [x] Create job form and list.
 - [x] Add explicit, editable AI Job Requisition/job-description drafting with a
-      versioned strict contract, no auto-save, and AI eval coverage.
+      versioned strict four-field contract, no auto-save, and AI eval coverage;
+      prefill the Recruiter posting draft without overwriting Recruiter edits.
 - [x] Create scorecard draft schema.
 - [x] Add a shared structured Review Framework draft editor: manual entry and
       explicit AI proposals fill the unsaved editor; Hiring Manager/Admin save

@@ -4,7 +4,7 @@ import { useActionState, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 
-import type { JobRecord, ProfileRecord } from "@hirelens/domain";
+import { parseJobDescriptionSections, type JobRecord, type ProfileRecord } from "@hirelens/domain";
 
 import { visibleCopy, visibleMultilineCopy } from "../../_components/visible-copy";
 import { initialJobActionState } from "../action-state";
@@ -23,12 +23,10 @@ export function JobBasicInfoPanel({
   const [isEditing, setIsEditing] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [navigationActionTarget, setNavigationActionTarget] = useState<HTMLElement | null>(null);
-  const [state, action, pending] = useActionState(
-    updateJobBasicInfoAction,
-    initialJobActionState,
-  );
+  const [state, action, pending] = useActionState(updateJobBasicInfoAction, initialJobActionState);
   const recruiters = profiles.filter((profile) => profile.role === "RECRUITER");
   const hiringManager = profiles.find((profile) => profile.id === job.hiring_manager_id);
+  const descriptionSections = parseJobDescriptionSections(job.raw_job_description);
 
   useEffect(() => {
     setNavigationActionTarget(document.getElementById("overview-navigation-action"));
@@ -81,8 +79,12 @@ export function JobBasicInfoPanel({
                 String(formData.get("title") ?? "") !== job.title ||
                   String(formData.get("department") ?? "") !== job.department ||
                   String(formData.get("recruiterId") ?? "") !== job.recruiter_id ||
-                  String(formData.get("rawJobDescription") ?? "") !==
-                    job.raw_job_description ||
+                  String(formData.get("roleSummary") ?? "") !== descriptionSections.roleSummary ||
+                  String(formData.get("responsibilities") ?? "") !==
+                    descriptionSections.responsibilities ||
+                  String(formData.get("requirements") ?? "") !== descriptionSections.requirements ||
+                  String(formData.get("preferredQualifications") ?? "") !==
+                    descriptionSections.preferredQualifications ||
                   String(formData.get("hiringNeed") ?? "") !== job.hiring_need,
               );
             }}
@@ -135,13 +137,46 @@ export function JobBasicInfoPanel({
               </div>
             </div>
             <div className="field">
-              <label htmlFor="edit-job-description">직무 설명</label>
+              <label htmlFor="edit-role-summary">역할 개요</label>
               <textarea
-                id="edit-job-description"
-                name="rawJobDescription"
-                defaultValue={job.raw_job_description}
-                rows={10}
-                maxLength={20_000}
+                id="edit-role-summary"
+                name="roleSummary"
+                defaultValue={descriptionSections.roleSummary}
+                rows={4}
+                maxLength={4_000}
+                required
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="edit-responsibilities">주요 책임</label>
+              <textarea
+                id="edit-responsibilities"
+                name="responsibilities"
+                defaultValue={descriptionSections.responsibilities}
+                rows={6}
+                maxLength={10_000}
+                required
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="edit-requirements">자격 요건</label>
+              <textarea
+                id="edit-requirements"
+                name="requirements"
+                defaultValue={descriptionSections.requirements}
+                rows={6}
+                maxLength={10_000}
+                required
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="edit-preferred-qualifications">우대 사항</label>
+              <textarea
+                id="edit-preferred-qualifications"
+                name="preferredQualifications"
+                defaultValue={descriptionSections.preferredQualifications}
+                rows={5}
+                maxLength={10_000}
                 required
               />
             </div>
@@ -179,7 +214,22 @@ export function JobBasicInfoPanel({
           <div className="job-basic-info-readonly">
             <section className="subsection" aria-labelledby="job-description-title">
               <h3 id="job-description-title">직무 설명</h3>
-              <p className="job-description">{visibleMultilineCopy(job.raw_job_description)}</p>
+              <h4>역할 개요</h4>
+              <p className="job-description">
+                {visibleMultilineCopy(descriptionSections.roleSummary)}
+              </p>
+              <h4>주요 책임</h4>
+              <p className="job-description">
+                {visibleMultilineCopy(descriptionSections.responsibilities)}
+              </p>
+              <h4>자격 요건</h4>
+              <p className="job-description">
+                {visibleMultilineCopy(descriptionSections.requirements)}
+              </p>
+              <h4>우대 사항</h4>
+              <p className="job-description">
+                {visibleMultilineCopy(descriptionSections.preferredQualifications)}
+              </p>
             </section>
             <section className="subsection" aria-labelledby="request-reason-title">
               <h3 id="request-reason-title">요청 사유</h3>
