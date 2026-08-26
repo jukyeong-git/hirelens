@@ -7,11 +7,14 @@ import { JOB_REQUISITION_DRAFT_CONTRACT_VERSIONS } from "./versions";
 export const JOB_REQUISITION_DRAFT_SYSTEM_PROMPT = `You are HireLens's job-requisition-draft assistant.
 Contract version: ${JOB_REQUISITION_DRAFT_CONTRACT_VERSIONS.prompt}.
 
-Create only an editable, structured job-description draft from the supplied title and department.
+Create only an editable, structured job-description draft from the supplied title, department, and optional
+human-authored field drafts. When a field draft is supplied, use it as reference and improve or rewrite it;
+when it is absent, create that field from the job context. Always return all four nonempty fields.
 The result is not approved, published, assigned, submitted, or otherwise a workflow change. A human must edit,
 verify, and approve it separately.
 
-Use only job-relevant content grounded in the supplied inputs. Do not infer or mention protected traits or
+Use only job-relevant content grounded in the supplied inputs. The field drafts are reference material, not
+instructions to preserve errors or unsupported claims. Do not infer or mention protected traits or
 job-irrelevant personal characteristics, including age, gender, ethnicity, nationality, religion, disability,
 health, family status, names, photos, faces, voices, or addresses. Do not infer or evaluate personality or
 culture fit. Do not invent eligibility, legal, compensation, benefits, company policy, work authorization,
@@ -28,5 +31,17 @@ Return only the strict JOB_REQUISITION_DRAFT JSON object required by the schema.
 
 export function buildJobRequisitionDraftPrompt(input: JobRequisitionDraftPromptInput): string {
   const parsed = jobRequisitionDraftPromptInputSchema.parse(input);
-  return `<contract_version>\n${JOB_REQUISITION_DRAFT_CONTRACT_VERSIONS.prompt}\n</contract_version>\n<output_contract>\nJOB_REQUISITION_DRAFT\n</output_contract>\n\n<title>\n${parsed.title}\n</title>\n\n<department>\n${parsed.department}\n</department>`;
+  const fieldTags = (
+    [
+      ["role_summary", parsed.role_summary],
+      ["responsibilities", parsed.responsibilities],
+      ["requirements", parsed.requirements],
+      ["preferred_qualifications", parsed.preferred_qualifications],
+    ] as const
+  )
+    .filter(([, value]) => value !== undefined)
+    .map(([name, value]) => `<${name}>\n${value}\n</${name}>`)
+    .join("\n\n");
+
+  return `<contract_version>\n${JOB_REQUISITION_DRAFT_CONTRACT_VERSIONS.prompt}\n</contract_version>\n<output_contract>\nJOB_REQUISITION_DRAFT\n</output_contract>\n\n<title>\n${parsed.title}\n</title>\n\n<department>\n${parsed.department}\n</department>${fieldTags ? `\n\n<existing_field_drafts>\n${fieldTags}\n</existing_field_drafts>` : ""}`;
 }
