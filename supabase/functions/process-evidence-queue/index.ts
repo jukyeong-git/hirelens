@@ -1,3 +1,9 @@
+// Must be first: installing the canvas globals is an import side effect and
+// pdfjs-dist reads them while its own module initialises.
+import { installPdfRuntimeGlobals } from "./pdf-runtime-globals.ts";
+
+import { createEvidenceRunProcessor } from "../../../apps/worker/src/evidence-processor.ts";
+
 import { EVIDENCE_CONTRACT_VERSIONS } from "../../../packages/ai/src/versions.ts";
 import { createEvidenceAdapter } from "../../../packages/ai/src/evidence-adapter.ts";
 import {
@@ -7,7 +13,11 @@ import {
 } from "../../../packages/database/src/evidence.ts";
 import { createSupabaseRestClient } from "../../../packages/database/src/rest.ts";
 
-import { invocationSecretMatches } from "../../../apps/worker/src/edge-consumer.ts";
+import {
+  consumeOneEvidenceQueueMessage,
+  invocationSecretMatches,
+} from "../../../apps/worker/src/edge-consumer.ts";
+
 
 function requiredEnvironment(name: string): string {
   const value = Deno.env.get(name)?.trim();
@@ -57,6 +67,29 @@ function jsonResponse(status: number, body: Record<string, unknown>): Response {
   });
 }
 
+function safeInvocationFailureCategory(error: unknown, stage: string): string {
+  if (!(error instanceof Error)) return "UNEXPECTED";
+  if (error.message === "Edge evidence contract environment does not match compiled versions") {
+    return "AI_CONTRACT_VERSION_MISMATCH";
+  }
+  if (error.message.startsWith("Missing required Edge Function environment:")) {
+    return "EDGE_ENVIRONMENT_MISSING";
+  }
+  if (error.message.startsWith("Invalid integer Edge Function environment:")) {
+    return "EDGE_ENVIRONMENT_INVALID";
+  }
+  return `UNEXPECTED_${stage}`;
+}
+
+// The category alone cannot distinguish a missing Deno global from a failed npm
+// resolution, and Edge logs are not reachable from the CLI. Surface the message
+// for module-load failures only; later stages can carry resume content.
+function safeInvocationFailureDetail(error: unknown, stage: string): string | undefined {
+  if (!(error instanceof Error)) return undefined;
+  if (!stage.endsWith("MODULE_LOAD")) return undefined;
+  return error.message.slice(0, 300);
+}
+
 Deno.serve(async (request) => {
   if (request.method !== "POST") return jsonResponse(405, { error: "METHOD_NOT_ALLOWED" });
 
@@ -72,11 +105,15 @@ Deno.serve(async (request) => {
     return jsonResponse(401, { error: "UNAUTHORIZED" });
   }
 
+  let stage = "MODULE_LOAD";
   try {
-    const [{ consumeOneEvidenceQueueMessage }, { createEvidenceRunProcessor }] = await Promise.all([
-      import("../../../apps/worker/src/edge-consumer.ts"),
-      import("../../../apps/worker/src/evidence-processor.ts"),
-    ]);
+    stage = "PDF_MODULE_LOAD";
+    // Must run before the import: pdfjs-dist reads canvas globals while its own
+    // module is initialising.
+    installPdfRuntimeGlobals();
+    await import("../../../packages/pdf/src/index.ts");
+    stage = "PROCESSOR_MODULE_LOAD";
+    stage = "ENVIRONMENT";
     const projectUrl = requiredEnvironment("SUPABASE_URL");
     const serviceRoleKey = requiredEnvironment("SUPABASE_SERVICE_ROLE_KEY");
     const openAiApiKey = requiredEnvironment("OPENAI_API_KEY");
@@ -114,6 +151,7 @@ Deno.serve(async (request) => {
       throw new Error("Edge evidence contract environment does not match compiled versions");
     }
 
+    stage = "PROCESSOR_SETUP";
     const processRun = createEvidenceRunProcessor({
       client: serviceClient,
       adapter,
@@ -121,12 +159,22 @@ Deno.serve(async (request) => {
     });
     const visibilitySeconds = integerEnvironment("EVIDENCE_QUEUE_VISIBILITY_SECONDS", 360);
     const result = await consumeOneEvidenceQueueMessage({
-      dequeue: () => dequeueEvidenceQueueMessage(serviceClient, visibilitySeconds),
-      quarantineMalformed: (messageId) =>
-        quarantineMalformedEvidenceQueueMessage(serviceClient, messageId),
-      processRun,
-      settle: (messageId, processingRunId) =>
-        settleEvidenceQueueMessage(serviceClient, messageId, processingRunId),
+      dequeue: async () => {
+        stage = "QUEUE_DEQUEUE";
+        return dequeueEvidenceQueueMessage(serviceClient, visibilitySeconds);
+      },
+      quarantineMalformed: async (messageId) => {
+        stage = "QUEUE_QUARANTINE";
+        return quarantineMalformedEvidenceQueueMessage(serviceClient, messageId);
+      },
+      processRun: async (processingRunId) => {
+        stage = "PROCESS_RUN";
+        return processRun(processingRunId);
+      },
+      settle: async (messageId, processingRunId) => {
+        stage = "QUEUE_SETTLE";
+        return settleEvidenceQueueMessage(serviceClient, messageId, processingRunId);
+      },
     });
     return jsonResponse(200, {
       status: result.status,
@@ -134,10 +182,21 @@ Deno.serve(async (request) => {
         ? { outcome: result.outcome, settled: result.settled }
         : {}),
     });
-  } catch {
+  } catch (error) {
+    const category = safeInvocationFailureCategory(error, stage);
+    const detail = safeInvocationFailureDetail(error, stage);
     console.error(
-      JSON.stringify({ service: "evidence-edge-consumer", event: "invocation_failed" }),
+      JSON.stringify({
+        service: "evidence-edge-consumer",
+        event: "invocation_failed",
+        category,
+        ...(detail ? { detail } : {}),
+      }),
     );
-    return jsonResponse(500, { error: "PROCESSING_FAILED" });
+    return jsonResponse(500, {
+      error: "PROCESSING_FAILED",
+      category,
+      ...(detail ? { detail } : {}),
+    });
   }
 });
