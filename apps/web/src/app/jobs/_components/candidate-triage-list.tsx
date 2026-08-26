@@ -5,6 +5,7 @@ import Link from "next/link";
 interface CandidateTriageItem {
   id: string;
   label: string;
+  sourceLabel: string;
   submittedAt: string;
   atsStatus: string;
   evidenceCount: number;
@@ -23,19 +24,21 @@ export function CandidateTriageList({ items }: { items: CandidateTriageItem[] })
               key={item.id}
               href={`/applications/${item.id}`}
             >
-              <div className="section-heading-inline">
+              <div className="application-link-heading">
                 <strong>{item.label}</strong>
+                <span className="application-link-detail">상세 보기 →</span>
               </div>
-              <span className="application-link-detail">상세 보기 →</span>
+              <small>
+                {item.sourceLabel} ·{" "}
+                {new Intl.DateTimeFormat("ko-KR", {
+                  dateStyle: "medium",
+                }).format(new Date(item.submittedAt))}{" "}
+                접수
+              </small>
               <span className="application-link-detail">
                 {item.atsStatus}
                 {item.evidenceCount > 0 ? ` · 검증 근거 ${item.evidenceCount}건` : ""}
               </span>
-              <small>
-                {new Intl.DateTimeFormat("ko-KR", {
-                  dateStyle: "medium",
-                }).format(new Date(item.submittedAt))}
-              </small>
             </Link>
           ))}
         </div>

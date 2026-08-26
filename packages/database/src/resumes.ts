@@ -40,11 +40,12 @@ export async function createPublicResumeSubmission(
   client: SupabaseRestClient,
   input: PublicResumeSubmissionRequest,
 ): Promise<string> {
-  return client.request<string>("/rest/v1/rpc/create_public_resume_submission", {
+  return client.request<string>("/rest/v1/rpc/create_named_public_resume_submission", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       target_public_slug: input.publicSlug,
+      candidate_name: input.candidateName,
       candidate_id: input.candidateId,
       application_id: input.applicationId,
       resume_file_id: input.resumeFileId,

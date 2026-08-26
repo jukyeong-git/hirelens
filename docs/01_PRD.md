@@ -180,6 +180,8 @@ committed fixtures remain synthetic.
 
 Acceptance criteria:
 
+- The candidate provides a name explicitly; the system never infers it from the resume or sends it to the AI evidence pipeline.
+- Authorized internal reviewers see the provided name after ATS validation completes; existing unnamed applications remain explicitly labeled as unnamed.
 - The form does not require a data classification or synthetic-data
   attestation. Historical synthetic attestations are preserved and are not
   reused for new submissions.

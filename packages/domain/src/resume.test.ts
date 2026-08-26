@@ -42,12 +42,16 @@ describe("resume intake contracts", () => {
 
   it("rejects oversized files, non-PDF MIME types, and unknown fields", () => {
     expect(
-      createResumeUploadReservationInputSchema.safeParse({ ...input, byteSize: MAXIMUM_RESUME_BYTES + 1 })
-        .success,
+      createResumeUploadReservationInputSchema.safeParse({
+        ...input,
+        byteSize: MAXIMUM_RESUME_BYTES + 1,
+      }).success,
     ).toBe(false);
     expect(
-      createResumeUploadReservationInputSchema.safeParse({ ...input, byteSize: MAXIMUM_RESUME_BYTES })
-        .success,
+      createResumeUploadReservationInputSchema.safeParse({
+        ...input,
+        byteSize: MAXIMUM_RESUME_BYTES,
+      }).success,
     ).toBe(true);
     expect(
       createResumeUploadReservationInputSchema.safeParse({ ...input, mimeType: "text/plain" })
@@ -63,6 +67,7 @@ describe("resume intake contracts", () => {
 
   it("accepts a public PDF submission without content-policy fields or a client path", () => {
     const publicInput = {
+      candidateName: "김지원",
       candidateId: input.candidateId,
       applicationId: input.applicationId,
       resumeFileId: input.resumeFileId,
@@ -81,6 +86,13 @@ describe("resume intake contracts", () => {
       publicResumeSubmissionInputSchema.safeParse({
         ...publicInput,
         publicSlug: "not-public",
+      }).success,
+    ).toBe(false);
+    expect(
+      publicResumeSubmissionInputSchema.safeParse({
+        ...publicInput,
+        candidateName: "   ",
+        publicSlug: "deadbeefdeadbeefdeadbeefdeadbeef",
       }).success,
     ).toBe(false);
     expect(

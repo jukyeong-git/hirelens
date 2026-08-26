@@ -35,6 +35,7 @@ export const createResumeUploadReservationInputSchema = z
 export const publicResumeSubmissionInputSchema = z
   .object({
     publicSlug: z.string().regex(/^[0-9a-f]{32}$/iu, "Invalid public posting slug"),
+    candidateName: z.string().trim().min(1).max(100),
     candidateId: uuidSchema,
     applicationId: uuidSchema,
     resumeFileId: uuidSchema,

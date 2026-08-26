@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  candidateSourceLabel,
+  candidateTriageLabel,
   createHumanReviewInputSchema,
   createReviewNoteInputSchema,
   recordInterviewProgressionInputSchema,
@@ -13,6 +15,21 @@ const ids = {
 };
 
 describe("review contracts", () => {
+  it("reveals candidate-provided names only after public ATS validation completes", () => {
+    const input = {
+      source: "PUBLIC_POSTING",
+      fullName: "김지원",
+      demoLabel: "Public application",
+    };
+
+    expect(candidateTriageLabel({ ...input, processingStatus: "ANALYZING" })).toBe("공개 지원");
+    expect(candidateTriageLabel({ ...input, processingStatus: "COMPLETED" })).toBe("김지원");
+    expect(candidateTriageLabel({ ...input, processingStatus: "COMPLETED", fullName: null })).toBe(
+      "이름 미입력",
+    );
+    expect(candidateSourceLabel(input.source)).toBe("공개 지원");
+  });
+
   it("requires a reason for every human decision", () => {
     expect(
       createHumanReviewInputSchema.safeParse({
