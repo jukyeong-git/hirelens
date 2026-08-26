@@ -61,6 +61,7 @@ describe("job requisition draft contract", () => {
     expect(prompt).toContain(JOB_REQUISITION_DRAFT_CONTRACT_VERSIONS.prompt);
     expect(prompt).toContain("JOB_REQUISITION_DRAFT");
     expect(prompt).toContain("<department>");
+    expect(prompt).not.toContain("<existing_field_drafts>");
     expect(prompt).not.toContain("author_brief");
     expect(JOB_REQUISITION_DRAFT_SYSTEM_PROMPT).toContain("Do not repeat the supplied title");
     expect(JOB_REQUISITION_DRAFT_SYSTEM_PROMPT).toContain("role_summary");
@@ -75,6 +76,22 @@ describe("job requisition draft contract", () => {
     );
     expect(jobRequisitionDraftContract.versions).toEqual(JOB_REQUISITION_DRAFT_CONTRACT_VERSIONS);
     expect(jobRequisitionDraftContract.schemaName).toBe(JOB_REQUISITION_DRAFT_SCHEMA_NAME);
+  });
+
+  it("includes existing description fields as reference and omits empty fields", () => {
+    const prompt = buildJobRequisitionDraftPrompt({
+      title: "Backend Engineer",
+      department: "Platform Engineering",
+      role_summary: "Build reliable APIs.",
+      responsibilities: "Own service operations.",
+    });
+
+    expect(prompt).toContain("<existing_field_drafts>");
+    expect(prompt).toContain("<role_summary>\nBuild reliable APIs.");
+    expect(prompt).toContain("<responsibilities>\nOwn service operations.");
+    expect(prompt).not.toContain("<requirements>");
+    expect(prompt).not.toContain("<preferred_qualifications>");
+    expect(JOB_REQUISITION_DRAFT_SYSTEM_PROMPT).toContain("improve or rewrite");
   });
 
   it.each(["role_summary", "responsibilities", "requirements", "preferred_qualifications"])(

@@ -90,8 +90,10 @@ Rules:
 - all object schemas use strict validation and reject unknown keys;
 - all four fields are editable drafting suggestions and are never saved by the
   AI request itself;
-- the model receives only title and department; internal hiring need remains on
-  the requisition record and is excluded from the request;
+- the model receives title, department, and any existing human-authored values
+  for the four job-description fields as optional reference context; absent
+  fields are generated, while internal hiring need remains on the requisition
+  record and is excluded from the request;
 - prompts and schemas are versioned independently from the Review Framework
   contract; and
 - refusal, timeout, incomplete, or invalid output leaves the requisition form

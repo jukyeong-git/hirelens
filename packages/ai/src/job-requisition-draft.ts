@@ -6,12 +6,17 @@ import {
 } from "./versions";
 
 const textSchema = (max: number) => z.string().trim().min(1).max(max);
+const optionalTextSchema = (max: number) => textSchema(max).optional();
 
 /** Human-authored inputs for an explicit, editable requisition draft request. */
 export const jobRequisitionDraftPromptInputSchema = z
   .object({
     title: textSchema(160),
     department: textSchema(160),
+    role_summary: optionalTextSchema(4_000),
+    responsibilities: optionalTextSchema(10_000),
+    requirements: optionalTextSchema(10_000),
+    preferred_qualifications: optionalTextSchema(10_000),
   })
   .strict();
 export type JobRequisitionDraftPromptInput = z.infer<typeof jobRequisitionDraftPromptInputSchema>;
