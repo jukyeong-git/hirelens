@@ -189,7 +189,7 @@ export async function getJobPosting(
 ): Promise<JobPostingRecord | null> {
   const params = new URLSearchParams({
     select:
-      "id,job_id,status,public_slug,public_title,public_summary,public_responsibilities,public_requirements,public_location,public_employment_type,created_by,published_by,published_at,closed_by,closed_at,created_at,updated_at",
+      "id,job_id,status,public_slug,public_title,public_summary,public_responsibilities,public_requirements,public_preferred_qualifications,public_location,public_employment_type,created_by,published_by,published_at,closed_by,closed_at,created_at,updated_at",
     job_id: `eq.${jobId}`,
     limit: "1",
   });
@@ -207,7 +207,7 @@ export async function listJobPostingsForJobs(
 
   const params = new URLSearchParams({
     select:
-      "id,job_id,status,public_slug,public_title,public_summary,public_responsibilities,public_requirements,public_location,public_employment_type,created_by,published_by,published_at,closed_by,closed_at,created_at,updated_at",
+      "id,job_id,status,public_slug,public_title,public_summary,public_responsibilities,public_requirements,public_preferred_qualifications,public_location,public_employment_type,created_by,published_by,published_at,closed_by,closed_at,created_at,updated_at",
     job_id: `in.(${jobIds.join(",")})`,
     order: "updated_at.desc",
   });
@@ -227,6 +227,7 @@ export async function updateJobPostingContent(
       target_public_summary: input.publicSummary,
       target_public_responsibilities: input.publicResponsibilities,
       target_public_requirements: input.publicRequirements,
+      target_public_preferred_qualifications: input.publicPreferredQualifications,
       target_public_location: input.publicLocation,
       target_public_employment_type: input.publicEmploymentType,
     }),

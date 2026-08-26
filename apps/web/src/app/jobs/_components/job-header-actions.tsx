@@ -36,6 +36,9 @@ export function JobHeaderActions({
         </p>
       ) : null}
       <div className="requisition-header-action-buttons">
+        {workspace?.activeApprovedVersion ? (
+          <span className="status-chip status-published">승인됨</span>
+        ) : null}
         {canDiscard ? (
           <form
             action={deleteAction}

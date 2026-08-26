@@ -120,6 +120,7 @@ export const jobPostingContentInputSchema = z.object({
   publicSummary: z.string().trim().min(1).max(4_000),
   publicResponsibilities: z.string().trim().min(1).max(10_000),
   publicRequirements: z.string().trim().min(1).max(10_000),
+  publicPreferredQualifications: z.string().trim().min(1).max(10_000),
   publicLocation: z.string().trim().min(1).max(200),
   publicEmploymentType: z.string().trim().min(1).max(120),
 });
@@ -156,6 +157,7 @@ export interface PublicPostingContentDraft {
   summary: string;
   responsibilities: string;
   requirements: string;
+  preferredQualifications: string;
 }
 
 export function parseJobDescriptionSections(rawJobDescription: string): JobDescriptionSections {
@@ -224,6 +226,7 @@ export function derivePublicPostingContentDraft(
     summary: sections.summary,
     responsibilities: sections.responsibilities,
     requirements: sections.requirements,
+    preferredQualifications: sections.preferredQualifications,
   };
 }
 
@@ -252,6 +255,7 @@ export interface JobPostingRecord {
   public_summary: string | null;
   public_responsibilities: string | null;
   public_requirements: string | null;
+  public_preferred_qualifications: string | null;
   public_location: string | null;
   public_employment_type: string | null;
   created_by: string;
@@ -269,6 +273,7 @@ export interface PublicJobPostingRecord {
   summary: string;
   responsibilities: string;
   requirements: string;
+  preferred_qualifications: string;
   location: string;
   employment_type: string;
 }

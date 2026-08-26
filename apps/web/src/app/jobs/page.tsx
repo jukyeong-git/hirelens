@@ -89,6 +89,7 @@ export default async function JobsPage() {
     ...job,
     recruiter_name: profileById.get(job.recruiter_id) ?? null,
     hiring_manager_name: profileById.get(job.hiring_manager_id) ?? null,
+    posting_status: postings.find((posting) => posting.job_id === job.id)?.status ?? null,
   }));
   const hasPartialParticipantData = jobsWithNames.some(
     (job) => job.recruiter_name === null || job.hiring_manager_name === null,
@@ -132,7 +133,7 @@ export default async function JobsPage() {
               <div key={`intake-${job.id}`} className="workspace-task-item">
                 <div>
                   <strong>{job.title} 공고 준비</strong>
-                  <p>접수 준비 · 처리 필요</p>
+                  <p>공고 게시 준비 · 처리 필요</p>
                 </div>
                 <div className="workspace-task-actions">
                   <Link className="button button-secondary" href={`/jobs/${job.id}?tab=posting`}>
