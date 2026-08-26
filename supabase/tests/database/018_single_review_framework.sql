@@ -3,8 +3,8 @@ begin;
 select plan(2);
 
 select ok(
-  to_regprocedure('public.create_scorecard_revision(uuid,integer,public.scorecard_status,text)') is null,
-  'replacement Review Framework RPC is not available'
+  to_regprocedure('public.create_scorecard_revision(uuid,integer,public.scorecard_status,text)') is not null,
+  'replacement Review Framework RPC is available through the calibration decision'
 );
 
 select ok(

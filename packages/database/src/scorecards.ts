@@ -16,7 +16,7 @@ import type { SupabaseRestClient } from "./rest";
 const versionSelect =
   "id,job_id,version_number,status,source_job_description_hash,prompt_version,schema_version,model_id,ambiguous_phrases,confirmed_job_description_issue_keys,confirmed_evaluation_criterion_ids,created_by,approved_by,approved_at,content_revision,created_at";
 const criterionSelect =
-  "id,scorecard_version_id,client_id,name,type,definition,accepted_evidence,alternative_evidence,partial_evidence_guidance,resume_assessable,evidence_fields,source_phrase,ambiguity_note,ambiguity_status,suggested_interview_question,display_order,created_at";
+  "id,scorecard_version_id,client_id,name,type,definition,accepted_evidence,alternative_evidence,excluded_evidence,partial_evidence_guidance,resume_assessable,evidence_fields,source_phrase,ambiguity_note,ambiguity_status,suggested_interview_question,lineage_id,lineage_origin,parent_lineage_ids,display_order,created_at";
 const versionHistorySelect = `${versionSelect},approver:profiles!scorecard_versions_approved_by_fkey(display_name)`;
 
 export interface CreateScorecardDraftRequest {

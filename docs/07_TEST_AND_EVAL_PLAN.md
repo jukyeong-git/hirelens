@@ -136,6 +136,16 @@ The deterministic source PDFs and expectation manifest live under
 `tests/fixtures/synthetic-resumes/`. The lightweight offline contract set is
 `tests/ai-evals/evidence-golden.json` and runs with `pnpm eval:ai`.
 
+The same command validates the Review Framework revision fixture. Revision
+coverage must prove:
+
+- the proposal lineage matches an active `REVIEW_REQUIRED` finding;
+- the before snapshot exactly matches the approved criterion;
+- `INTERVIEW_ONLY` proposals are not resume-assessable;
+- protected-trait and job-irrelevant criterion language is rejected;
+- the proposal remains transient until an explicit human draft save; and
+- reanalysis leaves interview and human-decision row counts unchanged.
+
 ## 7. Proposed demo quality gates
 
 These are team-proposed engineering gates, not customer-agreed business targets.
@@ -148,6 +158,8 @@ These are team-proposed engineering gates, not customer-agreed business targets.
 | Human decision written by AI/worker                          |            0 occurrences |
 | Interview-progression outcome written by AI/worker/Recruiter |            0 occurrences |
 | Protected-trait or personality inference in golden set       |            0 occurrences |
+| Finding-free or lineage-mismatched revision proposal         |            0 occurrences |
+| Human history changed by replacement-version reanalysis      |            0 occurrences |
 | `NOT_FOUND` rendered as capability absence                   |            0 occurrences |
 | Golden set page accuracy                                     |             at least 95% |
 | RLS denial tests                                             |                100% pass |

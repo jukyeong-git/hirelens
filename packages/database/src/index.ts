@@ -55,6 +55,20 @@ export {
   listApplicationAuditEvents,
 } from "./reviews";
 export {
+  getCriterionCalibrationSummary,
+  listInterviewObservations,
+  listInterviewObservationSessions,
+  recordPostInterviewReview,
+} from "./interviews";
+export {
+  createFrameworkRevisionDraft,
+  createScorecardRevision,
+  enqueueFrameworkReanalysis,
+  getCriterionRevisionContext,
+  getFrameworkRevisionComparison,
+  recordCriterionCalibrationNoAction,
+} from "./frameworks";
+export {
   createReviewNote,
   listReviewNotes,
   listReviewNoteVersions,

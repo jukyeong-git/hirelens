@@ -44,11 +44,10 @@ export function ApplicationReviewPanel({
   interviewReviews,
   profileNames,
 }: ApplicationReviewPanelProps) {
-  const canDecide = viewerRole === "ADMIN" || viewerRole === "HIRING_MANAGER";
+  const canUseOperationalDecisionOverride = viewerRole === "ADMIN";
   const canWriteNote = viewerRole === "ADMIN" || viewerRole === "RECRUITER";
   const currentReview = reviews[0] ?? null;
   const activeAssignment = assignments.find((assignment) => assignment.status === "ACTIVE") ?? null;
-  const currentInterviewReview = interviewReviews[0] ?? null;
 
   return (
     <div className="review-workflow-stack">
@@ -93,13 +92,12 @@ export function ApplicationReviewPanel({
           ) : (
             <p className="empty-copy">아직 저장된 최종 결정이 없습니다.</p>
           )}
-          {canDecide &&
-          (viewerRole === "ADMIN" || currentInterviewReview?.outcome === "INTERVIEW") ? (
+          {canUseOperationalDecisionOverride ? (
             <DecisionForm applicationId={applicationId} approvedVersion={approvedVersion} />
           ) : (
             <p className="info-banner">
-              최종 결정은 인터뷰 판단과 분리됩니다. 채용 책임자는 인터뷰 진행 기록 후, 관리자는 운영
-              권한으로 저장할 수 있습니다.
+              채용 책임자는 인터뷰 진행 후 기준별 관찰과 최종 결정을 함께 저장합니다. 관리자는 운영
+              예외로 최종 결정만 저장할 수 있습니다.
             </p>
           )}
         </section>

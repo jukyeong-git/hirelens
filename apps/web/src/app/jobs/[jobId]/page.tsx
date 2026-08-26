@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import {
+  getCriterionCalibrationSummary,
+  getFrameworkRevisionComparison,
   getJobForScorecard,
   getJobPosting,
   getScorecardWorkspaceForJob,
@@ -24,6 +26,8 @@ import { getAuthenticatedViewer } from "../../../lib/supabase-server";
 import { visibleCopy } from "../../_components/visible-copy";
 import { JobBasicInfoPanel } from "../_components/job-basic-info-panel";
 import { JobHeaderActions } from "../_components/job-header-actions";
+import { CriterionDiagnosisPanel } from "../_components/criterion-diagnosis-panel";
+import { FrameworkComparisonPanel } from "../_components/framework-comparison-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -88,15 +92,26 @@ export default async function JobDetailPage({
   )
     ? ((Array.isArray(requestedTab) ? requestedTab[0] : requestedTab) as JobDetailTab)
     : "overview";
-  const [scorecardWorkspace, applications, jobPosting, , profiles] = await Promise.all([
+  const isAssignedHiringManager =
+    viewer.role === "HIRING_MANAGER" && viewer.id === job.hiring_manager_id;
+  const canViewCalibration = viewer.role === "ADMIN" || isAssignedHiringManager;
+  const [
+    scorecardWorkspace,
+    applications,
+    jobPosting,
+    ,
+    profiles,
+    calibrationSummaries,
+    frameworkComparison,
+  ] = await Promise.all([
     getScorecardWorkspaceForJob(client, job.id),
     listApplicationsForJob(client, job.id),
     getJobPosting(client, job.id),
     listJobPostingStatusHistory(client, job.id),
     listProfiles(client),
+    canViewCalibration ? getCriterionCalibrationSummary(client, job.id) : Promise.resolve([]),
+    canViewCalibration ? getFrameworkRevisionComparison(client, job.id) : Promise.resolve(null),
   ]);
-  const isAssignedHiringManager =
-    viewer.role === "HIRING_MANAGER" && viewer.id === job.hiring_manager_id;
   const assignedRecruiter = profiles.find((profile) => profile.id === job.recruiter_id);
   const assignedHiringManager = profiles.find((profile) => profile.id === job.hiring_manager_id);
   const triageItems = await Promise.all(
@@ -210,6 +225,22 @@ export default async function JobDetailPage({
 
       {activeTab === "review-framework" && scorecardWorkspace ? (
         <section className="panel-stack" aria-label="평가 기준">
+          {canViewCalibration ? (
+            <CriterionDiagnosisPanel
+              jobId={job.id}
+              summaries={calibrationSummaries}
+              activeScorecardVersionId={
+                scorecardWorkspace.activeApprovedVersion?.version.id ?? null
+              }
+              activeScorecardVersionNumber={
+                scorecardWorkspace.activeApprovedVersion?.version.version_number ?? null
+              }
+              hasWorkingDraft={scorecardWorkspace.latestWorkingVersion !== null}
+            />
+          ) : null}
+          {canViewCalibration && frameworkComparison ? (
+            <FrameworkComparisonPanel jobId={job.id} comparison={frameworkComparison} />
+          ) : null}
           <EvaluationCriteriaIssuesPanel
             jobId={job.id}
             viewerRole={viewer.role}

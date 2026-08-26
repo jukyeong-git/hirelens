@@ -269,6 +269,7 @@ transition in the append-only audit trail. The workflow cannot update an
 - `definition`
 - `accepted_evidence`
 - `alternative_evidence`
+- `excluded_evidence`
 - `partial_evidence_guidance`
 - `evidence_fields`
 - `resume_assessable`
@@ -276,21 +277,32 @@ transition in the append-only audit trail. The workflow cannot update an
 - `ambiguity_note`
 - `ambiguity_status`
 - `suggested_interview_question`
+- `lineage_id`
+- `lineage_origin`
+- `parent_lineage_ids`
 - `display_order`
 - `created_at`
 
-`accepted_evidence`, `alternative_evidence`, and `evidence_fields` are
-structured JSON arrays validated by the shared Zod contract and the database
-boundary. `partial_evidence_guidance` records the human-readable boundary for
+`accepted_evidence`, `alternative_evidence`, `excluded_evidence`, and
+`evidence_fields` are structured JSON arrays validated by the shared Zod
+contract and the database boundary. `excluded_evidence` records examples that
+must not be treated by themselves as direct support.
+`partial_evidence_guidance` records the human-readable boundary for
 using `PARTIAL` rather than silently treating weak or incomplete evidence as
 fully supported. `INTERVIEW_ONLY` and `HUMAN_ONLY` criteria cannot be marked as
 resume-assessable. A criterion marked resume-assessable must include accepted
 evidence.
 
 The evidence-analysis context includes the criterion name, definition,
-accepted and alternative evidence, partial-evidence guidance, and extraction
-fields from the approved immutable Review Framework version. The job
+accepted, alternative, and excluded evidence, partial-evidence guidance, and
+extraction fields from the approved immutable Review Framework version. The job
 description remains secondary context and does not create additional criteria.
+
+`lineage_id` identifies the same business criterion across immutable Review
+Framework versions. Initial criteria use `ORIGINAL`; a copied revision uses
+`REVISED_FROM` while preserving the lineage ID. `parent_lineage_ids` reserves
+explicit ancestry for future split and merge operations. Diagnostic aggregation
+uses lineage rather than treating copied criterion row IDs as unrelated.
 
 For the initial Review Framework version, only the assigned Hiring Manager or
 an Admin may use the atomic `create_scorecard_draft` RPC. They may save either
@@ -316,22 +328,25 @@ For HL-023, the assigned Hiring Manager or Admin approves a `DRAFT` through
 the atomic `approve_scorecard` RPC. The `채용 요청` action requires every
 generated confirmation item to be acknowledged and does not collect a reason.
 `AMBIGUOUS` and `HUMAN_ONLY` source metadata remains preserved after human
-confirmation. Approval sets the Job to
-`READY_FOR_INTAKE`. The approved framework is final for that Job and there is
-at most one `APPROVED` version per Job.
+confirmation. Approval sets the Job to `READY_FOR_INTAKE`. An approved
+framework and its criteria are immutable, and there is at most one active
+`APPROVED` version per Job. Confirmed interview observations may justify
+creating a separate `DRAFT` revision; the active approved version remains
+unchanged until a human approves that revision.
 
 `content_revision` is a positive concurrency token incremented whenever draft
 criteria change. Approval compares the value shown to the reviewer with the
 locked database value so a criterion changed after page load cannot be
-silently approved. The original `create_scorecard_draft` entry point is
-initial-only; after any version exists no replacement-draft workflow is
-available in the MVP.
+silently approved. The original `create_scorecard_draft` entry point remains
+initial-only. A later draft must be created through
+`create_scorecard_revision`, with an expected source version/status and a
+required reason. It copies criterion lineage and never edits the source.
 
 Approved and superseded versions and their criteria are immutable at the
-database boundary. New processing may use only the Job's single `APPROVED`
-framework. Processing tables retain its internal identifier for traceability,
-but the product does not expose Review Framework history or replacement
-controls.
+database boundary. New processing may use only the Job's single active
+`APPROVED` framework. Processing tables retain the exact version identifier for
+traceability. A replacement draft and its approval remain explicit human
+actions; no diagnostic finding or AI output can activate a version.
 
 ### `candidates`
 
@@ -426,13 +441,18 @@ application metadata and never copied into audit payloads.
 
 - `id`
 - `resume_file_id`
+- `processing_run_id`
 - `page_number`
 - `raw_text`
 - `normalized_text`
 - `normalized_text_hash`
 - `created_at`
 
-`raw_text` is sensitive even in a demo. Access is role-restricted and it must not be copied into logs or audit payloads.
+`raw_text` is sensitive even in a demo. Access is role-restricted and it must
+not be copied into logs or audit payloads. Page numbers are unique within a
+processing run. A human-requested reanalysis may copy the already extracted
+pages into a new version-bound run, avoiding another PDF extraction while
+retaining page and hash traceability.
 
 ### `processing_runs`
 
@@ -454,6 +474,11 @@ application metadata and never copied into audit payloads.
 - `created_at`
 
 Invariant: idempotency key is unique for the active intended run.
+
+A replacement-framework reanalysis creates a distinct run because
+`scorecard_version_id` participates in idempotency. It can coexist with the
+prior version's evidence. The enqueue RPC is human-authorized and has no path
+to update interview observations, interview outcomes, or human decisions.
 
 ### `evidence_items`
 
@@ -521,6 +546,7 @@ outcome.
 - `reason_detail`
 - `confidence`
 - `note`
+- `observation_session_id`
 - `created_at`
 - `supersedes_review_id`
 
@@ -532,6 +558,52 @@ are stored against the active approved Scorecard version for the application's
 Job. The safe audit record captures actor, timestamp, prior decision, new
 decision, confidence, and reason code; it does not copy free-form decision
 detail or Recruiter-note bodies.
+
+### `interview_observation_sessions`
+
+- `id`
+- `application_id`
+- `scorecard_version_id`
+- `reviewer_id`
+- `off_criteria_reason`
+- `supersedes_session_id`
+- `created_at`
+
+The session groups one complete set of criterion-level post-interview
+observations. It contains no competing hiring-decision enum. The final human
+decision remains a `human_reviews` row and references the session recorded in
+the same transaction.
+
+### `interview_observations`
+
+- `id`
+- `interview_observation_session_id`
+- `application_id`
+- `criterion_id`
+- `criterion_lineage_id`
+- `verdict`
+- `weakness_type`
+- `note`
+- `source`
+- `ai_draft_accepted`
+- `confirmed_at`
+- `observer_id`
+- `created_at`
+
+Every approved criterion appears exactly once per session. `WEAKER` requires
+`FALSE_CLAIM`, `LEVEL_INSUFFICIENT`, or `AI_MISREAD`; all other verdicts require
+no weakness type. The server derives lineage from the immutable criterion.
+Human form observations are confirmed immediately. Future AI-assisted
+transcript observations must remain unconfirmed until a human accepts them.
+Both tables are append-only and browser roles receive read-only access only
+through `can_access_application`.
+
+`criterion_calibration_summary` groups the latest confirmed session for each
+application by lineage and compares it with validated `SUPPORTED` evidence
+from the matching scorecard version. Three or more `LEVEL_INSUFFICIENT`
+mismatches at a rate of at least 40 percent produce `REVIEW_REQUIRED`.
+`FALSE_CLAIM`, `AI_MISREAD`, and unconfirmed observations are excluded from
+that trigger while their counts remain visible.
 
 ### `review_notes` and `review_note_versions`
 

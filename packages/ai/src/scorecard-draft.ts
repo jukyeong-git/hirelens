@@ -51,6 +51,7 @@ export const scorecardDraftCriterionSchema = z
     definition: textSchema(1_000),
     accepted_evidence: z.array(textSchema(500)).max(12),
     alternative_evidence: z.array(textSchema(500)).max(12),
+    excluded_evidence: z.array(textSchema(500)).max(12),
     partial_evidence_guidance: nullableTextSchema(1_000),
     evidence_fields: z.array(evidenceFieldSchema).max(12),
     resume_assessable: z.boolean(),

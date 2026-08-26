@@ -11,7 +11,7 @@ import type {
 import type { SupabaseRestClient } from "./rest";
 
 const reviewSelect =
-  "id,application_id,scorecard_version_id,reviewer_id,decision,reason_code,reason_detail,confidence,note,supersedes_review_id,created_at";
+  "id,application_id,scorecard_version_id,reviewer_id,decision,reason_code,reason_detail,confidence,note,observation_session_id,supersedes_review_id,created_at";
 
 export async function listHumanReviews(
   client: SupabaseRestClient,

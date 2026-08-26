@@ -1107,7 +1107,7 @@ it.
 
 ## ADR-032 — One final Review Framework per Job
 
-- Status: Accepted
+- Status: Superseded by ADR-035
 - Date: 2026-08-25
 - Decision owner: Product team
 - Supersedes: the replacement-version workflow in ADR-018
@@ -1132,6 +1132,11 @@ destructively rewritten.
 - A changed hiring need requires a new Job rather than changing the approved
   criteria for applicants already entering the current Job.
 - AI remains draft-only and the human approval gate remains unchanged.
+
+ADR-035 restores a lineage-preserving replacement-draft path while retaining
+approved-version immutability. ADR-036 adds transient AI proposals and explicit
+replacement-version reanalysis; the single-version restrictions above no
+longer describe the current product.
 
 ## ADR-033 — Editable Job basic information before hiring request
 
@@ -1168,3 +1173,88 @@ and existing data contracts without a migration. The Recruiter posting editor
 prefills empty, unsaved candidate-facing fields from this representation. It
 does not auto-save or overwrite a Recruiter's posting copy; location and
 employment type remain Recruiter-authored.
+
+## ADR-035 — Interview evidence may create a new immutable Review Framework version
+
+- Status: Accepted
+- Date: 2026-08-26
+- Decision owner: Product team
+- Supersedes: ADR-032's prohibition on replacement versions
+
+### Context
+
+An immutable approved Review Framework protects applications already analyzed
+under it, but a permanent one-version limit prevents confirmed interview
+evidence from improving later screening. Criterion row IDs also change when a
+draft is copied, so cross-version diagnosis requires explicit business lineage.
+
+The existing final human decision contract already uses `PROCEED`, `HOLD`, and
+`DO_NOT_PROCEED`. Post-interview calibration must not introduce a second hiring
+decision enum or give AI and workers a decision-write path.
+
+### Decision
+
+Approved and superseded Review Framework versions remain immutable. The
+assigned Hiring Manager or Admin may explicitly create one new `DRAFT` from an
+approved version with a required reason and optimistic concurrency. Criteria
+inherit an immutable lineage identifier. Creating or editing the draft does
+not change the active approved framework; only the existing human approval
+action may supersede the prior version.
+
+After an `INTERVIEW` progression, the assigned Hiring Manager or Admin records
+one confirmed observation for every approved criterion and the existing final
+human decision in a single transaction. Observations are append-only and
+separate from AI resume evidence. SQL diagnostics may flag repeated
+`SUPPORTED` to `WEAKER/LEVEL_INSUFFICIENT` mismatches, but they cannot create a
+draft, approve a version, reanalyze an application, or change a decision.
+
+### Consequences
+
+- `create_scorecard_revision` returns through a forward migration; the removed
+  migration and historical approved data are not edited.
+- Each criterion has lineage metadata used for diagnosis across versions.
+- `FALSE_CLAIM`, `AI_MISREAD`, and unconfirmed observations are excluded from
+  the revision trigger while remaining visible as excluded counts.
+- Final hiring decisions remain `human_reviews` events authored by authorized
+  humans. AI and worker identities retain no observation-confirmation or
+  decision-write privilege.
+- AI revision proposals and before/after reanalysis remain a later slice.
+
+## ADR-036 — Finding-bound revision proposals and version-isolated reanalysis
+
+- Status: Accepted
+- Date: 2026-08-26
+- Decision owner: Product and Engineering
+- Supersedes: ADR-035's deferral of AI revision proposals and reanalysis
+
+### Context
+
+Deterministic diagnostics identify repeated screening mismatch, but a useful
+learning loop also needs a safe way to draft a correction and observe the new
+framework's evidence behavior. Automatically applying a model proposal or
+overwriting prior analysis would break human approval, audit, and traceability.
+
+### Decision
+
+An assigned Hiring Manager or Admin may explicitly request one strict,
+finding-bound AI revision proposal. The proposal is transient, validates the
+finding lineage, approved before snapshot, criterion type rules, protected-trait
+language, usage budget, and `store: false`. It has no persistence or approval
+path by itself. A human may save it as an editable new framework draft and must
+approve that draft through `approve_scorecard`.
+
+After approval, the same authorized roles may enqueue one idempotent processing
+run per application, resume file, replacement scorecard version, and pipeline
+version. Existing extracted pages may be copied into the new run. The prior
+evidence and all interview progression, observation, outcome, and human-decision
+records remain unchanged.
+
+### Consequences
+
+- Criteria gain explicit `excluded_evidence`, included in the evidence prompt.
+- The UI compares criterion-level evidence distributions and processing state;
+  it does not create a total score, rank, or candidate recommendation.
+- AI proposal provenance is stored on the human-created draft version, while
+  raw excerpts and proposal content stay out of logs and audit metadata.
+- Reanalysis cost and latency occur only after approval, not as a pre-approval
+  dry run.

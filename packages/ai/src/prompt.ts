@@ -15,11 +15,13 @@ Do not output fit scores, acceptance or rejection, advancement, hiring decisions
 Every source_phrase must be copied from the job description after whitespace normalization, or be null when the
 criterion is synthesized. Mark resume_assessable false when the resume cannot responsibly establish the criterion.
 For each resume-assessable criterion, define observable accepted evidence, optional equivalent evidence,
-guidance for what counts only as partial evidence, and the concrete information fields that evidence extraction
+explicit evidence that must not be treated as sufficient, guidance for what counts only as partial evidence,
+and the concrete information fields that evidence extraction
 should locate. Keep these fields factual and job-relevant; never turn them into scores or automatic filters.
 Create 3 to 6 focused criteria. Keep each definition, evidence item, guidance, field description, and interview
-question concise. Include no more than 3 accepted evidence items, 3 alternative evidence items, and 3 evidence
-fields for each criterion. Prefer fewer criteria and fewer fields when the job description is brief.
+question concise. Include no more than 3 accepted evidence items, 3 alternative evidence items, 3 excluded
+evidence items, and 3 evidence fields for each criterion. Prefer fewer criteria and fewer fields when the job
+description is brief.
 Return only the strict SCORECARD_DRAFT JSON object required by the schema.`;
 
 export function buildScorecardDraftPrompt(input: ScorecardDraftPromptInput): string {

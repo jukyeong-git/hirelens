@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 
 import {
   parseJobRequisitionDraft,
+  validateFrameworkRevision,
   validateEvidenceExtraction,
   validateScorecardDraft,
   EvidenceValidationError,
@@ -37,6 +38,37 @@ if (!command || (!(command in messages) && command !== "eval:ai")) {
     ),
   ) as unknown;
   const requisitionDraft = parseJobRequisitionDraft(requisitionFixture);
+  const revisionFixture = JSON.parse(
+    readFileSync(
+      new URL("../packages/ai/fixtures/framework-revision.valid.json", import.meta.url),
+      "utf8",
+    ),
+  ) as unknown;
+  const frameworkRevision = validateFrameworkRevision(revisionFixture, {
+    finding_lineage_id: "11111111-1111-4111-8111-111111111111",
+    finding: {
+      supported_observations: 6,
+      level_insufficient_count: 4,
+      mismatch_ratio: 4 / 6,
+      confirmed_observation_count: 6,
+      false_claim_excluded_count: 1,
+      ai_misread_excluded_count: 0,
+    },
+    current_criterion: {
+      name: "Kubernetes experience",
+      type: "REQUIRED",
+      definition: "Use of Kubernetes is stated.",
+      accepted_evidence: ["Kubernetes use is stated"],
+      alternative_evidence: [],
+      excluded_evidence: [],
+      partial_evidence_guidance: null,
+      evidence_fields: [],
+      resume_assessable: true,
+      suggested_interview_question: null,
+    },
+    mismatch_quotes: ["Built a Kubernetes deployment pipeline."],
+    matched_quotes: ["Owned production clusters and incident response."],
+  });
   const evidenceGolden = JSON.parse(
     readFileSync(new URL("../tests/ai-evals/evidence-golden.json", import.meta.url), "utf8"),
   ) as {
@@ -82,7 +114,7 @@ if (!command || (!(command in messages) && command !== "eval:ai")) {
     }
   }
   console.log(
-    `AI contract eval passed: ${scorecardDraft.criteria.length} scorecard criteria, ${scorecardDraft.ambiguous_phrases.length} ambiguous phrases, requisition ${Object.keys(requisitionDraft).length} structured fields, evidence ${evidenceGolden.version} (${acceptedEvidenceCases} accepted, ${evidenceGolden.cases.length - acceptedEvidenceCases} expected quarantine).`,
+    `AI contract eval passed: ${scorecardDraft.criteria.length} scorecard criteria, ${scorecardDraft.ambiguous_phrases.length} ambiguous phrases, requisition ${Object.keys(requisitionDraft).length} structured fields, revision ${frameworkRevision.change_type}, evidence ${evidenceGolden.version} (${acceptedEvidenceCases} accepted, ${evidenceGolden.cases.length - acceptedEvidenceCases} expected quarantine).`,
   );
 } else {
   console.log(messages[command]);

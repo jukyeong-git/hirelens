@@ -1,0 +1,17 @@
+-- Intentionally inert.
+--
+-- This migration previously created
+-- `public.install_criterion_calibration_demo_fixture()`, a security-definer RPC
+-- granted to service_role that inserted into `interview_observations` and
+-- `human_reviews`. That contradicts the invariant recorded in
+-- 20260824002200_evidence_backend_slice.sql: "The worker role intentionally
+-- retains no human review/outcome/decision table write grant." Even though the
+-- rows were synthetic, applying this file created a window in which a
+-- service-role path to write human hiring decisions existed in the database.
+--
+-- The deterministic calibration fixture now lives in `supabase/seed.sql`, which
+-- runs as the seeding superuser and needs no application-facing RPC.
+--
+-- The body is left empty rather than deleted so that databases which already
+-- recorded this migration keep a matching history entry. The companion
+-- migration 20260827000500 drops the function if an earlier apply created it.

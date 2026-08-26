@@ -204,7 +204,8 @@ Acceptance criteria:
 - AI runs only after an authenticated human explicitly requests a draft; it
   never runs automatically when a requisition is saved.
 - The system identifies ambiguous phrases.
-- Each criterion includes type, definition, accepted evidence, alternative evidence, and resume-assessable flag.
+- Each criterion includes type, definition, accepted evidence, alternative evidence,
+  explicitly excluded evidence, and resume-assessable flag.
 - Ambiguous human qualities default to `INTERVIEW_ONLY`.
 - AI output remains a draft and has no effect until human approval.
 
@@ -216,10 +217,20 @@ review criteria.
 Acceptance criteria:
 
 - Approval requires an authenticated hiring manager or admin.
-- The approved framework is immutable and final for its Job.
-- An approved framework cannot be edited, replaced, or versioned in the MVP.
+- An approved framework and its criteria are immutable.
+- After confirmed interview observations expose a repeated criterion mismatch,
+  the assigned Hiring Manager or Admin may create a new editable draft that
+  preserves criterion lineage. Creating or editing the draft never changes the
+  active approved framework.
+- Only an authenticated Hiring Manager or Admin may approve the replacement
+  draft. Approval supersedes the prior version without modifying it.
 - Every analysis references exactly one approved version.
-- The UI displays the approver and approval time without exposing version-management controls.
+- The UI displays the approver, approval time, and version used by each
+  analysis. It must not auto-apply a diagnostic finding or a draft revision.
+- A review-required finding may produce a transient AI revision proposal only
+  after an explicit authorized-human request. The proposal is bound to the
+  finding, validates protected-trait exclusions, and must be saved as an
+  editable draft and approved by a human.
 
 ### FR-004 — Upload resumes in bulk
 
@@ -312,6 +323,64 @@ Acceptance criteria:
 - The review stores actor, role, reason, prior value when changed, and time.
 - The review can be changed only through a new decision event, not silent overwrite.
 
+### FR-009A — Record criterion-level interview observations
+
+After an `INTERVIEW` progression outcome, the assigned Hiring Manager or an
+Admin records what the interview established for every approved criterion.
+This observation is distinct from AI evidence and from the final human
+decision.
+
+Acceptance criteria:
+
+- Each criterion is recorded as `MATCHED`, `WEAKER`, `STRONGER`, or
+  `NOT_ASKED`.
+- `WEAKER` requires one of `FALSE_CLAIM`, `LEVEL_INSUFFICIENT`, or
+  `AI_MISREAD`; the other verdicts cannot carry a weakness type.
+- The submitted criterion set must contain every approved criterion exactly
+  once, and the server derives criterion lineage rather than trusting the
+  client.
+- The criterion observations and the existing `PROCEED`, `HOLD`, or
+  `DO_NOT_PROCEED` final decision are recorded atomically as human-authored,
+  append-only history.
+- AI and worker identities cannot create or confirm observations or decisions.
+
+### FR-009B — Diagnose Review Framework criteria
+
+The assigned Hiring Manager or Admin can inspect whether confirmed interview
+observations repeatedly contradict resume-stage evidence.
+
+Acceptance criteria:
+
+- Diagnostics group criterion history by immutable lineage and use each
+  application's latest confirmed observation once.
+- A criterion becomes `REVIEW_REQUIRED` only when at least three
+  `SUPPORTED` cases are confirmed as `WEAKER` due to
+  `LEVEL_INSUFFICIENT` and those cases are at least 40 percent of the observed
+  `SUPPORTED` cases.
+- `FALSE_CLAIM`, `AI_MISREAD`, and unconfirmed observations do not trigger a
+  criterion revision, but their excluded counts remain visible.
+- Criteria below the threshold remain visible as `OBSERVING`.
+- Diagnostics never rank candidates, change evidence, revise a framework,
+  or create a hiring decision automatically.
+
+### FR-009C — Reanalyze against an approved replacement framework
+
+After a human approves a replacement Review Framework, the assigned Hiring
+Manager or Admin may request new evidence runs for existing applications.
+
+Acceptance criteria:
+
+- Reanalysis is idempotent by application, resume file, approved scorecard
+  version, and pipeline version.
+- Existing extracted pages may be copied into the new run so the source remains
+  page-verifiable without requiring another PDF extraction.
+- New evidence is attached only to the new scorecard version and processing run.
+- Reanalysis never updates or deletes interview progression reviews, interview
+  observations, interview outcomes, or human decisions.
+- The comparison UI shows per-version processing state, criterion-level
+  evidence counts, and per-application criterion status changes without a
+  total score, rank, or candidate recommendation.
+
 ### FR-010 — Preserve audit history
 
 The system records material events.
@@ -359,7 +428,10 @@ An admin can reset the demo environment.
 
 Acceptance criteria:
 
-- Reset restores synthetic users, one job, one approved scorecard, and synthetic resumes.
+- Reset restores synthetic users, one job, an immutable approved v1 framework,
+  controlled interview observations, and synthetic resumes. The flywheel demo
+  may additionally install and approve a v2 replacement plus version-isolated
+  evidence runs without deleting v1 history.
 - No external customer account is required for the core demo.
 - Reset never targets a production environment.
 

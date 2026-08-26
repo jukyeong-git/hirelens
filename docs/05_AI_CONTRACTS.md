@@ -72,6 +72,28 @@ Output:
 
 The output never includes a final hiring decision.
 
+### Capability D — Review Framework revision proposal
+
+Input:
+
+- one deterministic `REVIEW_REQUIRED` criterion finding,
+- the current approved criterion,
+- finding statistics,
+- minimized exact excerpts from mismatched and matched observations.
+
+Output:
+
+- the immutable finding lineage ID,
+- one bounded change type,
+- an exact before snapshot,
+- one editable after criterion,
+- a concise rationale.
+
+The assigned Hiring Manager or Admin must explicitly request this capability.
+The output is transient, cannot create or approve a framework version, and
+cannot trigger reanalysis. A human may save it as an editable draft and must
+separately approve that draft through the normal scorecard approval path.
+
 ## 2A. Job Requisition draft contract
 
 Illustrative structure:
@@ -179,6 +201,25 @@ NOT_FOUND
 CONTRADICTED
 HUMAN_ONLY
 ```
+
+## 5A. Review Framework revision contract
+
+The strict revision output includes `finding_lineage_id`, `change_type`,
+`before`, `after`, and `rationale`. The `after` criterion uses the same
+structured fields as a Review Framework criterion, including
+`excluded_evidence`.
+
+Runtime validation rejects:
+
+- a lineage ID different from the supplied finding,
+- a before snapshot different from the approved criterion,
+- a change type inconsistent with the after criterion,
+- `INTERVIEW_ONLY` with `resume_assessable=true`,
+- protected-trait or job-irrelevant criterion language.
+
+Revision requests use the same token and cost budgets as evidence requests,
+`store: false`, bounded transient retry, strict Structured Outputs, and safe
+usage-only logging. Exact input excerpts are never written to logs or audits.
 
 ## 6. Evidence validation pipeline
 

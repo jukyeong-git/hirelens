@@ -525,6 +525,13 @@ function CriteriaEditor({
                   updateCriterion(index, (item) => ({ ...item, alternative_evidence }))
                 }
               />
+              <ListTextArea
+                label="직접 근거로 인정하지 않는 항목"
+                value={criterion.excluded_evidence}
+                onChange={(excluded_evidence) =>
+                  updateCriterion(index, (item) => ({ ...item, excluded_evidence }))
+                }
+              />
               <label>
                 부분 근거 판단
                 <textarea
@@ -660,6 +667,7 @@ function scorecardToDraft(scorecard: ScorecardDetail): ScorecardDraft {
       definition: criterion.definition,
       accepted_evidence: criterion.accepted_evidence,
       alternative_evidence: criterion.alternative_evidence,
+      excluded_evidence: criterion.excluded_evidence,
       partial_evidence_guidance: criterion.partial_evidence_guidance,
       evidence_fields: criterion.evidence_fields,
       resume_assessable: criterion.resume_assessable,
@@ -741,6 +749,7 @@ function createBlankCriterion(): ScorecardCriterion {
     definition: "",
     accepted_evidence: [],
     alternative_evidence: [],
+    excluded_evidence: [],
     partial_evidence_guidance: null,
     evidence_fields: [],
     resume_assessable: true,
@@ -978,6 +987,16 @@ function CriteriaSection({ scorecard }: { scorecard: ScorecardDetail }) {
                 <strong>대체 인정 근거</strong>
                 <ul>
                   {criterion.alternative_evidence.map((evidence) => (
+                    <li key={evidence}>{evidence}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {criterion.excluded_evidence.length > 0 ? (
+              <div className="evidence-copy">
+                <strong>직접 근거로 인정하지 않음</strong>
+                <ul>
+                  {criterion.excluded_evidence.map((evidence) => (
                     <li key={evidence}>{evidence}</li>
                   ))}
                 </ul>

@@ -99,6 +99,7 @@ describe("evidence processing lease heartbeat", () => {
           definition: "Synthetic reliability evidence",
           accepted_evidence: ["Operated a synthetic service"],
           alternative_evidence: [],
+          excluded_evidence: [],
           partial_evidence_guidance: "Development without operational responsibility",
           evidence_fields: [
             { field_name: "operational_scope", description: "Synthetic operating scope" },

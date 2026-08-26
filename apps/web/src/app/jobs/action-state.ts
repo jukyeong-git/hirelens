@@ -1,4 +1,5 @@
 import type { ScorecardDraft } from "@hirelens/domain";
+import type { FrameworkRevision } from "@hirelens/ai";
 
 export interface AuthActionState {
   status: "idle" | "error";
@@ -36,6 +37,13 @@ export interface ScorecardDraftGenerationActionState {
   aiDraftToken?: string;
 }
 
+export interface FrameworkRevisionActionState {
+  status: "idle" | "success" | "error";
+  message?: string;
+  proposal?: FrameworkRevision;
+  proposalToken?: string;
+}
+
 export interface RequisitionActionState {
   status: "idle" | "success" | "error";
   message?: string;
@@ -63,6 +71,9 @@ export const initialJobRequisitionDraftActionState: JobRequisitionDraftActionSta
 };
 export const initialScorecardActionState: ScorecardActionState = { status: "idle" };
 export const initialScorecardDraftGenerationActionState: ScorecardDraftGenerationActionState = {
+  status: "idle",
+};
+export const initialFrameworkRevisionActionState: FrameworkRevisionActionState = {
   status: "idle",
 };
 export const initialRequisitionActionState: RequisitionActionState = { status: "idle" };

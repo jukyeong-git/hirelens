@@ -68,6 +68,7 @@ export const evidenceCriterionSchema = z
     definition: boundedText(2_000),
     accepted_evidence: z.array(boundedText(500)).max(32),
     alternative_evidence: z.array(boundedText(500)).max(32),
+    excluded_evidence: z.array(boundedText(500)).max(32),
     partial_evidence_guidance: nullableBoundedText(1_000),
     evidence_fields: z
       .array(

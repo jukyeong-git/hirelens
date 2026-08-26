@@ -46,8 +46,8 @@ describe("scorecard draft contract", () => {
   it("locks Review Framework v3 prompt and schema provenance", () => {
     expect(SCORECARD_DRAFT_CONTRACT_VERSIONS).toEqual({
       pipeline: "ai-pipeline-v2",
-      prompt: "scorecard-draft-prompt-v3",
-      schema: "scorecard-draft-schema-v2",
+      prompt: "scorecard-draft-prompt-v4",
+      schema: "scorecard-draft-schema-v3",
     });
     expect(scorecardDraftContract.versions).toBe(SCORECARD_DRAFT_CONTRACT_VERSIONS);
     expect(SCORECARD_DRAFT_SYSTEM_PROMPT).toContain(

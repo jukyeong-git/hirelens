@@ -70,6 +70,7 @@ export interface HumanReviewRecord {
   reason_detail: string;
   confidence: ReviewConfidence;
   note: string | null;
+  observation_session_id: string | null;
   supersedes_review_id: string | null;
   created_at: string;
 }

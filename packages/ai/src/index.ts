@@ -74,3 +74,22 @@ export type {
   ScorecardDraftContractVersions,
 } from "./versions";
 export { EVIDENCE_CONTRACT_VERSIONS, EVIDENCE_SCHEMA_NAME } from "./versions";
+export {
+  frameworkRevisionChangeTypeSchema,
+  frameworkRevisionContract,
+  frameworkRevisionCriterionSchema,
+  frameworkRevisionJsonSchema,
+  frameworkRevisionPromptInputSchema,
+  frameworkRevisionResponseFormat,
+  frameworkRevisionSchema,
+  validateFrameworkRevision,
+  FrameworkRevisionValidationError,
+} from "./revision";
+export type {
+  FrameworkRevision,
+  FrameworkRevisionChangeType,
+  FrameworkRevisionPromptInput,
+} from "./revision";
+export { buildFrameworkRevisionPrompt, FRAMEWORK_REVISION_SYSTEM_PROMPT } from "./revision-prompt";
+export { FRAMEWORK_REVISION_CONTRACT_VERSIONS, FRAMEWORK_REVISION_SCHEMA_NAME } from "./versions";
+export type { FrameworkRevisionContractVersions } from "./versions";

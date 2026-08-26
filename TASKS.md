@@ -57,7 +57,9 @@ This is the execution checklist. Product behavior is defined in `docs/01_PRD.md`
 - [x] Implement criterion types: `REQUIRED`, `PREFERRED`, `INTERVIEW_ONLY`.
 - [x] Implement HL-022 human ambiguity review and resolution audit path.
 - [x] Implement human scorecard approval.
-- [x] Lock the single approved Review Framework for each Job and remove replacement-version controls.
+- [x] Preserve immutable approved Review Framework versions while allowing an
+      assigned Hiring Manager or Admin to create a reasoned replacement draft
+      with criterion lineage.
 - [x] Allow an assigned Hiring Manager or Admin to reopen and revise a saved
       Review Framework draft with optimistic concurrency, a required reason,
       and append-only audit history; approved versions remain immutable.
@@ -108,6 +110,14 @@ This is the execution checklist. Product behavior is defined in `docs/01_PRD.md`
 - [x] Split the internal home workspace by role: Recruiter sees assigned requisitions, new applications, published postings, and operational tasks; Hiring Manager sees assigned requisitions, Review Framework work, and candidate-review requests; Admin sees all operational work and processing failures.
 - [x] Move Hiring Manager requisition drafting to a separate `/jobs/new` screen; keep the workspace page focused on overview and assigned requisitions.
 - [x] Simplify the system-wide UI copy hierarchy: one page title, concise section titles, Korean role/workflow terms, and prose only for state, safety, authorization, validation, and AI/human boundaries.
+- [x] Record a complete append-only set of criterion-level post-interview
+      observations atomically with the existing final human decision.
+- [x] Diagnose repeated `SUPPORTED` to `WEAKER/LEVEL_INSUFFICIENT` mismatches by
+      criterion lineage while exposing excluded and observing states.
+- [x] Add finding-bound, transient AI Review Framework revision proposals with
+      human draft save/edit/approval and explicit no-action audit.
+- [x] Reanalyze existing applications against an approved replacement version
+      and compare version-specific evidence without changing human history.
 
 ## Phase 6 — Demo hardening
 

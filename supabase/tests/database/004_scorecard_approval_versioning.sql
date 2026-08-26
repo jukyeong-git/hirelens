@@ -325,8 +325,8 @@ select throws_ok(
 );
 
 select ok(
-  to_regprocedure('public.create_scorecard_revision(uuid,integer,public.scorecard_status,text)') is null,
-  'Approved Review Frameworks have no replacement-version RPC'
+  to_regprocedure('public.create_scorecard_revision(uuid,integer,public.scorecard_status,text)') is not null,
+  'Approved Review Frameworks expose a controlled replacement-draft RPC'
 );
 
 select * from finish();

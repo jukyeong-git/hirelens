@@ -22,6 +22,11 @@ const testFiles = [
   "supabase/tests/database/019_scorecard_issue_confirmation_gate.sql",
   "supabase/tests/database/020_job_basic_info_update.sql",
   "supabase/tests/database/021_discard_job_draft.sql",
+  "supabase/tests/database/022_framework_revision.sql",
+  "supabase/tests/database/023_interview_observation.sql",
+  "supabase/tests/database/024_criterion_calibration.sql",
+  "supabase/tests/database/025_framework_revision_reanalysis.sql",
+  "supabase/tests/database/026_calibration_security_fixes.sql",
 ];
 
 if (environment.SUPABASE_ENV !== "hosted-alpha" || !environment.DATABASE_URL) {

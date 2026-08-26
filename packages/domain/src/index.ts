@@ -110,6 +110,25 @@ export type {
   SetReviewNoteDeletedInput,
   UpdateReviewNoteInput,
 } from "./review";
+export {
+  criterionCalibrationStatusSchema,
+  interviewCriterionVerdictSchema,
+  interviewObservationInputSchema,
+  interviewObservationSourceSchema,
+  interviewWeaknessTypeSchema,
+  postInterviewReviewInputSchema,
+} from "./interview";
+export type {
+  CriterionCalibrationStatus,
+  CriterionCalibrationSummaryRecord,
+  InterviewCriterionVerdict,
+  InterviewObservationInput,
+  InterviewObservationRecord,
+  InterviewObservationSessionRecord,
+  InterviewObservationSource,
+  InterviewWeaknessType,
+  PostInterviewReviewInput,
+} from "./interview";
 export { markNotificationReadInputSchema, notificationEventTypeSchema } from "./notification";
 export type {
   MarkNotificationReadInput,
@@ -163,5 +182,17 @@ export type {
   ScorecardVersionHistoryRecord,
   ScorecardWorkspace,
 } from "./scorecard";
+export {
+  frameworkComparisonCriterionVersionSchema,
+  frameworkComparisonSchema,
+  frameworkComparisonVersionSchema,
+  frameworkReanalysisResultSchema,
+} from "./framework";
+export type {
+  FrameworkComparison,
+  FrameworkComparisonCriterionVersion,
+  FrameworkComparisonVersion,
+  FrameworkReanalysisResult,
+} from "./framework";
 
 export const DOMAIN_PACKAGE_NAME = "@hirelens/domain" as const;

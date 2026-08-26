@@ -17,6 +17,7 @@ const draft = {
       definition: "Experience operating production services.",
       accepted_evidence: ["Production service ownership is stated"],
       alternative_evidence: [],
+      excluded_evidence: [],
       partial_evidence_guidance: "Production development is stated without ownership scope",
       evidence_fields: [{ field_name: "scope", description: "Operational scope" }],
       resume_assessable: true,
@@ -75,8 +76,8 @@ describe("scorecard draft Responses adapter", () => {
     expect(result.versions).toEqual({
       model: "test-model",
       pipeline: "ai-pipeline-v2",
-      prompt: "scorecard-draft-prompt-v3",
-      schema: "scorecard-draft-schema-v2",
+      prompt: "scorecard-draft-prompt-v4",
+      schema: "scorecard-draft-schema-v3",
     });
   });
 

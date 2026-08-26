@@ -26,3 +26,12 @@ export type {
   JobRequisitionDraftAdapterOptions,
   JobRequisitionDraftAdapterResult,
 } from "./job-requisition-adapter";
+
+export { createFrameworkRevisionAdapter, FrameworkRevisionAdapterError } from "./revision-adapter";
+export type {
+  FrameworkRevisionAdapter,
+  FrameworkRevisionAdapterErrorCode,
+  FrameworkRevisionAdapterOptions,
+  FrameworkRevisionAdapterResult,
+  FrameworkRevisionAdapterUsage,
+} from "./revision-adapter";

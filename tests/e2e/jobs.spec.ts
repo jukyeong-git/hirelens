@@ -4,6 +4,7 @@ const demoPassword = process.env.DEMO_TEST_PASSWORD;
 const seededBackendJobPath = "/jobs/10000000-0000-0000-0000-000000000001";
 const seededPlatformJobPath = "/jobs/10000000-0000-0000-0000-000000000002";
 const seededBackendApplicationPath = "/applications/50000000-0000-0000-0000-000000000001";
+const seededCalibrationApplicationPath = "/applications/50000000-0000-0000-0000-000000000107";
 
 test.describe("Job and scorecard workspace", () => {
   test.beforeEach(() => {
@@ -268,6 +269,72 @@ test.describe("Job and scorecard workspace", () => {
         ),
       ).toBeVisible();
     }
+  });
+
+  test("assigned manager sees deterministic criterion calibration", async ({ page }) => {
+    await signIn(page, "second-manager@demo.hirelens.example");
+    await page.goto(`${seededPlatformJobPath}?tab=review-framework`);
+
+    const diagnosis = page.getByRole("region", { name: "평가 기준 진단" });
+    await expect(diagnosis).toBeVisible();
+    await expect(diagnosis.getByText("검토 필요", { exact: true })).toBeVisible();
+    await expect(diagnosis.getByText(/직접 근거로 확인된 5건 중 4건/)).toBeVisible();
+    await expect(diagnosis.getByText(/사실과 다른 지원서 1건/)).toBeVisible();
+    await expect(
+      diagnosis.getByRole("heading", { name: "Incident response ownership" }),
+    ).toBeVisible();
+    await expect(diagnosis.getByText("관측 중", { exact: true })).toBeVisible();
+  });
+
+  test("post-interview form blocks an incomplete criterion set and moves focus", async ({
+    page,
+  }) => {
+    await signIn(page, "second-manager@demo.hirelens.example");
+    await page.goto(seededCalibrationApplicationPath);
+
+    const postInterviewReview = page.getByRole("region", { name: "면접 결과 기록" });
+    await expect(postInterviewReview).toBeVisible();
+    await postInterviewReview.getByLabel("최종 결정").selectOption("PROCEED");
+    await postInterviewReview.getByLabel("사유 분류").selectOption("EVIDENCE_REVIEW");
+    await postInterviewReview.getByLabel("상세 사유").fill("합성 면접 근거를 사람이 확인했습니다.");
+    await postInterviewReview.getByRole("button", { name: "면접 결과와 최종 결정 저장" }).click();
+
+    const error = postInterviewReview.getByRole("alert");
+    await expect(error).toHaveText("모든 평가 기준의 면접 결과를 선택하세요.");
+    await expect(error).toBeFocused();
+  });
+
+  test("recruiter cannot access the post-interview write form", async ({ page }) => {
+    await signIn(page, "recruiter@demo.hirelens.example");
+    await page.goto(seededCalibrationApplicationPath);
+
+    await expect(page.getByRole("button", { name: "면접 결과와 최종 결정 저장" })).toHaveCount(0);
+  });
+
+  test("DO_NOT_PROCEED cannot submit without a human reason", async ({ page }) => {
+    await signIn(page, "second-manager@demo.hirelens.example");
+    await page.goto(seededCalibrationApplicationPath);
+
+    const postInterviewReview = page.getByRole("region", { name: "면접 결과 기록" });
+    const criterionVerdicts = postInterviewReview.getByRole("combobox", {
+      name: /면접 결과/,
+    });
+    for (let index = 0; index < (await criterionVerdicts.count()); index += 1) {
+      await criterionVerdicts.nth(index).selectOption("MATCHED");
+    }
+    await postInterviewReview.getByLabel("최종 결정").selectOption("DO_NOT_PROCEED");
+    await postInterviewReview.getByLabel("사유 분류").selectOption("EVIDENCE_REVIEW");
+    await postInterviewReview.getByRole("button", { name: "면접 결과와 최종 결정 저장" }).click();
+
+    await expect(postInterviewReview.getByLabel("상세 사유")).toBeFocused();
+  });
+
+  test("unassigned Hiring Manager cannot open another manager's application", async ({ page }) => {
+    await signIn(page, "hiring-manager@demo.hirelens.example");
+    const response = await page.goto(seededCalibrationApplicationPath);
+
+    expect(response?.status()).toBe(404);
+    await expect(page.getByRole("button", { name: "면접 결과와 최종 결정 저장" })).toHaveCount(0);
   });
 });
 

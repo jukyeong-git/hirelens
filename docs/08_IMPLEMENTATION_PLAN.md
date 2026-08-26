@@ -19,7 +19,8 @@ checklist.
 | 3. Evidence processing and Recruiter triage | Every submitted PDF becomes reviewable or visibly exceptional | Slice 2    | Recruiter can inspect validated evidence and request HM review                    |
 | 4. Hiring Manager interview gate            | The right human authorizes interview progression              | Slice 3    | HM records a reasoned `INTERVIEW`, `HOLD`, or `MORE_INFORMATION_REQUIRED` outcome |
 | 5. Final human judgment and record          | Final decision remains human-only and traceable               | Slice 4    | Reasoned decision history and audit timeline are visible                          |
-| 6. Demo hardening                           | The complete synthetic flow is reliable live                  | Slices 1–5 | E2E, privacy, AI-eval, retry, reset, and fallback gates pass                      |
+| 6. Criterion calibration core               | Interview evidence diagnoses weak criteria                    | Slice 5    | Confirmed observations produce guarded lineage-based findings                     |
+| 7. Demo hardening                           | The complete synthetic flow is reliable live                  | Slices 1–6 | E2E, privacy, AI-eval, retry, reset, and fallback gates pass                      |
 
 ## Slice 0 — Foundation and safe access
 
@@ -154,7 +155,60 @@ hiring decision and its reason without overwriting prior history.
 - AI and worker identities have no decision-write path; and
 - prior value, actor, time, and reason remain visible.
 
-## Slice 6 — Demo hardening
+## Slice 6 — Criterion calibration core
+
+### Outcome
+
+Confirmed post-interview observations reveal repeated gaps in an approved
+Review Framework without changing past evidence or human decisions.
+
+### Tickets
+
+- `FW-0` Restore human-created Review Framework revisions and criterion lineage
+- `FW-1` Capture complete criterion-level interview observations with the
+  existing final human decision
+- `FW-2` Diagnose repeated evidence-to-interview mismatches with deterministic
+  SQL thresholds
+
+### Exit criteria
+
+- approved and superseded framework versions remain immutable;
+- only an assigned Hiring Manager or Admin can record confirmed observations;
+- the final decision remains `PROCEED`, `HOLD`, or `DO_NOT_PROCEED`;
+- `FALSE_CLAIM`, `AI_MISREAD`, and unconfirmed observations cannot trigger a
+  revision finding; and
+- diagnostics never change a criterion, analysis result, or hiring decision.
+
+## Slice 6B — Framework revision learning loop
+
+### Outcome
+
+A review-required criterion finding can produce a transient, finding-bound AI
+proposal or a manual revision draft. A human edits and approves the replacement
+version, then explicitly requests version-isolated reanalysis and inspects a
+v1/v2 evidence comparison.
+
+### Tickets
+
+- `FW-3` Generate and validate a finding-bound revision proposal; retain manual
+  revision and no-action paths
+- `FW-4` Enqueue idempotent replacement-version runs and compare criterion-level
+  evidence by lineage
+
+### Exit criteria
+
+- AI cannot save or approve a revision, and every proposal is linked to an
+  active deterministic finding;
+- protected-trait language, invalid criterion type transitions, and unbounded
+  model usage are rejected;
+- only an assigned Hiring Manager or Admin can create, approve, or enqueue a
+  replacement version;
+- reanalysis creates new processing runs and never mutates interview
+  observations, outcomes, or human decisions; and
+- comparison shows evidence counts and processing states without scores,
+  rankings, or recommendations.
+
+## Slice 7 — Demo hardening
 
 ### Tickets
 
@@ -181,12 +235,16 @@ full workflow from requisition to reasoned human outcome.
 ## Implementation status — 2026-08-24
 
 - HL-026 and HL-030 through HL-045 are implemented in the workspace.
+- FW-0 through FW-2 are implemented: criterion lineage, explicit immutable
+  Review Framework revisions, atomic post-interview observations with the
+  existing final decision, and deterministic SQL calibration diagnostics.
 - Hiring Manager requisition drafting is a separate `/jobs/new` route; the workspace page no longer renders the long creation form inline.
 - Internal and public UI copy now uses one concise page title, noun-based section titles, and Korean role/workflow terms; repeated decorative labels and non-operational descriptions are removed while state, authorization, validation, and AI/human boundary messages remain.
 - Alpha contains forward migrations through
-  `20260824002500_preprocessed_demo_fallback.sql`; rollback-only pgTAP covers
-  the evidence backend, human interview gate, Admin override, worker RPC
-  privileges, and the idempotent preprocessed fallback installer.
+  `20260827000500_remove_service_role_calibration_fixture.sql`; rollback-only
+  pgTAP also covers framework lineage, atomic post-interview observations,
+  calibration thresholds, and the absence of worker/service-role decision
+  paths.
 - HL-050 has a deterministic 20-file synthetic golden set and HL-051 has an
   offline contract eval.
 - HL-053 has passed its privacy/secret scan and security review with no

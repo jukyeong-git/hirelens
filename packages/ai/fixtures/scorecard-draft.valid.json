@@ -20,6 +20,7 @@
         "An incident response example is stated"
       ],
       "alternative_evidence": ["On-call responsibility for a comparable service is stated"],
+      "excluded_evidence": ["Technology-name mention without responsibility or outcome"],
       "partial_evidence_guidance": "Production development is stated without clear ownership or incident response scope",
       "evidence_fields": [
         {
@@ -44,6 +45,7 @@
       "definition": "Clarify communication practices through a structured interview.",
       "accepted_evidence": [],
       "alternative_evidence": [],
+      "excluded_evidence": [],
       "partial_evidence_guidance": null,
       "evidence_fields": [
         {

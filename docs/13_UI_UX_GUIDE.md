@@ -143,6 +143,32 @@ must not reveal an application ID.
 - Do not display or request a total score, rank, automatic filter, knockout, or
   hiring recommendation.
 
+### Criterion diagnosis and revision
+
+- Keep `REVIEW_REQUIRED` and `OBSERVING` criteria in the same workflow.
+  Observing cards show the current sample count and threshold rather than
+  disappearing.
+- A review-required card offers `AI 개정안 요청`, `직접 수정`, and `조치하지
+않음`. Recording no action requires a short human reason and creates a safe
+  audit event.
+- Label generated content `AI 개정안` and state that it is not automatically
+  saved or approved. Show current and proposed accepted/excluded evidence in
+  parallel columns; on narrow screens stack the columns.
+- Saving an AI proposal creates an editable draft only. The existing human
+  approval action remains a separate step.
+
+### Framework version comparison
+
+- Show the prior and active approved versions side by side with completed,
+  pending, and failed processing counts.
+- Compare criterion-level `SUPPORTED`, `PARTIAL`, and `NOT_FOUND` application
+  counts by criterion lineage. Do not infer a candidate capability from
+  `NOT_FOUND`.
+- State beside the reanalysis action that new evidence uses new processing runs
+  and does not change interview observations or human decisions.
+- Do not add a total score, rank, automatic filter, or hiring recommendation to
+  the comparison.
+
 ### Requisition workspace
 
 The requisition is the internal work record, similar in concept to a Workday

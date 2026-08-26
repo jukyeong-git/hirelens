@@ -10,12 +10,17 @@ function optionalFormText(value: FormDataEntryValue | null): string | undefined 
 
 import {
   createJobRequisitionDraftAdapter,
+  createFrameworkRevisionAdapter,
   createScorecardDraftAdapter,
+  FrameworkRevisionAdapterError,
   JobRequisitionDraftAdapterError,
   ScorecardDraftAdapterError,
 } from "@hirelens/ai/server";
 import {
   jobRequisitionDraftPromptInputSchema,
+  EVIDENCE_CONTRACT_VERSIONS,
+  frameworkRevisionPromptInputSchema,
+  frameworkRevisionSchema,
   type JobRequisitionDraftPromptInput,
   type ScorecardDraftPromptInput,
 } from "@hirelens/ai";
@@ -37,6 +42,7 @@ import {
   recordInterviewProgressionInputSchema,
   markNotificationReadInputSchema,
   parseEnvironment,
+  postInterviewReviewInputSchema,
   scorecardAmbiguityReviewInputSchema,
   scorecardApprovalInputSchema,
   scorecardIssueConfirmationInputSchema,
@@ -56,7 +62,11 @@ import {
   createJob,
   discardJobDraft,
   createJobPostingDraft,
+  createFrameworkRevisionDraft,
   createHumanReview,
+  createScorecardRevision,
+  enqueueFrameworkReanalysis,
+  getCriterionRevisionContext,
   requestHiringManagerReview,
   recordInterviewProgression,
   createReviewNote,
@@ -67,6 +77,8 @@ import {
   getScorecardWorkspaceForJob,
   markNotificationRead,
   publishJobPosting,
+  recordCriterionCalibrationNoAction,
+  recordPostInterviewReview,
   updateJobPostingContent,
   reviewScorecardAmbiguity,
   resolveRequisitionApproval,
@@ -84,6 +96,7 @@ import type {
   JobActionState,
   JobPostingActionState,
   JobRequisitionDraftActionState,
+  FrameworkRevisionActionState,
   RequisitionActionState,
   ScorecardActionState,
   ScorecardDraftGenerationActionState,
@@ -602,6 +615,84 @@ function isScorecardDraftProvenance(value: unknown): value is ScorecardDraftProv
   );
 }
 
+interface FrameworkRevisionProvenance {
+  jobId: string;
+  actorId: string;
+  lineageId: string;
+  sourceScorecardVersionId: string;
+  expectedVersionNumber: number;
+  promptVersion: string;
+  schemaVersion: string;
+  modelId: string;
+  proposalSha256: string;
+  expiresAt: number;
+}
+
+function createFrameworkRevisionProvenanceToken(
+  input: Omit<FrameworkRevisionProvenance, "expiresAt"> & { signingKey: string },
+): string {
+  const payload: FrameworkRevisionProvenance = {
+    jobId: input.jobId,
+    actorId: input.actorId,
+    lineageId: input.lineageId,
+    sourceScorecardVersionId: input.sourceScorecardVersionId,
+    expectedVersionNumber: input.expectedVersionNumber,
+    promptVersion: input.promptVersion,
+    schemaVersion: input.schemaVersion,
+    modelId: input.modelId,
+    proposalSha256: input.proposalSha256,
+    expiresAt: Math.floor(Date.now() / 1000) + 15 * 60,
+  };
+  const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const signature = createHmac("sha256", input.signingKey).update(encoded).digest("base64url");
+  return `${encoded}.${signature}`;
+}
+
+function readFrameworkRevisionProvenanceToken(
+  token: string,
+  signingKey: string | undefined,
+  expected: Pick<FrameworkRevisionProvenance, "jobId" | "actorId" | "lineageId" | "proposalSha256">,
+): Omit<
+  FrameworkRevisionProvenance,
+  "jobId" | "actorId" | "lineageId" | "proposalSha256" | "expiresAt"
+> | null {
+  if (!signingKey) return null;
+  const [encoded, receivedSignature, ...rest] = token.split(".");
+  if (!encoded || !receivedSignature || rest.length > 0) return null;
+  const calculatedSignature = createHmac("sha256", signingKey).update(encoded).digest("base64url");
+  const received = Buffer.from(receivedSignature);
+  const calculated = Buffer.from(calculatedSignature);
+  if (received.length !== calculated.length || !timingSafeEqual(received, calculated)) return null;
+  try {
+    const payload = JSON.parse(
+      Buffer.from(encoded, "base64url").toString("utf8"),
+    ) as FrameworkRevisionProvenance;
+    if (
+      payload.jobId !== expected.jobId ||
+      payload.actorId !== expected.actorId ||
+      payload.lineageId !== expected.lineageId ||
+      payload.proposalSha256 !== expected.proposalSha256 ||
+      payload.expiresAt < Math.floor(Date.now() / 1000) ||
+      !isUuid(payload.sourceScorecardVersionId) ||
+      !Number.isInteger(payload.expectedVersionNumber) ||
+      !payload.promptVersion ||
+      !payload.schemaVersion ||
+      !payload.modelId
+    ) {
+      return null;
+    }
+    return {
+      sourceScorecardVersionId: payload.sourceScorecardVersionId,
+      expectedVersionNumber: payload.expectedVersionNumber,
+      promptVersion: payload.promptVersion,
+      schemaVersion: payload.schemaVersion,
+      modelId: payload.modelId,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function saveScorecardDraftAction(
   _previousState: ScorecardActionState,
   formData: FormData,
@@ -888,6 +979,328 @@ export async function confirmScorecardIssueAction(
   return { status: "success", message: "확인했습니다." };
 }
 
+export async function generateFrameworkRevisionAction(
+  _previousState: FrameworkRevisionActionState,
+  formData: FormData,
+): Promise<FrameworkRevisionActionState> {
+  const authenticated = await getAuthenticatedViewer();
+  if (!authenticated) {
+    return { status: "error", message: "세션이 없거나 만료되었습니다. 다시 로그인하세요." };
+  }
+  const { client, viewer } = authenticated;
+  const jobId = String(formData.get("jobId") ?? "").trim();
+  const lineageId = String(formData.get("lineageId") ?? "").trim();
+  if (!isUuid(jobId) || !isUuid(lineageId)) {
+    return { status: "error", message: "개정할 진단 기준을 확인하세요." };
+  }
+  const job = await getJobForScorecard(client, jobId);
+  if (
+    !job ||
+    (viewer.role !== "ADMIN" &&
+      !(viewer.role === "HIRING_MANAGER" && job.hiring_manager_id === viewer.id))
+  ) {
+    return {
+      status: "error",
+      message: "배정된 채용 책임자 또는 관리자만 개정안을 요청할 수 있습니다.",
+    };
+  }
+  const workspace = await getScorecardWorkspaceForJob(client, jobId);
+  if (!workspace.activeApprovedVersion || workspace.latestWorkingVersion) {
+    return {
+      status: "error",
+      message: workspace.latestWorkingVersion
+        ? "이미 작업 중인 평가 기준 초안이 있습니다."
+        : "승인된 평가 기준이 있어야 개정안을 요청할 수 있습니다.",
+    };
+  }
+
+  let context;
+  try {
+    context = frameworkRevisionPromptInputSchema.parse(
+      await getCriterionRevisionContext(client, jobId, lineageId),
+    );
+  } catch {
+    return {
+      status: "error",
+      message: "현재 검토가 필요한 진단에만 AI 개정안을 요청할 수 있습니다.",
+    };
+  }
+  const environment = parseEnvironment();
+  if (!environment.OPENAI_API_KEY || !environment.OPENAI_MODEL) {
+    return { status: "error", message: "AI 개정안 설정이 없습니다. 직접 수정할 수 있습니다." };
+  }
+  const adapter = createFrameworkRevisionAdapter({
+    apiKey: environment.OPENAI_API_KEY,
+    model: environment.OPENAI_MODEL,
+    endpoint: "https://api.openai.com/v1/responses",
+    timeoutMs: 45_000,
+    maxInputTokens: environment.AI_MAX_INPUT_TOKENS,
+    maxOutputTokens: Math.min(environment.AI_MAX_OUTPUT_TOKENS, 4_000),
+    maxTotalTokens: environment.AI_MAX_TOTAL_TOKENS_PER_RUN,
+    inputCostMicrousdPerMillionTokens: environment.AI_INPUT_COST_MICROUSD_PER_MILLION_TOKENS,
+    outputCostMicrousdPerMillionTokens: environment.AI_OUTPUT_COST_MICROUSD_PER_MILLION_TOKENS,
+    maxCostMicrousdPerRun: environment.AI_MAX_COST_MICROUSD_PER_RUN,
+  });
+  const startedAt = Date.now();
+  logAiDraftRequest({
+    event: "started",
+    operation: "framework_revision",
+    model: adapter.versions.model,
+    promptVersion: adapter.versions.prompt,
+    schemaVersion: adapter.versions.schema,
+  });
+  try {
+    let generated;
+    try {
+      generated = await adapter(context);
+    } catch (error) {
+      if (!(error instanceof FrameworkRevisionAdapterError) || !error.retryable) throw error;
+      generated = await adapter(context);
+    }
+    logAiDraftRequest({
+      event: "succeeded",
+      operation: "framework_revision",
+      model: generated.versions.model,
+      promptVersion: generated.versions.prompt,
+      schemaVersion: generated.versions.schema,
+      durationMs: Date.now() - startedAt,
+    });
+    const source = workspace.activeApprovedVersion.version;
+    return {
+      status: "success",
+      message: "AI 개정안을 생성했습니다. 검토한 뒤 새 초안으로 저장하세요.",
+      proposal: generated.revision,
+      proposalToken: createFrameworkRevisionProvenanceToken({
+        jobId,
+        actorId: viewer.id,
+        lineageId,
+        sourceScorecardVersionId: source.id,
+        expectedVersionNumber: source.version_number,
+        promptVersion: generated.versions.prompt,
+        schemaVersion: generated.versions.schema,
+        modelId: generated.versions.model,
+        proposalSha256: createHash("sha256")
+          .update(JSON.stringify(generated.revision))
+          .digest("hex"),
+        signingKey: environment.OPENAI_API_KEY,
+      }),
+    };
+  } catch (error) {
+    logAiDraftFailure({
+      operation: "framework_revision",
+      model: adapter.versions.model,
+      promptVersion: adapter.versions.prompt,
+      schemaVersion: adapter.versions.schema,
+      durationMs: Date.now() - startedAt,
+      error,
+    });
+    if (
+      error instanceof FrameworkRevisionAdapterError &&
+      (error.quarantined || error.code === "REFUSAL")
+    ) {
+      return {
+        status: "error",
+        message: "AI 개정안을 안전하게 검증할 수 없어 적용하지 않았습니다. 직접 수정하세요.",
+      };
+    }
+    return {
+      status: "error",
+      message: "AI 개정안 생성에 실패했습니다. 잠시 후 다시 시도하거나 직접 수정하세요.",
+    };
+  }
+}
+
+export async function saveFrameworkRevisionDraftAction(
+  _previousState: ScorecardActionState,
+  formData: FormData,
+): Promise<ScorecardActionState> {
+  const authenticated = await getAuthenticatedViewer();
+  if (!authenticated) {
+    return { status: "error", message: "세션이 없거나 만료되었습니다. 다시 로그인하세요." };
+  }
+  const { client, viewer } = authenticated;
+  const jobId = String(formData.get("jobId") ?? "").trim();
+  const rawProposal = String(formData.get("proposalJson") ?? "");
+  const proposalToken = String(formData.get("proposalToken") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+  const environment = parseEnvironment();
+  let proposal;
+  try {
+    proposal = frameworkRevisionSchema.parse(JSON.parse(rawProposal) as unknown);
+  } catch {
+    return { status: "error", message: "AI 개정안 형식을 확인할 수 없습니다. 다시 요청하세요." };
+  }
+  const provenance = readFrameworkRevisionProvenanceToken(
+    proposalToken,
+    environment.OPENAI_API_KEY,
+    {
+      jobId,
+      actorId: viewer.id,
+      lineageId: proposal.finding_lineage_id,
+      proposalSha256: createHash("sha256").update(JSON.stringify(proposal)).digest("hex"),
+    },
+  );
+  if (!isUuid(jobId) || !provenance || reason.length < 3 || reason.length > 1_000) {
+    return {
+      status: "error",
+      message: "개정안 확인 시간이 만료되었거나 변경 사유가 올바르지 않습니다.",
+    };
+  }
+  const job = await getJobForScorecard(client, jobId);
+  if (
+    !job ||
+    (viewer.role !== "ADMIN" &&
+      !(viewer.role === "HIRING_MANAGER" && job.hiring_manager_id === viewer.id))
+  ) {
+    return { status: "error", message: "현재 사용자에게 개정 초안 저장 권한이 없습니다." };
+  }
+  const workspace = await getScorecardWorkspaceForJob(client, jobId);
+  const source = workspace.activeApprovedVersion;
+  if (
+    !source ||
+    workspace.latestWorkingVersion ||
+    source.version.id !== provenance.sourceScorecardVersionId ||
+    source.version.version_number !== provenance.expectedVersionNumber
+  ) {
+    return {
+      status: "error",
+      message: "평가 기준이 변경되었습니다. 최신 진단에서 다시 요청하세요.",
+    };
+  }
+  const criteria = source.criteria.map((criterion) => {
+    const revised =
+      criterion.lineage_id === proposal.finding_lineage_id ? proposal.after : criterion;
+    return {
+      client_id: criterion.client_id,
+      name: revised.name,
+      type: revised.type,
+      definition: revised.definition,
+      accepted_evidence: revised.accepted_evidence,
+      alternative_evidence: revised.alternative_evidence,
+      excluded_evidence: revised.excluded_evidence,
+      partial_evidence_guidance: revised.partial_evidence_guidance,
+      evidence_fields: revised.evidence_fields,
+      resume_assessable: revised.resume_assessable,
+      source_phrase: criterion.source_phrase,
+      ambiguity_note: criterion.ambiguity_note,
+      ambiguity_status:
+        revised.type === "INTERVIEW_ONLY" ? ("HUMAN_ONLY" as const) : criterion.ambiguity_status,
+      suggested_interview_question: revised.suggested_interview_question,
+      display_order: criterion.display_order,
+    };
+  });
+  const parsedDraft = scorecardDraftSchema.safeParse({
+    ambiguous_phrases: source.version.ambiguous_phrases,
+    criteria,
+  });
+  if (!parsedDraft.success) {
+    return { status: "error", message: "AI 개정안이 평가 기준 규칙을 충족하지 못했습니다." };
+  }
+  try {
+    await createFrameworkRevisionDraft(client, {
+      sourceScorecardVersionId: source.version.id,
+      expectedVersionNumber: source.version.version_number,
+      findingLineageId: proposal.finding_lineage_id,
+      reason,
+      promptVersion: provenance.promptVersion,
+      schemaVersion: provenance.schemaVersion,
+      modelId: provenance.modelId,
+      criteria: parsedDraft.data.criteria,
+    });
+  } catch (error) {
+    return scorecardWorkflowError(error, "개정 초안을 저장하지 못했습니다.");
+  }
+  revalidatePath(`/jobs/${jobId}`);
+  return { status: "success", message: "v2 개정 초안을 저장했습니다. 수정 후 승인하세요." };
+}
+
+export async function createManualFrameworkRevisionAction(
+  _previousState: ScorecardActionState,
+  formData: FormData,
+): Promise<ScorecardActionState> {
+  const authenticated = await getAuthenticatedViewer();
+  if (!authenticated) {
+    return { status: "error", message: "세션이 없거나 만료되었습니다. 다시 로그인하세요." };
+  }
+  const jobId = String(formData.get("jobId") ?? "").trim();
+  const sourceScorecardVersionId = String(formData.get("sourceScorecardVersionId") ?? "").trim();
+  const expectedVersionNumber = Number(formData.get("expectedVersionNumber"));
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (
+    !isUuid(jobId) ||
+    !isUuid(sourceScorecardVersionId) ||
+    !Number.isInteger(expectedVersionNumber) ||
+    reason.length < 3 ||
+    reason.length > 1_000
+  ) {
+    return { status: "error", message: "직접 수정할 기준과 변경 사유를 확인하세요." };
+  }
+  try {
+    await createScorecardRevision(authenticated.client, {
+      sourceScorecardVersionId,
+      expectedVersionNumber,
+      reason,
+    });
+  } catch (error) {
+    return scorecardWorkflowError(error, "개정 초안을 만들지 못했습니다.");
+  }
+  revalidatePath(`/jobs/${jobId}`);
+  return { status: "success", message: "직접 수정할 새 초안을 만들었습니다." };
+}
+
+export async function recordCriterionCalibrationNoActionAction(
+  _previousState: ScorecardActionState,
+  formData: FormData,
+): Promise<ScorecardActionState> {
+  const authenticated = await getAuthenticatedViewer();
+  if (!authenticated) {
+    return { status: "error", message: "세션이 없거나 만료되었습니다. 다시 로그인하세요." };
+  }
+  const jobId = String(formData.get("jobId") ?? "").trim();
+  const lineageId = String(formData.get("lineageId") ?? "").trim();
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (!isUuid(jobId) || !isUuid(lineageId) || reason.length < 3 || reason.length > 1_000) {
+    return { status: "error", message: "조치하지 않는 사유를 3자 이상 입력하세요." };
+  }
+  try {
+    await recordCriterionCalibrationNoAction(authenticated.client, { jobId, lineageId, reason });
+  } catch (error) {
+    return scorecardWorkflowError(error, "판단 기록을 저장하지 못했습니다.");
+  }
+  revalidatePath(`/jobs/${jobId}`);
+  return { status: "success", message: "기준을 유지하기로 한 사람의 판단을 기록했습니다." };
+}
+
+export async function enqueueFrameworkReanalysisAction(
+  _previousState: ScorecardActionState,
+  formData: FormData,
+): Promise<ScorecardActionState> {
+  const authenticated = await getAuthenticatedViewer();
+  if (!authenticated) {
+    return { status: "error", message: "세션이 없거나 만료되었습니다. 다시 로그인하세요." };
+  }
+  const jobId = String(formData.get("jobId") ?? "").trim();
+  if (!isUuid(jobId)) {
+    return { status: "error", message: "재분석할 채용 요청을 확인하세요." };
+  }
+  try {
+    const result = await enqueueFrameworkReanalysis(authenticated.client, {
+      jobId,
+      pipelineVersion: EVIDENCE_CONTRACT_VERSIONS.pipeline,
+    });
+    revalidatePath(`/jobs/${jobId}`);
+    return {
+      status: "success",
+      message:
+        result.queued_count > 0
+          ? `${result.queued_count}건을 v${result.scorecard_version_number} 기준으로 재분석 요청했습니다.`
+          : "이미 모든 지원서의 재분석 요청이 존재합니다.",
+    };
+  } catch (error) {
+    return scorecardWorkflowError(error, "재분석을 요청하지 못했습니다.");
+  }
+}
+
 export async function saveHumanDecisionAction(
   _previousState: ReviewActionState,
   formData: FormData,
@@ -895,10 +1308,10 @@ export async function saveHumanDecisionAction(
   const authenticated = await getAuthenticatedViewer();
   if (!authenticated)
     return { status: "error", message: "세션이 만료되었습니다. 다시 로그인하세요." };
-  if (authenticated.viewer.role !== "ADMIN" && authenticated.viewer.role !== "HIRING_MANAGER") {
+  if (authenticated.viewer.role !== "ADMIN") {
     return {
       status: "error",
-      message: "최종 결정은 채용 책임자 또는 관리자만 저장할 수 있습니다.",
+      message: "채용 책임자는 면접 관찰과 함께 최종 결정을 저장해야 합니다.",
     };
   }
   const parsed = createHumanReviewInputSchema.safeParse({
@@ -919,6 +1332,53 @@ export async function saveHumanDecisionAction(
   }
   revalidatePath(`/applications/${parsed.data.applicationId}`);
   return { status: "success", message: "사람의 최종 결정과 사유를 감사 이력에 저장했습니다." };
+}
+
+export async function recordPostInterviewReviewAction(
+  _previousState: ReviewActionState,
+  formData: FormData,
+): Promise<ReviewActionState> {
+  const authenticated = await getAuthenticatedViewer();
+  if (!authenticated)
+    return { status: "error", message: "세션이 만료되었습니다. 다시 로그인하세요." };
+  if (authenticated.viewer.role !== "ADMIN" && authenticated.viewer.role !== "HIRING_MANAGER") {
+    return { status: "error", message: "면접 결과를 기록할 권한이 없습니다." };
+  }
+
+  let observations: unknown;
+  try {
+    observations = JSON.parse(String(formData.get("observations") ?? "[]"));
+  } catch {
+    return { status: "error", message: "기준별 면접 결과 형식을 다시 확인하세요." };
+  }
+  const parsed = postInterviewReviewInputSchema.safeParse({
+    applicationId: String(formData.get("applicationId") ?? "").trim(),
+    scorecardVersionId: String(formData.get("scorecardVersionId") ?? "").trim(),
+    observations,
+    offCriteriaReason: nullableFormText(formData.get("offCriteriaReason")),
+    decision: String(formData.get("decision") ?? "").trim(),
+    reasonCode: String(formData.get("reasonCode") ?? "").trim(),
+    reasonDetail: String(formData.get("reasonDetail") ?? "").trim(),
+    confidence: String(formData.get("confidence") ?? "").trim(),
+    note: nullableFormText(formData.get("note")),
+  });
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: "모든 평가 기준의 면접 결과와 최종 결정 사유를 확인하세요.",
+    };
+  }
+
+  try {
+    await recordPostInterviewReview(authenticated.client, parsed.data);
+  } catch (error) {
+    return reviewActionError(error, "면접 결과와 최종 결정을 저장하지 못했습니다.");
+  }
+  revalidatePath(`/applications/${parsed.data.applicationId}`);
+  return {
+    status: "success",
+    message: "사람이 확인한 면접 관찰과 최종 결정을 append-only 이력에 저장했습니다.",
+  };
 }
 
 export async function requestHiringManagerReviewAction(
@@ -1392,7 +1852,7 @@ function isRetryableScorecardError(code: ScorecardDraftAdapterError["code"]) {
 
 type AiDraftLogEntry = Readonly<{
   event: "started" | "succeeded" | "failed";
-  operation: "job_requisition_draft" | "review_framework_draft";
+  operation: "job_requisition_draft" | "review_framework_draft" | "framework_revision";
   model: string;
   promptVersion: string;
   schemaVersion: string;
@@ -1417,9 +1877,15 @@ function logAiDraftFailure(
 ): void {
   const adapterError =
     input.error instanceof JobRequisitionDraftAdapterError ||
-    input.error instanceof ScorecardDraftAdapterError
+    input.error instanceof ScorecardDraftAdapterError ||
+    input.error instanceof FrameworkRevisionAdapterError
       ? input.error
       : null;
+  const diagnostic =
+    adapterError instanceof JobRequisitionDraftAdapterError ||
+    adapterError instanceof ScorecardDraftAdapterError
+      ? adapterError.diagnostic
+      : undefined;
 
   logAiDraftRequest({
     event: "failed",
@@ -1429,8 +1895,8 @@ function logAiDraftFailure(
     schemaVersion: input.schemaVersion,
     durationMs: input.durationMs,
     errorCode: adapterError?.code ?? "UNEXPECTED_ERROR",
-    httpStatus: adapterError?.diagnostic?.httpStatus,
-    openAiRequestId: adapterError?.diagnostic?.openAiRequestId,
+    httpStatus: diagnostic?.httpStatus,
+    openAiRequestId: diagnostic?.openAiRequestId,
   });
 }
 

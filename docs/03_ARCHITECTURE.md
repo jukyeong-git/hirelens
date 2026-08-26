@@ -113,21 +113,21 @@ The worker should:
 
 ## 5. Planned technology choices
 
-| Concern | Choice | Reason |
-|---|---|---|
-| Web | Next.js App Router + TypeScript | one repository for UI and server boundaries |
-| UI | Tailwind + shadcn/ui | fast, accessible business UI |
-| Database | Supabase PostgreSQL | relational workflow and strong constraints |
-| Auth | Supabase Auth | role-backed demo authentication |
-| Files | Supabase Storage | private PDF storage |
-| Queue | Supabase Queues | durable background jobs near the data |
-| Worker | Supabase Edge Function | queue-local deployment without a separate always-on host |
-| PDF | PDF.js | page-aware text extraction and rendering |
-| AI | OpenAI Responses API | direct structured model requests |
-| Runtime validation | Zod + JSON Schema | untrusted boundary validation |
-| Unit tests | Vitest | fast TypeScript tests |
-| E2E | Playwright | real browser flow |
-| Hosting | Vercel + Supabase Edge Functions | web and bounded background processing without a third host |
+| Concern            | Choice                           | Reason                                                     |
+| ------------------ | -------------------------------- | ---------------------------------------------------------- |
+| Web                | Next.js App Router + TypeScript  | one repository for UI and server boundaries                |
+| UI                 | Tailwind + shadcn/ui             | fast, accessible business UI                               |
+| Database           | Supabase PostgreSQL              | relational workflow and strong constraints                 |
+| Auth               | Supabase Auth                    | role-backed demo authentication                            |
+| Files              | Supabase Storage                 | private PDF storage                                        |
+| Queue              | Supabase Queues                  | durable background jobs near the data                      |
+| Worker             | Supabase Edge Function           | queue-local deployment without a separate always-on host   |
+| PDF                | PDF.js                           | page-aware text extraction and rendering                   |
+| AI                 | OpenAI Responses API             | direct structured model requests                           |
+| Runtime validation | Zod + JSON Schema                | untrusted boundary validation                              |
+| Unit tests         | Vitest                           | fast TypeScript tests                                      |
+| E2E                | Playwright                       | real browser flow                                          |
+| Hosting            | Vercel + Supabase Edge Functions | web and bounded background processing without a third host |
 
 Package and service versions must be verified and pinned during scaffolding.
 
@@ -169,12 +169,16 @@ approver.
 
 ## 7. AI boundary
 
-AI is used for two bounded capabilities:
+AI is used for three bounded capabilities:
 
 1. scorecard draft and ambiguous-language detection,
-2. criterion-level evidence extraction and follow-up question suggestions.
+2. criterion-level evidence extraction and follow-up question suggestions,
+3. finding-bound Review Framework revision proposals requested by an authorized
+   human.
 
 AI is not a general autonomous recruiting agent. It does not send email, move candidates, schedule interviews, or decide outcomes in P0.
+Revision proposals are transient and use the same human-editable draft and
+approval boundary as manually authored revisions.
 
 ## 8. Data and version boundary
 
@@ -190,6 +194,11 @@ Every evidence row references:
 - model ID.
 
 This allows a reviewer to distinguish a changed criterion from a changed model or changed resume.
+
+When an approved replacement framework is reanalyzed, each application receives
+a new version-bound processing run. Existing extracted pages may be copied into
+that run, but existing evidence and every human review or interview record remain
+unchanged.
 
 ## 9. Error strategy
 

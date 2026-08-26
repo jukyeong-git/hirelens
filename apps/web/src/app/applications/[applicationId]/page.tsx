@@ -7,9 +7,10 @@ import {
   getScorecardVersion,
   getScorecardWorkspaceForJob,
   listHumanReviews,
+  listInterviewObservations,
+  listInterviewObservationSessions,
   listReviewAssignments,
   listInterviewProgressionReviews,
-  listApplicationAuditEvents,
   listEvidenceItemsForRuns,
   listResumePagesForRuns,
   listProfiles,
@@ -22,6 +23,7 @@ import { LoginForm } from "../../jobs/_components/login-form";
 import { ApplicationReviewPanel } from "../../jobs/_components/application-review-panel";
 import { ProcessingStatus } from "./processing-status";
 import { ApplicationEvidencePanel } from "./application-evidence-panel";
+import { InterviewOutcomeForm } from "./interview-outcome-form";
 import { getAuthenticatedViewer } from "../../../lib/supabase-server";
 import { visibleCopy } from "../../_components/visible-copy";
 
@@ -53,7 +55,8 @@ export default async function ApplicationReviewPage({
     processingRuns,
     assignments,
     interviewReviews,
-    auditEvents,
+    observationSessions,
+    interviewObservations,
     profiles,
   ] = await Promise.all([
     getJobForScorecard(client, application.job_id),
@@ -63,7 +66,8 @@ export default async function ApplicationReviewPage({
     listResumeProcessingRunsForApplication(client, application.id),
     listReviewAssignments(client, application.id),
     listInterviewProgressionReviews(client, application.id),
-    listApplicationAuditEvents(client, application.id),
+    listInterviewObservationSessions(client, application.id),
+    listInterviewObservations(client, application.id),
     listProfiles(client),
   ]);
   if (!job) notFound();
@@ -71,15 +75,44 @@ export default async function ApplicationReviewPage({
     notes.map(async (note) => ({ note, versions: await listReviewNoteVersions(client, note.id) })),
   );
   const latestRun = processingRuns[0] ?? null;
-  const processingRunIds = latestRun ? [latestRun.id] : [];
-  const [evidenceItems, resumePages, runScorecard] = await Promise.all([
+  const currentInterviewReview = interviewReviews[0] ?? null;
+  // A framework revision adds a newer run under the new version. The interview
+  // outcome stays attached to the version the interview was approved under, so
+  // resolve that run separately instead of following the latest one.
+  const interviewRun = currentInterviewReview
+    ? (processingRuns.find(
+        (run) => run.scorecard_version_id === currentInterviewReview.scorecard_version_id,
+      ) ?? null)
+    : null;
+  const processingRunIds = [
+    ...new Set([latestRun?.id, interviewRun?.id].filter((id): id is string => Boolean(id))),
+  ];
+  const [evidenceItems, resumePages, runScorecard, revisedInterviewScorecard] = await Promise.all([
     listEvidenceItemsForRuns(client, processingRunIds),
     listResumePagesForRuns(client, processingRunIds),
     latestRun ? getScorecardVersion(client, latestRun.scorecard_version_id) : Promise.resolve(null),
+    interviewRun && interviewRun.id !== latestRun?.id
+      ? getScorecardVersion(client, interviewRun.scorecard_version_id)
+      : Promise.resolve(null),
   ]);
+  const evidenceForRun = (runId: string | null) =>
+    runId ? evidenceItems.filter((item) => item.processing_run_id === runId) : [];
+  const pagesForRun = (runId: string | null) =>
+    runId ? resumePages.filter((page) => page.processing_run_id === runId) : [];
+  const latestEvidence = evidenceForRun(latestRun?.id ?? null);
+  const latestPages = pagesForRun(latestRun?.id ?? null);
+  const interviewScorecard = revisedInterviewScorecard ?? runScorecard;
   const profileNames = Object.fromEntries(
     profiles.map((profile) => [profile.id, visibleCopy(profile.display_name)]),
   );
+  const hasActiveAssignment = assignments.some(
+    (assignment) => assignment.status === "ACTIVE" && assignment.assigned_to === viewer.id,
+  );
+  const canRecordPostInterviewReview =
+    application.workflow_state === "INTERVIEW_SELECTED" &&
+    currentInterviewReview?.outcome === "INTERVIEW" &&
+    currentInterviewReview.scorecard_version_id === interviewScorecard?.version.id &&
+    (viewer.role === "ADMIN" || (viewer.role === "HIRING_MANAGER" && hasActiveAssignment));
   return (
     <main className="app-shell" id="main-content">
       <header className="app-header requisition-header">
@@ -94,13 +127,13 @@ export default async function ApplicationReviewPage({
       <nav className="section-navigation" aria-label="지원서 검토 섹션">
         <a href="#evidence-title">근거</a>
         <a href="#manager-request-title">사람 검토</a>
+        <a href="#post-interview-review-title">면접 결과</a>
         <a href="#processing-title">처리 상태</a>
-        <a href="#audit-timeline-title">변경 이력</a>
       </nav>
       <ApplicationEvidencePanel
         criteria={runScorecard?.criteria ?? []}
-        evidence={evidenceItems}
-        pages={resumePages}
+        evidence={latestEvidence}
+        pages={latestPages}
         runs={latestRun ? [latestRun] : []}
       />
       <ApplicationReviewPanel
@@ -113,46 +146,72 @@ export default async function ApplicationReviewPage({
         interviewReviews={interviewReviews}
         profileNames={profileNames}
       />
+      {canRecordPostInterviewReview && interviewScorecard ? (
+        <InterviewOutcomeForm
+          applicationId={application.id}
+          scorecardVersionId={interviewScorecard.version.id}
+          criteria={interviewScorecard.criteria}
+          evidence={evidenceForRun(interviewRun?.id ?? latestRun?.id ?? null)}
+          pages={pagesForRun(interviewRun?.id ?? latestRun?.id ?? null)}
+        />
+      ) : observationSessions.length > 0 ? (
+        <section className="panel" aria-labelledby="post-interview-review-title">
+          <h2 id="post-interview-review-title">면접 결과 기록</h2>
+          <div className="history-list">
+            {observationSessions.map((session, index) => {
+              const sessionObservations = interviewObservations.filter(
+                (observation) => observation.interview_observation_session_id === session.id,
+              );
+              return (
+                <article className="history-item" key={session.id}>
+                  <strong>{index === 0 ? "현재 면접 관찰" : "이전 면접 관찰"}</strong>
+                  <p>
+                    {sessionObservations.length}개 기준 ·{" "}
+                    {sessionObservations
+                      .map((observation) => interviewVerdictLabel(observation.verdict))
+                      .join(", ")}
+                  </p>
+                  <span>
+                    {profileNames[session.reviewer_id] ?? "사용자"} ·{" "}
+                    {new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium" }).format(
+                      new Date(session.created_at),
+                    )}
+                  </span>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      ) : (
+        <section className="panel" aria-labelledby="post-interview-review-title">
+          <h2 id="post-interview-review-title">면접 결과 기록</h2>
+          <p className="empty-copy">인터뷰 진행 후 기준별 관찰을 기록할 수 있습니다.</p>
+        </section>
+      )}
+      {/*
+        The change-history section is removed while `public.audit_events` has no
+        persistence: migration 20260826001100 replaced `append_safe_audit` with a
+        no-op shim, turned the table into an empty view, and revoked SELECT from
+        `authenticated`, so reading it fails the whole page. Criterion-level
+        observations and human decisions keep their own append-only history, so
+        only cross-cutting events (job created, framework approved, posting
+        published) are unavailable. Restore this section together with audit
+        persistence.
+      */}
       <ProcessingStatus runs={processingRuns} />
-      <section className="panel" aria-labelledby="audit-timeline-title">
-        <h2 id="audit-timeline-title">변경 이력</h2>
-        {auditEvents.length === 0 ? (
-          <p className="empty-copy">표시할 이력이 없습니다.</p>
-        ) : (
-          <ol className="audit-timeline">
-            {auditEvents.map((event) => (
-              <li key={event.id}>
-                <strong>{auditLabel(event.event_type)}</strong>
-                <span>
-                  {event.actor_id ? (profileNames[event.actor_id] ?? "사용자") : "시스템"} ·{" "}
-                  {new Intl.DateTimeFormat("ko-KR", {
-                    dateStyle: "medium",
-                  }).format(new Date(event.created_at))}
-                </span>
-              </li>
-            ))}
-          </ol>
-        )}
-      </section>
     </main>
   );
 }
 
-function auditLabel(eventType: string) {
+function interviewVerdictLabel(verdict: string) {
   return (
     (
       {
-        RESUME_UPLOADED: "지원서 PDF 등록",
-        EVIDENCE_PROCESSING_COMPLETED: "검증된 AI 근거 저장",
-        PROCESSING_RETRY_PENDING: "처리 재시도 대기",
-        PROCESSING_FAILED: "처리 실패",
-        PROCESSING_QUARANTINED: "검증 실패 결과 격리",
-        HIRING_MANAGER_REVIEW_REQUESTED: "채용 책임자 검토 요청",
-        INTERVIEW_PROGRESSION_RECORDED: "인터뷰 판단 저장",
-        INTERVIEW_PROGRESSION_CHANGED: "인터뷰 판단 변경",
-        HUMAN_DECISION_CREATED: "최종 결정 저장",
-        HUMAN_DECISION_CHANGED: "최종 결정 변경",
+        MATCHED: "지원서와 일치",
+        WEAKER: "지원서보다 약함",
+        STRONGER: "지원서보다 강함",
+        NOT_ASKED: "묻지 않음",
       } as Record<string, string>
-    )[eventType] ?? eventType
+    )[verdict] ?? verdict
   );
 }

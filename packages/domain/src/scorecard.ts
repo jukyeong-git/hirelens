@@ -43,6 +43,10 @@ export const scorecardCriterionSchema = z
     definition: z.string().trim().min(1).max(2_000),
     accepted_evidence: z.array(z.string().trim().min(1).max(500)).max(20),
     alternative_evidence: z.array(z.string().trim().min(1).max(500)).max(20),
+    // Matches the database contract: `criteria.excluded_evidence` is
+    // `not null default '[]'` and `update_scorecard_draft` coalesces a missing
+    // key to an empty array, so an omitted list means "no exclusions".
+    excluded_evidence: z.array(z.string().trim().min(1).max(500)).max(20).default([]),
     partial_evidence_guidance: z.string().trim().min(1).max(1_000).nullable(),
     evidence_fields: z.array(evidenceFieldSchema).max(20),
     resume_assessable: z.boolean(),
@@ -189,9 +193,7 @@ export const scorecardIssueConfirmationInputSchema = z
     issueKey: z.string().trim().min(1).max(100),
   })
   .strict();
-export type ScorecardIssueConfirmationInput = z.infer<
-  typeof scorecardIssueConfirmationInputSchema
->;
+export type ScorecardIssueConfirmationInput = z.infer<typeof scorecardIssueConfirmationInputSchema>;
 
 export const scorecardDraftUpdateInputSchema = z
   .object({
@@ -225,6 +227,9 @@ export interface ScorecardVersionRecord {
 export interface CriterionRecord extends ScorecardCriterion {
   id: string;
   scorecard_version_id: string;
+  lineage_id: string;
+  lineage_origin: "ORIGINAL" | "REVISED_FROM" | "SPLIT_FROM" | "MERGED_FROM";
+  parent_lineage_ids: string[];
   created_at: string;
 }
 

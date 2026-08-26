@@ -39,6 +39,7 @@ const promptCriterion = {
   definition: "Operate production services with direct responsibility.",
   accepted_evidence: ["Direct production ownership"],
   alternative_evidence: ["Equivalent on-call responsibility"],
+  excluded_evidence: [],
   partial_evidence_guidance: "Production development without stated operational ownership",
   evidence_fields: [{ field_name: "operational_scope", description: "Scope owned directly" }],
   resume_assessable: true,
@@ -59,7 +60,7 @@ describe("evidence contract boundary", () => {
 
     expect(EVIDENCE_CONTRACT_VERSIONS).toEqual({
       pipeline: "evidence-pipeline-v1",
-      prompt: "evidence-extraction-prompt-v2",
+      prompt: "evidence-extraction-prompt-v3",
       schema: "evidence-extraction-schema-v2",
     });
     expect(EVIDENCE_SCHEMA_NAME).toBe("hirelens_evidence_extraction_v2");

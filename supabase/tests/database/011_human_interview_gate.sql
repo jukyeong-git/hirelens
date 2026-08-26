@@ -35,8 +35,8 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000003', true);
 select throws_ok(
   $$ select public.create_human_review('50000000-0000-0000-0000-000000000811', '20000000-0000-0000-0000-000000000001', 'PROCEED', 'INTERVIEW_COMPLETE', 'Bypass attempt.', 'MEDIUM', null) $$,
-  '55000', 'final decision requires a prior INTERVIEW progression outcome',
-  'Hiring Manager cannot bypass the interview gate through the final decision RPC'
+  '42501', 'post-interview observations are required for Hiring Manager decisions',
+  'Hiring Manager cannot bypass criterion observations through the legacy decision RPC'
 );
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true);
 select lives_ok(
@@ -107,9 +107,10 @@ select is(
   (select count(*)::integer from public.interview_progression_reviews where application_id = '50000000-0000-0000-0000-000000000811'),
   2, 'outcome history is append-only'
 );
-select lives_ok(
+select throws_ok(
   $$ select public.create_human_review('50000000-0000-0000-0000-000000000811', '20000000-0000-0000-0000-000000000001', 'PROCEED', 'INTERVIEW_COMPLETE', 'Interview activity was reviewed by the assigned manager.', 'MEDIUM', null) $$,
-  'Hiring Manager can record the separate final decision after INTERVIEW'
+  '42501', 'post-interview observations are required for Hiring Manager decisions',
+  'Hiring Manager must use the atomic post-interview review RPC'
 );
 select is(
   (select workflow_state from public.applications where id = '50000000-0000-0000-0000-000000000811'),
@@ -126,7 +127,7 @@ select is(
 );
 select is(
   (select count(*)::integer from public.human_reviews where application_id = '50000000-0000-0000-0000-000000000811'),
-  1, 'only the explicit post-interview final-decision action creates a human review'
+  0, 'legacy Hiring Manager decision calls create no human review'
 );
 select ok(
   not has_function_privilege('service_role', 'public.record_interview_progression(uuid,uuid,public.interview_progression_outcome,text)', 'EXECUTE'),
