@@ -35,6 +35,7 @@ describe("derivePublicPostingContentDraft", () => {
       summary: "백엔드 서비스를 설계하고 운영합니다.",
       responsibilities: "- API를 설계합니다.\n- 장애 대응 체계를 개선합니다.",
       requirements: "- 백엔드 개발 경험",
+      preferredQualifications: "- 클라우드 운영 경험",
     });
   });
 });
@@ -286,6 +287,7 @@ describe("job posting contracts", () => {
       publicSummary: " Build reliable platform services. ",
       publicResponsibilities: " Design APIs\nReview changes ",
       publicRequirements: " TypeScript\nPostgreSQL ",
+      publicPreferredQualifications: " Cloud operations experience ",
       publicLocation: " Singapore · Hybrid ",
       publicEmploymentType: " Full-time ",
     });

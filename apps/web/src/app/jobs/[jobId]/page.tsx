@@ -18,7 +18,6 @@ import {
   JobDescriptionIssuesPanel,
   ScorecardDraftPanel,
 } from "../_components/scorecard-draft-panel";
-import { ResumeUploadPanel } from "../_components/resume-upload-panel";
 import { JobPostingWorkflow } from "../_components/job-posting-workflow";
 import { CandidateTriageList } from "../_components/candidate-triage-list";
 import { getAuthenticatedViewer } from "../../../lib/supabase-server";
@@ -89,14 +88,13 @@ export default async function JobDetailPage({
   )
     ? ((Array.isArray(requestedTab) ? requestedTab[0] : requestedTab) as JobDetailTab)
     : "overview";
-  const [scorecardWorkspace, applications, jobPosting, postingHistory, profiles] =
-    await Promise.all([
-      getScorecardWorkspaceForJob(client, job.id),
-      listApplicationsForJob(client, job.id),
-      getJobPosting(client, job.id),
-      listJobPostingStatusHistory(client, job.id),
-      listProfiles(client),
-    ]);
+  const [scorecardWorkspace, applications, jobPosting, , profiles] = await Promise.all([
+    getScorecardWorkspaceForJob(client, job.id),
+    listApplicationsForJob(client, job.id),
+    getJobPosting(client, job.id),
+    listJobPostingStatusHistory(client, job.id),
+    listProfiles(client),
+  ]);
   const isAssignedHiringManager =
     viewer.role === "HIRING_MANAGER" && viewer.id === job.hiring_manager_id;
   const assignedRecruiter = profiles.find((profile) => profile.id === job.recruiter_id);
@@ -204,7 +202,6 @@ export default async function JobDetailPage({
         <JobPostingWorkflow
           job={job}
           posting={jobPosting}
-          history={postingHistory}
           viewerId={viewer.id}
           viewerRole={viewer.role}
           scorecardWorkspace={scorecardWorkspace}
@@ -226,17 +223,6 @@ export default async function JobDetailPage({
             workspace={scorecardWorkspace}
           />
         </section>
-      ) : null}
-
-      {activeTab === "applications" &&
-      scorecardWorkspace &&
-      (viewer.role === "ADMIN" || viewer.role === "RECRUITER") ? (
-        <ResumeUploadPanel
-          jobId={job.id}
-          enabled={
-            job.status === "READY_FOR_INTAKE" && scorecardWorkspace.activeApprovedVersion !== null
-          }
-        />
       ) : null}
 
       {activeTab === "applications" ? (
@@ -263,7 +249,7 @@ function jobStatusLabel(status: string) {
     {
       DRAFT: "초안",
       SCORECARD_PENDING_APPROVAL: "채용 요청 대기",
-      READY_FOR_INTAKE: "접수 준비",
+      READY_FOR_INTAKE: "공고 게시 준비",
       ARCHIVED: "보관됨",
     }[status] ?? status
   );

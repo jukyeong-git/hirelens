@@ -54,6 +54,7 @@ const postings: JobPostingRecord[] = [
     public_summary: null,
     public_responsibilities: null,
     public_requirements: null,
+    public_preferred_qualifications: null,
     public_location: null,
     public_employment_type: null,
     created_by: recruiterId,
