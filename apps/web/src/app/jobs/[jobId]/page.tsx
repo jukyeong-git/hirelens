@@ -22,6 +22,10 @@ import {
 } from "../_components/scorecard-draft-panel";
 import { JobPostingWorkflow } from "../_components/job-posting-workflow";
 import { CandidateTriageList } from "../_components/candidate-triage-list";
+import {
+  countSupportedOrPartialCriteriaByRun,
+  sortByEvidenceCountDescending,
+} from "../_components/candidate-triage";
 import { getAuthenticatedViewer } from "../../../lib/supabase-server";
 import { visibleCopy } from "../../_components/visible-copy";
 import { JobBasicInfoPanel } from "../_components/job-basic-info-panel";
@@ -108,34 +112,30 @@ export default async function JobDetailPage({
   );
   const latestRunIds = latestRuns.flatMap(({ run }) => (run ? [run.id] : []));
   const evidenceItems = await listEvidenceItemsForRuns(client, latestRunIds);
-  const evidenceCountByRunId = new Map<string, number>();
-  for (const evidenceItem of evidenceItems) {
-    evidenceCountByRunId.set(
-      evidenceItem.processing_run_id,
-      (evidenceCountByRunId.get(evidenceItem.processing_run_id) ?? 0) + 1,
-    );
-  }
+  const evidenceCountByRunId = countSupportedOrPartialCriteriaByRun(evidenceItems);
   const isAssignedHiringManager =
     viewer.role === "HIRING_MANAGER" && viewer.id === job.hiring_manager_id;
   const assignedRecruiter = profiles.find((profile) => profile.id === job.recruiter_id);
   const assignedHiringManager = profiles.find((profile) => profile.id === job.hiring_manager_id);
-  const triageItems = applications.map((application) => ({
-    id: application.id,
-    label: visibleCopy(
-      candidateTriageLabel({
-        source: application.source,
-        processingStatus: latestRunByApplicationId.get(application.id)?.status,
-        fullName: application.candidate?.full_name,
-        demoLabel: application.candidate?.demo_label,
-      }),
-    ),
-    sourceLabel: candidateSourceLabel(application.source),
-    submittedAt: application.submitted_at,
-    atsStatus: atsStatusLabel(latestRunByApplicationId.get(application.id)?.status),
-    evidenceCount: latestRunByApplicationId.get(application.id)
-      ? (evidenceCountByRunId.get(latestRunByApplicationId.get(application.id)!.id) ?? 0)
-      : 0,
-  }));
+  const triageItems = sortByEvidenceCountDescending(
+    applications.map((application) => ({
+      id: application.id,
+      label: visibleCopy(
+        candidateTriageLabel({
+          source: application.source,
+          processingStatus: latestRunByApplicationId.get(application.id)?.status,
+          fullName: application.candidate?.full_name,
+          demoLabel: application.candidate?.demo_label,
+        }),
+      ),
+      sourceLabel: candidateSourceLabel(application.source),
+      submittedAt: application.submitted_at,
+      atsStatus: atsStatusLabel(latestRunByApplicationId.get(application.id)?.status),
+      evidenceCount: latestRunByApplicationId.get(application.id)
+        ? (evidenceCountByRunId.get(latestRunByApplicationId.get(application.id)!.id) ?? 0)
+        : 0,
+    })),
+  );
 
   return (
     <main className="app-shell" id="main-content">
@@ -253,7 +253,9 @@ export default async function JobDetailPage({
             <div>
               <h2 id="applications-title">지원자</h2>
             </div>
-            <span className="count-label">{applications.length}개</span>
+            <span className="count-label">
+              {applications.length}개 · 직접·부분 근거 많은 순
+            </span>
           </div>
           {applications.length === 0 ? (
             <p className="section-copy">아직 지원서가 없습니다.</p>

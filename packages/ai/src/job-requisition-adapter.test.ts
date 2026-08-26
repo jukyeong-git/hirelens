@@ -64,9 +64,32 @@ describe("job requisition draft Responses adapter", () => {
     expect(result.draft).toEqual(draft);
     expect(result.versions).toEqual({
       model: "test-model",
-      pipeline: "ai-pipeline-v1",
+      pipeline: "ai-pipeline-v2",
       prompt: "job-requisition-draft-prompt-v5",
       schema: "job-requisition-draft-schema-v2",
+    });
+  });
+
+  it("returns literal escaped model line breaks as real line breaks", async () => {
+    const adapter = createAdapter(
+      vi.fn<typeof fetch>(
+        async () =>
+          new Response(
+            JSON.stringify({
+              status: "completed",
+              output_text: JSON.stringify({
+                ...draft,
+                responsibilities: "Design APIs.\\nImprove operations.",
+              }),
+            }),
+            { status: 200 },
+          ),
+      ),
+    );
+
+    await expect(adapter(input)).resolves.toMatchObject({
+      draft: { responsibilities: "Design APIs.\nImprove operations." },
+      versions: { pipeline: "ai-pipeline-v2" },
     });
   });
 

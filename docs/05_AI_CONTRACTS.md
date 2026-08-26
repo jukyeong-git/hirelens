@@ -96,6 +96,7 @@ Rules:
   record and is excluded from the request;
 - prompts and schemas are versioned independently from the Review Framework
   contract; and
+- the server normalizes literal escaped line-break tokens in generated field values into editable line breaks before returning the draft to the form; and
 - refusal, timeout, incomplete, or invalid output leaves the requisition form
   and its state unchanged.
 

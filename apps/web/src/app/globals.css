@@ -693,6 +693,24 @@ h2 {
   white-space: pre-wrap;
 }
 
+.formatted-public-text {
+  display: grid;
+  gap: 0.65rem;
+  color: #526b90;
+  line-height: 1.7;
+}
+
+.formatted-public-text p,
+.formatted-public-text ul {
+  margin: 0;
+}
+
+.formatted-public-text ul {
+  display: grid;
+  gap: 0.45rem;
+  padding-left: 1.25rem;
+}
+
 .safety-notice {
   margin-top: 1.25rem;
   padding: 0.8rem 0.9rem;

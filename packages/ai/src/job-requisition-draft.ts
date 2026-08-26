@@ -81,7 +81,17 @@ export const jobRequisitionDraftResponseFormat = {
 } as const;
 
 export function parseJobRequisitionDraft(input: unknown): JobRequisitionDraft {
-  return jobRequisitionDraftSchema.parse(input);
+  const parsed = jobRequisitionDraftSchema.parse(input);
+  return {
+    role_summary: normalizeLiteralLineBreaks(parsed.role_summary),
+    responsibilities: normalizeLiteralLineBreaks(parsed.responsibilities),
+    requirements: normalizeLiteralLineBreaks(parsed.requirements),
+    preferred_qualifications: normalizeLiteralLineBreaks(parsed.preferred_qualifications),
+  };
+}
+
+function normalizeLiteralLineBreaks(value: string): string {
+  return value.replaceAll("\\r\\n", "\n").replaceAll("\\n", "\n").replaceAll("\\r", "\n");
 }
 
 export const jobRequisitionDraftContract = {

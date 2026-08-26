@@ -78,6 +78,7 @@ This is the execution checklist. Product behavior is defined in `docs/01_PRD.md`
 - [x] Prove duplicate delivery does not duplicate results.
 - [x] Add the Supabase Edge single-message consumer, service-role dequeue/settlement, lease recovery, malformed-message quarantine, and Vault-backed Cron configuration.
 - [x] Wake the Edge consumer immediately after durable queue enqueue; retain the one-minute Cron as recovery fallback.
+- [x] Gate immediate Edge wake-up by the database-owned `EDGE` consumer mode so Node rollback cannot invoke both runtimes.
 - [ ] Pass deployed Alpha Edge PDF.js smoke and 20-file partial-batch test, then retire the Node polling rollback path.
 
 ## Phase 4 — Evidence extraction

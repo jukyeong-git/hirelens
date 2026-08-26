@@ -23,6 +23,21 @@ describe("job requisition draft contract", () => {
     expect(parseJobRequisitionDraft(fixture)).toEqual(fixture);
   });
 
+  it("normalizes literal escaped line breaks into editable textarea line breaks", () => {
+    expect(
+      parseJobRequisitionDraft({
+        ...fixture,
+        responsibilities: "API를 설계합니다.\\n운영 안정성을 개선합니다.",
+        requirements: "백엔드 개발 경험\\r\\n데이터베이스 기본기",
+        preferred_qualifications: "대용량 트래픽 경험\\r장애 대응 경험",
+      }),
+    ).toMatchObject({
+      responsibilities: "API를 설계합니다.\n운영 안정성을 개선합니다.",
+      requirements: "백엔드 개발 경험\n데이터베이스 기본기",
+      preferred_qualifications: "대용량 트래픽 경험\n장애 대응 경험",
+    });
+  });
+
   it.each([
     ["a requisition approval field", "approval_status", "APPROVED"],
     ["a candidate ranking field", "candidate_ranking", []],

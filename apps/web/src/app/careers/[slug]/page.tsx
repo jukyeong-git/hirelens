@@ -4,7 +4,8 @@ import Link from "next/link";
 import { getPublicJobPosting, listPublicJobPostings } from "@hirelens/database";
 
 import { getPublicSupabaseClient } from "../../../lib/supabase-server";
-import { visibleCopy } from "../../_components/visible-copy";
+import { PublicPostingText } from "../../_components/public-posting-text-view";
+import { visibleCopy, visibleMultilineCopy } from "../../_components/visible-copy";
 import { PublicApplicationForm } from "./public-application-form";
 
 export const dynamic = "force-dynamic";
@@ -74,33 +75,25 @@ export default async function PublicCareerPostingPage({
 
           <section aria-labelledby="public-summary-title">
             <h2 id="public-summary-title">포지션 소개</h2>
-            <p className="preserve-lines">{formatPublicText(visibleCopy(posting.summary))}</p>
+            <PublicPostingText value={visibleMultilineCopy(posting.summary)} />
           </section>
 
           <section aria-labelledby="public-responsibilities-title">
             <h2 id="public-responsibilities-title">주요 업무</h2>
-            <p className="preserve-lines">
-              {formatPublicText(visibleCopy(posting.responsibilities))}
-            </p>
+            <PublicPostingText value={visibleMultilineCopy(posting.responsibilities)} />
           </section>
 
           <section aria-labelledby="public-requirements-title">
             <h2 id="public-requirements-title">필수 자격</h2>
-            <p className="preserve-lines">{formatPublicText(visibleCopy(posting.requirements))}</p>
+            <PublicPostingText value={visibleMultilineCopy(posting.requirements)} />
           </section>
 
           <section aria-labelledby="public-preferred-title">
             <h2 id="public-preferred-title">우대 사항</h2>
-            <p className="preserve-lines">
-              {formatPublicText(visibleCopy(posting.preferred_qualifications))}
-            </p>
+            <PublicPostingText value={visibleMultilineCopy(posting.preferred_qualifications)} />
           </section>
         </article>
       </div>
     </main>
   );
-}
-
-function formatPublicText(value: string) {
-  return value.replace(/\s+-\s+/g, "\n- ");
 }

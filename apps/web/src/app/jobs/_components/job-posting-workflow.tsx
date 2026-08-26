@@ -12,7 +12,8 @@ import {
   publishJobPostingAction,
   updateJobPostingContentAction,
 } from "../actions";
-import { visibleCopy } from "../../_components/visible-copy";
+import { PublicPostingText } from "../../_components/public-posting-text-view";
+import { visibleCopy, visibleMultilineCopy } from "../../_components/visible-copy";
 
 interface JobPostingWorkflowProps {
   job: JobRecord;
@@ -334,13 +335,10 @@ function PublicPostingPreview({ posting }: { posting: JobPostingRecord }) {
           {visibleCopy(posting.public_location!)} · {visibleCopy(posting.public_employment_type!)}
         </p>
       </header>
-      <PreviewText title="포지션 소개" value={visibleCopy(posting.public_summary!)} />
-      <PreviewText title="주요 업무" value={visibleCopy(posting.public_responsibilities!)} />
-      <PreviewText title="필수 자격" value={visibleCopy(posting.public_requirements!)} />
-      <PreviewText
-        title="우대 사항"
-        value={visibleCopy(posting.public_preferred_qualifications!)}
-      />
+      <PreviewText title="포지션 소개" value={posting.public_summary!} />
+      <PreviewText title="주요 업무" value={posting.public_responsibilities!} />
+      <PreviewText title="필수 자격" value={posting.public_requirements!} />
+      <PreviewText title="우대 사항" value={posting.public_preferred_qualifications!} />
     </article>
   );
 }
@@ -349,13 +347,9 @@ function PreviewText({ title, value }: { title: string; value: string }) {
   return (
     <section>
       <h6>{title}</h6>
-      <p className="preserve-lines">{formatPreviewText(value)}</p>
+      <PublicPostingText value={visibleMultilineCopy(value)} />
     </section>
   );
-}
-
-function formatPreviewText(value: string) {
-  return value.replace(/\s+-\s+/g, "\n- ");
 }
 
 function ActionMessage({ state }: { state: { status: string; message?: string } }) {

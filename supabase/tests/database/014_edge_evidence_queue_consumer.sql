@@ -1,5 +1,5 @@
 begin;
-select plan(31);
+select plan(32);
 
 set local role postgres;
 delete from pgmq.q_resume_analysis;
@@ -28,6 +28,12 @@ select public.enqueue_resume_processing_run('70000000-0000-0000-0000-00000000090
 create temporary table edge_dequeued (msg_id bigint, message jsonb) on commit drop;
 grant select, insert, delete, truncate on edge_dequeued to service_role;
 update public.evidence_consumer_control set consumer_mode = 'NODE' where singleton;
+
+select like(
+  pg_get_functiondef('public.enqueue_resume_processing_run(uuid)'::regprocedure),
+  '%control.consumer_mode = ''EDGE''%',
+  'immediate Edge dispatch uses the database-owned consumer-mode gate'
+);
 
 select ok(
   not has_function_privilege('anon', 'public.dequeue_evidence_queue_message(integer,text)', 'EXECUTE'),
