@@ -84,7 +84,9 @@ The provided challenge document is confidential and must not be committed to the
 - minimize direct identifiers,
 - use `store: false` by default,
 - send only required pages and criteria,
-- for Job Requisition drafting, send only the human-entered title and department;
+- for Job Requisition drafting, send the human-entered title, department, and
+  optional existing job-description fields only; never send the internal hiring
+  need;
   retain the internal hiring need with the requisition and exclude it from the
   model request; keep the generated text transient until an explicit
   human save,

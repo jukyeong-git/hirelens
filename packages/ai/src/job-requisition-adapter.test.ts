@@ -65,7 +65,7 @@ describe("job requisition draft Responses adapter", () => {
     expect(result.versions).toEqual({
       model: "test-model",
       pipeline: "ai-pipeline-v1",
-      prompt: "job-requisition-draft-prompt-v4",
+      prompt: "job-requisition-draft-prompt-v5",
       schema: "job-requisition-draft-schema-v2",
     });
   });

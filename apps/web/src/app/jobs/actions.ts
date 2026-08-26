@@ -4,13 +4,21 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
+function optionalFormText(value: FormDataEntryValue | null): string | undefined {
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
 import {
   createJobRequisitionDraftAdapter,
   createScorecardDraftAdapter,
   JobRequisitionDraftAdapterError,
   ScorecardDraftAdapterError,
 } from "@hirelens/ai/server";
-import type { JobRequisitionDraftPromptInput, ScorecardDraftPromptInput } from "@hirelens/ai";
+import {
+  jobRequisitionDraftPromptInputSchema,
+  type JobRequisitionDraftPromptInput,
+  type ScorecardDraftPromptInput,
+} from "@hirelens/ai";
 import type {
   JobRequisitionDraftAdapter,
   JobRequisitionDraftAdapterResult,
@@ -22,7 +30,6 @@ import {
   discardJobDraftInputSchema,
   jobPostingActionInputSchema,
   jobPostingContentInputSchema,
-  jobRequisitionDraftInputSchema,
   assignRequisitionApproverInputSchema,
   createHumanReviewInputSchema,
   createReviewNoteInputSchema,
@@ -276,9 +283,13 @@ export async function generateJobRequisitionDraftAction(
     return { status: "error", message: "AI 채용 요청 초안은 채용 책임자만 만들 수 있습니다." };
   }
 
-  const parsed = jobRequisitionDraftInputSchema.safeParse({
+  const parsed = jobRequisitionDraftPromptInputSchema.safeParse({
     title: formData.get("title"),
     department: formData.get("department"),
+    role_summary: optionalFormText(formData.get("roleSummary")),
+    responsibilities: optionalFormText(formData.get("responsibilities")),
+    requirements: optionalFormText(formData.get("requirements")),
+    preferred_qualifications: optionalFormText(formData.get("preferredQualifications")),
   });
   if (!parsed.success) {
     return {
@@ -313,6 +324,10 @@ export async function generateJobRequisitionDraftAction(
     const generated = await generateJobRequisitionDraftWithRetry(adapter, {
       title: parsed.data.title,
       department: parsed.data.department,
+      role_summary: parsed.data.role_summary,
+      responsibilities: parsed.data.responsibilities,
+      requirements: parsed.data.requirements,
+      preferred_qualifications: parsed.data.preferred_qualifications,
     });
     logAiDraftRequest({
       event: "succeeded",
