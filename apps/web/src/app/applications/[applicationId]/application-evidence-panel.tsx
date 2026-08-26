@@ -64,7 +64,7 @@ export function ApplicationEvidencePanel({
                 <article className="criterion-evidence-card" key={criterion.id}>
                   <div className="section-heading-inline">
                     <div>
-                      <span className="version-label">{criterion.type}</span>
+                      <span className="version-label">{criterionTypeLabel(criterion.type)}</span>
                       <h3>{criterion.name}</h3>
                     </div>
                     <span className={`evidence-status evidence-${displayStatus.toLowerCase()}`}>
@@ -132,6 +132,14 @@ export function ApplicationEvidencePanel({
         </p>
       ) : null}
     </section>
+  );
+}
+
+function criterionTypeLabel(type: string) {
+  return (
+    (
+      { REQUIRED: "필수", PREFERRED: "우대", INTERVIEW_ONLY: "면접 확인" } as Record<string, string>
+    )[type] ?? type
   );
 }
 

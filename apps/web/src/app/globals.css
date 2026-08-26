@@ -405,6 +405,23 @@ h2 {
   font-weight: 750;
 }
 
+.triage-count {
+  margin: 0.75rem 0 0.25rem;
+  font-size: 0.85rem;
+  color: var(--muted, #667085);
+}
+
+/* The row is scanned, so the requirement summary carries the weight and the
+   gap line names the missing criterion instead of showing an evidence code. */
+.triage-summary {
+  font-size: 0.95rem;
+}
+
+.triage-gap {
+  font-size: 0.9rem;
+  color: #8a4b1f;
+}
+
 .triage-filters {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

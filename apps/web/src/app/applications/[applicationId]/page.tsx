@@ -121,7 +121,7 @@ export default async function ApplicationReviewPage({
             ← {visibleCopy(job.title)}로
           </Link>
           <h1>{visibleCopy(application.candidate?.demo_label ?? "Synthetic candidate")}</h1>
-          <p className="lede">{application.workflow_state}</p>
+          <p className="lede">{workflowStageLabel(application.workflow_state)}</p>
         </div>
       </header>
       <nav className="section-navigation" aria-label="지원서 검토 섹션">
@@ -200,6 +200,21 @@ export default async function ApplicationReviewPage({
       */}
       <ProcessingStatus runs={processingRuns} />
     </main>
+  );
+}
+
+function workflowStageLabel(state: string) {
+  return (
+    (
+      {
+        NEW: "검토 대기",
+        MANAGER_REVIEW_REQUESTED: "책임자 검토 요청됨",
+        INTERVIEW_SELECTED: "면접 예정",
+        INTERVIEW_HOLD: "보류",
+        MORE_INFORMATION_REQUIRED: "정보 보완 요청",
+        INTERVIEW_COMPLETED: "면접 결과 기록됨",
+      } as Record<string, string>
+    )[state] ?? state
   );
 }
 

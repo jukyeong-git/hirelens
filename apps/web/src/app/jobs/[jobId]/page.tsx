@@ -114,17 +114,27 @@ export default async function JobDetailPage({
   ]);
   const assignedRecruiter = profiles.find((profile) => profile.id === job.recruiter_id);
   const assignedHiringManager = profiles.find((profile) => profile.id === job.hiring_manager_id);
+  // The list is scanned, not read. Carry the criterion names so a row can say
+  // which requirement is missing instead of listing raw evidence codes.
+  const approvedCriteria = scorecardWorkspace.activeApprovedVersion?.criteria ?? [];
+  const criterionById = new Map(approvedCriteria.map((criterion) => [criterion.id, criterion]));
   const triageItems = await Promise.all(
     applications.map(async (application) => {
       const runs = await listResumeProcessingRunsForApplication(client, application.id);
       const latestRun = runs[0] ?? null;
       const evidence = await listEvidenceItemsForRuns(client, latestRun ? [latestRun.id] : []);
+      const statusByCriterion = new Map<string, string>();
+      for (const item of evidence) statusByCriterion.set(item.criterion_id, item.status);
       return {
         id: application.id,
         label: visibleCopy(application.candidate?.demo_label ?? "Synthetic candidate"),
         workflowState: application.workflow_state,
         processingStatus: latestRun?.status ?? "QUEUED",
-        criterionStatuses: [...new Set(evidence.map((item) => item.status))],
+        criteria: approvedCriteria.map((criterion) => ({
+          name: criterionById.get(criterion.id)?.name ?? criterion.name,
+          type: criterion.type,
+          status: statusByCriterion.get(criterion.id) ?? "PENDING",
+        })),
         submittedAt: application.submitted_at,
       };
     }),
