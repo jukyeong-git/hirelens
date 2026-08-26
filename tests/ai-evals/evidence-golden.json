@@ -1,0 +1,123 @@
+{
+  "version": "evidence-golden-v1",
+  "cases": [
+    {
+      "id": "direct-page-1",
+      "criterion_id": "71000000-0000-0000-0000-000000000001",
+      "pages": [
+        { "page_number": 1, "text": "Built and operated production services for three years." }
+      ],
+      "output": {
+        "results": [
+          {
+            "criterion_id": "71000000-0000-0000-0000-000000000001",
+            "status": "SUPPORTED",
+            "evidence": [{ "page_number": 1, "exact_quote": "operated production services" }],
+            "interpretation": "Direct production operations evidence is stated.",
+            "uncertainty": null,
+            "suggested_interview_question": null
+          }
+        ]
+      },
+      "expected_status": "SUPPORTED"
+    },
+    {
+      "id": "partial-page-2",
+      "criterion_id": "71000000-0000-0000-0000-000000000002",
+      "pages": [
+        { "page_number": 1, "text": "Summary" },
+        { "page_number": 2, "text": "Contributed to a Kubernetes migration." }
+      ],
+      "output": {
+        "results": [
+          {
+            "criterion_id": "71000000-0000-0000-0000-000000000002",
+            "status": "PARTIAL",
+            "evidence": [
+              { "page_number": 2, "exact_quote": "Contributed to a Kubernetes migration." }
+            ],
+            "interpretation": "Participation is stated, but ownership is unclear.",
+            "uncertainty": "Operational responsibility is not described.",
+            "suggested_interview_question": "What part of the migration did you own?"
+          }
+        ]
+      },
+      "expected_status": "PARTIAL"
+    },
+    {
+      "id": "careful-not-found",
+      "criterion_id": "71000000-0000-0000-0000-000000000003",
+      "pages": [{ "page_number": 1, "text": "Built internal reporting tools." }],
+      "output": {
+        "results": [
+          {
+            "criterion_id": "71000000-0000-0000-0000-000000000003",
+            "status": "NOT_FOUND",
+            "evidence": [],
+            "interpretation": "No supporting incident-response evidence was found in the submitted material.",
+            "uncertainty": "The submitted material may not describe every capability.",
+            "suggested_interview_question": "Describe an incident-response example."
+          }
+        ]
+      },
+      "expected_status": "NOT_FOUND"
+    },
+    {
+      "id": "contradiction",
+      "criterion_id": "71000000-0000-0000-0000-000000000004",
+      "pages": [{ "page_number": 1, "text": "I have not operated production databases." }],
+      "output": {
+        "results": [
+          {
+            "criterion_id": "71000000-0000-0000-0000-000000000004",
+            "status": "CONTRADICTED",
+            "evidence": [
+              { "page_number": 1, "exact_quote": "have not operated production databases" }
+            ],
+            "interpretation": "The submitted statement conflicts with the criterion.",
+            "uncertainty": null,
+            "suggested_interview_question": null
+          }
+        ]
+      },
+      "expected_status": "CONTRADICTED"
+    },
+    {
+      "id": "human-only",
+      "criterion_id": "71000000-0000-0000-0000-000000000005",
+      "pages": [{ "page_number": 1, "text": "Led a platform migration." }],
+      "human_only": true,
+      "output": {
+        "results": [
+          {
+            "criterion_id": "71000000-0000-0000-0000-000000000005",
+            "status": "HUMAN_ONLY",
+            "evidence": [],
+            "interpretation": "This criterion requires human assessment.",
+            "uncertainty": null,
+            "suggested_interview_question": "Describe how you communicated a difficult tradeoff."
+          }
+        ]
+      },
+      "expected_status": "HUMAN_ONLY"
+    },
+    {
+      "id": "fabricated-quote-quarantine",
+      "criterion_id": "71000000-0000-0000-0000-000000000006",
+      "pages": [{ "page_number": 1, "text": "Built reporting tools." }],
+      "output": {
+        "results": [
+          {
+            "criterion_id": "71000000-0000-0000-0000-000000000006",
+            "status": "SUPPORTED",
+            "evidence": [{ "page_number": 1, "exact_quote": "Operated global infrastructure." }],
+            "interpretation": "Claimed operations evidence.",
+            "uncertainty": null,
+            "suggested_interview_question": null
+          }
+        ]
+      },
+      "expected_error": "QUOTE_NOT_FOUND"
+    }
+  ]
+}

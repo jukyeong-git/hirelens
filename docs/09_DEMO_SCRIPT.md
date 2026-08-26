@@ -12,10 +12,11 @@ Target: 4–5 minutes.
 
 - one backend-engineer job,
 - one raw job description containing an ambiguous phrase and one concrete technical criterion,
+- a submitted Job Requisition and a designated Requisition Approver,
 - approved scorecard version,
 - 20 synthetic resumes,
 - at least one `SUPPORTED`, `PARTIAL`, `NOT_FOUND`, `HUMAN_ONLY`, and failed document case,
-- recruiter and hiring-manager demo users,
+- recruiter, hiring-manager, and requisition-approver demo users,
 - reset complete,
 - model quota verified,
 - offline fallback prepared.
@@ -28,9 +29,9 @@ Say:
 
 Show the dashboard count and the human-only message.
 
-## Scene 2 — Make the judgment criteria explicit
+## Scene 2 — Approve the opening and make the judgment criteria explicit
 
-Open the raw job description.
+As Hiring Manager, open the Job Requisition and its raw job description.
 
 Show:
 
@@ -39,9 +40,12 @@ Show:
 
 Approve the scorecard.
 
+Switch to the Requisition Approver and approve the requisition with a reason.
+Then switch to the Recruiter and show the published synthetic-demo posting.
+
 Say:
 
-> AI가 기준을 확정한 것이 아니라, 현업 리더가 AI 초안을 검토하고 승인했습니다.
+> AI가 기준을 확정한 것이 아니라, 현업 리더가 AI 초안을 검토하고 승인했습니다. 공고도 업무 승인 이후에만 게시됩니다.
 
 ## Scene 3 — Process every resume
 
@@ -81,11 +85,12 @@ For `NOT_FOUND`, say:
 
 > 경험이 없다고 단정하지 않고, 제출 자료에서 근거를 찾지 못했다고 표시합니다.
 
-## Scene 5 — Human decision and record
+## Scene 5 — Recruiter routing and Hiring Manager interview gate
 
-Open the 60-second review card.
+As Recruiter, request Hiring Manager review for the candidate. Then switch to
+the assigned Hiring Manager and open the review card.
 
-Select a decision and reason.
+Select `INTERVIEW` and record a reason.
 
 Show the audit timeline with:
 
@@ -93,11 +98,28 @@ Show the audit timeline with:
 - model/prompt version,
 - reviewer,
 - timestamp,
-- decision reason.
+- Recruiter review request,
+- Hiring Manager interview-progression reason.
 
 Say:
 
-> 최종 판단은 사람이 했고, 왜 그렇게 판단했는지가 다음 채용에도 남습니다.
+> AI는 원문 근거를 정리했을 뿐입니다. 인터뷰 진행은 Hiring Manager가 사유와 함께 결정했고, Recruiter는 그 결과를 바탕으로 다음 업무를 조율합니다.
+
+## Scene 6 — Final human decision and record
+
+Explain that interview activity occurs outside the P0 demo, then open the
+separate final decision card for a prepared synthetic case.
+
+Show:
+
+- final decision and required reason,
+- prior decision history when changed,
+- scorecard, prompt, and model versions,
+- actor and timestamp.
+
+Say:
+
+> 인터뷰 진행 결정과 최종 채용 결정은 다릅니다. 두 결정 모두 사람이 내리고, 기존 판단을 덮어쓰지 않고 이유와 함께 남깁니다.
 
 ## Final line
 
@@ -124,3 +146,13 @@ If PDF rendering fails:
 - show extracted page text and evidence hash,
 - use prepared screenshot only as a fallback,
 - do not pretend the live path succeeded.
+
+Prepared fallback screens:
+
+- `docs/demo-fallback/01-public-careers.png`
+- `docs/demo-fallback/02-recruiter-evidence.png`
+- `docs/demo-fallback/03-hiring-manager-review.png`
+
+The evidence screens explicitly identify the result as a preprocessed
+synthetic demo result. Regenerate them with `pnpm demo:capture-fallback` only
+after setting the explicit capture flag and synthetic demo password.

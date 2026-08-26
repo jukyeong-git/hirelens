@@ -11,5 +11,8 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "pdfjs-dist": "5.4.149"
   }
 }

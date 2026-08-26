@@ -10,17 +10,25 @@ const environmentSchema = z.object({
   SUPABASE_SECRET_KEY: z.string().min(1).optional(),
   DATABASE_URL: z.string().min(1).optional(),
   RESUME_BUCKET: z.string().min(1).default("resumes"),
-  PROCESSING_QUEUE: z.string().min(1).default("resume-analysis"),
+  PROCESSING_QUEUE: z.literal("resume_analysis").default("resume_analysis"),
   OPENAI_API_KEY: z.string().min(1).optional(),
   OPENAI_MODEL: z.string().min(1).optional(),
   OPENAI_STORE: z.enum(["true", "false"]).default("false"),
-  AI_PIPELINE_VERSION: z.string().min(1).default("v1"),
+  AI_PIPELINE_VERSION: z.string().min(1).default("evidence-pipeline-v1"),
   AI_SCORECARD_PROMPT_VERSION: z.string().min(1).default("scorecard-v1"),
-  AI_EVIDENCE_PROMPT_VERSION: z.string().min(1).default("evidence-v1"),
-  AI_SCHEMA_VERSION: z.string().min(1).default("v1"),
+  AI_EVIDENCE_PROMPT_VERSION: z.string().min(1).default("evidence-extraction-prompt-v2"),
+  AI_SCHEMA_VERSION: z.string().min(1).default("evidence-extraction-schema-v2"),
+  AI_MAX_INPUT_TOKENS: z.coerce.number().int().positive().max(200_000).default(24_000),
+  AI_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().max(32_000).default(8_000),
+  AI_MAX_TOTAL_TOKENS_PER_RUN: z.coerce.number().int().positive().max(232_000).default(32_000),
+  AI_INPUT_COST_MICROUSD_PER_MILLION_TOKENS: z.coerce.number().int().nonnegative().default(0),
+  AI_OUTPUT_COST_MICROUSD_PER_MILLION_TOKENS: z.coerce.number().int().nonnegative().default(0),
+  AI_MAX_COST_MICROUSD_PER_RUN: z.coerce.number().int().positive().default(100_000),
   WORKER_CONCURRENCY: z.coerce.number().int().positive().default(3),
-  WORKER_MAX_ATTEMPTS: z.coerce.number().int().positive().default(3),
+  WORKER_MAX_ATTEMPTS: z.coerce.number().int().positive().max(2).default(2),
   WORKER_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(2000),
+  EVIDENCE_CONSUMER_CRON_SECRET: z.string().min(32).optional(),
+  EVIDENCE_QUEUE_VISIBILITY_SECONDS: z.coerce.number().int().min(60).max(900).default(360),
   SENTRY_DSN: z.string().url().optional(),
 });
 
@@ -40,6 +48,18 @@ export function parseEnvironment(input: Record<string, unknown> = process.env): 
       .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
       .join("; ");
     throw new Error(`Invalid environment configuration: ${details}`);
+  }
+
+  if (parsed.data.OPENAI_STORE !== "false") {
+    throw new Error("Invalid environment configuration: OPENAI_STORE must be false");
+  }
+  if (
+    parsed.data.AI_MAX_INPUT_TOKENS + parsed.data.AI_MAX_OUTPUT_TOKENS >
+    parsed.data.AI_MAX_TOTAL_TOKENS_PER_RUN
+  ) {
+    throw new Error(
+      "Invalid environment configuration: AI input/output caps exceed the per-run total token budget",
+    );
   }
 
   return parsed.data;

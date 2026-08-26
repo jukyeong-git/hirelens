@@ -7,6 +7,7 @@ import type { AmbiguityResolution, CriterionType, ScorecardCriterion } from "@hi
 
 import { initialAmbiguityReviewActionState } from "../action-state";
 import { reviewScorecardAmbiguityAction } from "../actions";
+import { visibleCopy } from "../../_components/visible-copy";
 
 interface AmbiguityReviewFormProps {
   jobId: string;
@@ -168,7 +169,7 @@ export function AmbiguityReviewForm({
         </label>
 
         <label htmlFor={reasonId}>
-          검토 사유 <span aria-hidden="true">*</span>
+          검토 사유
           <textarea
             id={reasonId}
             name="reason"
@@ -190,12 +191,12 @@ export function AmbiguityReviewForm({
 
       {state.status === "success" ? (
         <p className="form-alert form-alert-success" role="status">
-          {state.message}
+          {visibleCopy(state.message)}
         </p>
       ) : null}
       {state.status === "error" ? (
         <p className="form-alert form-alert-error" role="alert">
-          {state.message}
+          {visibleCopy(state.message)}
         </p>
       ) : null}
     </form>

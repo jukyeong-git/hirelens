@@ -43,6 +43,7 @@ export const scorecardCriterionSchema = z
     definition: z.string().trim().min(1).max(2_000),
     accepted_evidence: z.array(z.string().trim().min(1).max(500)).max(20),
     alternative_evidence: z.array(z.string().trim().min(1).max(500)).max(20),
+    partial_evidence_guidance: z.string().trim().min(1).max(1_000).nullable(),
     evidence_fields: z.array(evidenceFieldSchema).max(20),
     resume_assessable: z.boolean(),
     source_phrase: z.string().trim().max(500).nullable(),
@@ -176,20 +177,31 @@ export const scorecardApprovalInputSchema = z
     expectedVersionNumber: z.number().int().positive(),
     expectedStatus: z.literal("DRAFT"),
     expectedContentRevision: z.number().int().positive(),
-    reason: z.string().trim().min(1, "Approval reason is required").max(1_000),
   })
   .strict();
 export type ScorecardApprovalInput = z.infer<typeof scorecardApprovalInputSchema>;
 
-export const scorecardRevisionInputSchema = z
+export const scorecardIssueConfirmationInputSchema = z
   .object({
-    sourceScorecardVersionId: postgresUuidSchema,
-    expectedVersionNumber: z.number().int().positive(),
-    expectedStatus: z.literal("APPROVED"),
-    reason: z.string().trim().min(1, "Revision reason is required").max(1_000),
+    scorecardVersionId: postgresUuidSchema,
+    expectedContentRevision: z.number().int().positive(),
+    issueScope: z.enum(["JOB_DESCRIPTION", "EVALUATION_CRITERION"]),
+    issueKey: z.string().trim().min(1).max(100),
   })
   .strict();
-export type ScorecardRevisionInput = z.infer<typeof scorecardRevisionInputSchema>;
+export type ScorecardIssueConfirmationInput = z.infer<
+  typeof scorecardIssueConfirmationInputSchema
+>;
+
+export const scorecardDraftUpdateInputSchema = z
+  .object({
+    scorecardVersionId: postgresUuidSchema,
+    expectedVersionNumber: z.number().int().positive(),
+    expectedStatus: z.literal("DRAFT"),
+    expectedContentRevision: z.number().int().positive(),
+  })
+  .strict();
+export type ScorecardDraftUpdateInput = z.infer<typeof scorecardDraftUpdateInputSchema>;
 
 export interface ScorecardVersionRecord {
   id: string;
@@ -201,6 +213,8 @@ export interface ScorecardVersionRecord {
   schema_version: string;
   model_id: string;
   ambiguous_phrases: AmbiguousPhrase[];
+  confirmed_job_description_issue_keys: string[];
+  confirmed_evaluation_criterion_ids: string[];
   created_by: string;
   approved_by: string | null;
   approved_at: string | null;

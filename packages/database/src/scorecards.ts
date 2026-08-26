@@ -3,7 +3,9 @@ import type {
   ScorecardApprovalInput,
   ScorecardCriterion,
   ScorecardDetail,
-  ScorecardRevisionInput,
+  ScorecardDraft,
+  ScorecardDraftUpdateInput,
+  ScorecardIssueConfirmationInput,
   ScorecardVersionRecord,
   ScorecardVersionHistoryRecord,
   ScorecardWorkspace,
@@ -12,9 +14,9 @@ import type {
 import type { SupabaseRestClient } from "./rest";
 
 const versionSelect =
-  "id,job_id,version_number,status,source_job_description_hash,prompt_version,schema_version,model_id,ambiguous_phrases,created_by,approved_by,approved_at,content_revision,created_at";
+  "id,job_id,version_number,status,source_job_description_hash,prompt_version,schema_version,model_id,ambiguous_phrases,confirmed_job_description_issue_keys,confirmed_evaluation_criterion_ids,created_by,approved_by,approved_at,content_revision,created_at";
 const criterionSelect =
-  "id,scorecard_version_id,client_id,name,type,definition,accepted_evidence,alternative_evidence,resume_assessable,evidence_fields,source_phrase,ambiguity_note,ambiguity_status,suggested_interview_question,display_order,created_at";
+  "id,scorecard_version_id,client_id,name,type,definition,accepted_evidence,alternative_evidence,partial_evidence_guidance,resume_assessable,evidence_fields,source_phrase,ambiguity_note,ambiguity_status,suggested_interview_question,display_order,created_at";
 const versionHistorySelect = `${versionSelect},approver:profiles!scorecard_versions_approved_by_fkey(display_name)`;
 
 export interface CreateScorecardDraftRequest {
@@ -29,7 +31,9 @@ export interface CreateScorecardDraftRequest {
 
 export type ReviewScorecardAmbiguityRequest = ScorecardAmbiguityReviewInput;
 export type ApproveScorecardRequest = ScorecardApprovalInput;
-export type CreateScorecardRevisionRequest = ScorecardRevisionInput;
+export interface UpdateScorecardDraftRequest extends ScorecardDraftUpdateInput {
+  draft: ScorecardDraft;
+}
 
 async function getCriteriaForVersion(
   client: SupabaseRestClient,
@@ -44,6 +48,23 @@ async function getCriteriaForVersion(
   return client.request<ScorecardDetail["criteria"]>(
     `/rest/v1/criteria?${criterionParams.toString()}`,
   );
+}
+
+export async function getScorecardVersion(
+  client: SupabaseRestClient,
+  scorecardVersionId: string,
+): Promise<ScorecardDetail | null> {
+  const versionParams = new URLSearchParams({
+    select: versionSelect,
+    id: `eq.${scorecardVersionId}`,
+    limit: "1",
+  });
+  const versions = await client.request<ScorecardVersionRecord[]>(
+    `/rest/v1/scorecard_versions?${versionParams.toString()}`,
+  );
+  const version = versions[0];
+  if (!version) return null;
+  return { version, criteria: await getCriteriaForVersion(client, version.id) };
 }
 
 export async function getScorecardForJob(
@@ -127,6 +148,25 @@ export async function createScorecardDraft(
   });
 }
 
+export async function updateScorecardDraft(
+  client: SupabaseRestClient,
+  input: UpdateScorecardDraftRequest,
+): Promise<void> {
+  await client.request<unknown>("/rest/v1/rpc/update_scorecard_draft", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      target_scorecard_version_id: input.scorecardVersionId,
+      expected_version_number: input.expectedVersionNumber,
+      expected_status: input.expectedStatus,
+      expected_content_revision: input.expectedContentRevision,
+      reason: null,
+      ambiguous_phrases: input.draft.ambiguous_phrases,
+      draft_criteria: input.draft.criteria,
+    }),
+  });
+}
+
 export async function reviewScorecardAmbiguity(
   client: SupabaseRestClient,
   input: ReviewScorecardAmbiguityRequest,
@@ -166,26 +206,23 @@ export async function approveScorecard(
       expected_version_number: input.expectedVersionNumber,
       expected_status: input.expectedStatus,
       expected_content_revision: input.expectedContentRevision,
-      reason: input.reason,
+      reason: null,
     }),
   });
 }
 
-export async function createScorecardRevision(
+export async function confirmScorecardIssue(
   client: SupabaseRestClient,
-  input: CreateScorecardRevisionRequest,
-): Promise<string> {
-  return client.request<string>("/rest/v1/rpc/create_scorecard_revision", {
+  input: ScorecardIssueConfirmationInput,
+): Promise<void> {
+  await client.request<unknown>("/rest/v1/rpc/confirm_scorecard_issue", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Prefer: "return=representation",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      source_scorecard_version_id: input.sourceScorecardVersionId,
-      expected_version_number: input.expectedVersionNumber,
-      expected_status: input.expectedStatus,
-      reason: input.reason,
+      target_scorecard_version_id: input.scorecardVersionId,
+      expected_content_revision: input.expectedContentRevision,
+      issue_scope: input.issueScope,
+      issue_key: input.issueKey,
     }),
   });
 }

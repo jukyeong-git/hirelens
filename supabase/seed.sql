@@ -85,6 +85,23 @@ values
     '',
     '',
     ''
+  ),
+  (
+    '00000000-0000-0000-0000-000000000000',
+    '00000000-0000-0000-0000-000000000005',
+    'authenticated',
+    'authenticated',
+    'requisition-approver@demo.hirelens.example',
+    extensions.crypt('DemoPass123!', extensions.gen_salt('bf')),
+    now(),
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    '{"display_name":"Demo Requisition Approver"}'::jsonb,
+    now(),
+    now(),
+    '',
+    '',
+    '',
+    ''
   );
 
 insert into auth.identities (
@@ -127,14 +144,23 @@ values
     'email',
     now(),
     now()
+  ),
+  (
+    '00000000-0000-0000-0000-000000000005',
+    '00000000-0000-0000-0000-000000000005',
+    '{"sub":"00000000-0000-0000-0000-000000000005","email":"requisition-approver@demo.hirelens.example"}'::jsonb,
+    'email',
+    now(),
+    now()
   );
 
 insert into public.profiles (id, display_name, role)
 values
-  ('00000000-0000-0000-0000-000000000001', 'Demo Admin', 'ADMIN'),
-  ('00000000-0000-0000-0000-000000000002', 'Demo Recruiter', 'RECRUITER'),
-  ('00000000-0000-0000-0000-000000000003', 'Demo Hiring Manager', 'HIRING_MANAGER'),
-  ('00000000-0000-0000-0000-000000000004', 'Demo Platform Hiring Manager', 'HIRING_MANAGER');
+  ('00000000-0000-0000-0000-000000000001', 'Admin', 'ADMIN'),
+  ('00000000-0000-0000-0000-000000000002', 'Recruiter', 'RECRUITER'),
+  ('00000000-0000-0000-0000-000000000003', 'Hiring Manager', 'HIRING_MANAGER'),
+  ('00000000-0000-0000-0000-000000000004', 'Platform Hiring Manager', 'HIRING_MANAGER'),
+  ('00000000-0000-0000-0000-000000000005', 'Requisition Approver', 'REQUISITION_APPROVER');
 
 insert into public.jobs (
   id,
@@ -143,26 +169,32 @@ insert into public.jobs (
   raw_job_description,
   status,
   recruiter_id,
-  hiring_manager_id
+  hiring_manager_id,
+  requisition_approver_id,
+  is_synthetic_demo
 )
 values
   (
     '10000000-0000-0000-0000-000000000001',
     'Backend Engineer',
     'Engineering',
-    'Build and operate reliable backend services for the synthetic HireLens demo.',
+    'Build and operate reliable backend services for HireLens.',
     'DRAFT',
     '00000000-0000-0000-0000-000000000002',
-    '00000000-0000-0000-0000-000000000003'
+    '00000000-0000-0000-0000-000000000003',
+    '00000000-0000-0000-0000-000000000005',
+    true
   ),
   (
     '10000000-0000-0000-0000-000000000002',
     'Platform Engineer',
     'Infrastructure',
-    'Improve deployment tooling and observability for the synthetic HireLens demo.',
+    'Improve deployment tooling and observability for HireLens.',
     'DRAFT',
     '00000000-0000-0000-0000-000000000002',
-    '00000000-0000-0000-0000-000000000004'
+    '00000000-0000-0000-0000-000000000004',
+    '00000000-0000-0000-0000-000000000005',
+    true
   );
 
 insert into public.scorecard_versions (
@@ -239,3 +271,144 @@ values
     '복잡한 장애나 설계 결정을 팀에 설명했던 상황을 설명해 주세요.',
     1
   );
+
+-- A separate published synthetic fixture makes the public Career Site
+-- demonstrable without mutating the recruiter-workflow draft fixture above.
+update public.jobs
+set requisition_status = 'APPROVED',
+    submitted_at = now(),
+    approval_reason = 'Synthetic public Career Site fixture.',
+    approved_or_returned_at = now()
+where id = '10000000-0000-0000-0000-000000000002';
+
+insert into public.scorecard_versions (
+  id,
+  job_id,
+  version_number,
+  status,
+  source_job_description_hash,
+  prompt_version,
+  schema_version,
+  model_id,
+  ambiguous_phrases,
+  created_by,
+  approved_by,
+  approved_at
+)
+values (
+  '20000000-0000-0000-0000-000000000002',
+  '10000000-0000-0000-0000-000000000002',
+  1,
+  'APPROVED',
+  '955c3c5a3ca7b6e3a7c4a4204a86f4e67bc21e4a7e4a0a2c4c2a6c8b0c3d1e9f',
+  'seed-review-framework-v1',
+  'review-framework-v1',
+  'HUMAN_AUTHORED',
+  '[]'::jsonb,
+  '00000000-0000-0000-0000-000000000003',
+  '00000000-0000-0000-0000-000000000003',
+  now()
+);
+
+insert into public.criteria (
+  scorecard_version_id,
+  client_id,
+  name,
+  type,
+  definition,
+  accepted_evidence,
+  alternative_evidence,
+  resume_assessable,
+  evidence_fields,
+  ambiguity_status,
+  display_order
+)
+values (
+  '20000000-0000-0000-0000-000000000002',
+  'seed-platform-criterion-1',
+  'Platform operations experience',
+  'REQUIRED',
+  'Experience improving deployment tooling or observability.',
+  '["Deployment or observability example"]'::jsonb,
+  '[]'::jsonb,
+  true,
+  '[{"field_name":"case","description":"Deployment or observability example"}]'::jsonb,
+  'CLEAR',
+  0
+);
+
+insert into public.job_postings (
+  id,
+  job_id,
+  status,
+  public_slug,
+  public_title,
+  public_summary,
+  public_responsibilities,
+  public_requirements,
+  public_preferred_qualifications,
+  public_location,
+  public_employment_type,
+  created_by,
+  published_by,
+  published_at
+)
+values (
+  '30000000-0000-0000-0000-000000000001',
+  '10000000-0000-0000-0000-000000000002',
+  'PUBLISHED',
+  'deadbeefdeadbeefdeadbeefdeadbeef',
+  'Platform Engineer',
+  'Improve deployment tooling and observability for HireLens.',
+  'Improve deployment workflows and make service health easier to understand.\nCollaborate with backend teams on reliable operations.',
+  'Experience with cloud platforms, deployment automation, or observability tooling.\nComfort working with engineers to document operational practices.',
+  'Experience operating production services or improving developer infrastructure.',
+  'Singapore · Hybrid',
+  'Full-time',
+  '00000000-0000-0000-0000-000000000002',
+  '00000000-0000-0000-0000-000000000002',
+  now()
+);
+
+insert into public.job_posting_status_history (
+  job_posting_id,
+  job_id,
+  actor_id,
+  actor_role,
+  prior_status,
+  new_status
+)
+values (
+  '30000000-0000-0000-0000-000000000001',
+  '10000000-0000-0000-0000-000000000002',
+  '00000000-0000-0000-0000-000000000002',
+  'RECRUITER',
+  null,
+  'DRAFT'
+), (
+  '30000000-0000-0000-0000-000000000001',
+  '10000000-0000-0000-0000-000000000002',
+  '00000000-0000-0000-0000-000000000002',
+  'RECRUITER',
+  'DRAFT',
+  'PUBLISHED'
+);
+
+insert into public.candidates (id, demo_label)
+values ('40000000-0000-0000-0000-000000000001', 'Synthetic Backend Candidate');
+
+insert into public.applications (id, candidate_id, job_id, source, workflow_state)
+values (
+  '50000000-0000-0000-0000-000000000001',
+  '40000000-0000-0000-0000-000000000001',
+  '10000000-0000-0000-0000-000000000001',
+  'DEMO_SEED',
+  'NEW'
+);
+
+insert into public.review_assignments (application_id, assigned_to, assigned_by)
+values (
+  '50000000-0000-0000-0000-000000000001',
+  '00000000-0000-0000-0000-000000000003',
+  '00000000-0000-0000-0000-000000000001'
+);

@@ -2,24 +2,36 @@ import Link from "next/link";
 
 import type { JobListItem } from "@hirelens/domain";
 
+import { visibleCopy } from "../../_components/visible-copy";
+
 const statusLabels: Record<JobListItem["status"], string> = {
   DRAFT: "초안",
-  SCORECARD_PENDING_APPROVAL: "Scorecard 승인 대기",
-  READY_FOR_INTAKE: "접수 준비",
+  SCORECARD_PENDING_APPROVAL: "채용 요청 대기",
+  READY_FOR_INTAKE: "공고 게시 준비",
   ARCHIVED: "보관됨",
 };
 
+const postingStatusLabels = {
+  DRAFT: "공고 작성 중",
+  PUBLISHED: "게시 중",
+  CLOSED: "종료",
+} as const;
+
 interface JobListProps {
-  jobs: JobListItem[];
+  jobs: Array<JobListItem & { posting_status?: keyof typeof postingStatusLabels | null }>;
+  title?: string;
+  emptyTitle?: string;
 }
 
-export function JobList({ jobs }: JobListProps) {
+export function JobList({
+  jobs,
+  title = "채용 요청 목록",
+  emptyTitle = "아직 채용 요청이 없습니다.",
+}: JobListProps) {
   if (jobs.length === 0) {
     return (
       <section className="empty-state" aria-labelledby="empty-jobs-title">
-        <p className="eyebrow">No openings yet</p>
-        <h2 id="empty-jobs-title">아직 Job이 없습니다.</h2>
-        <p>첫 Job 초안을 저장하면 이곳에서 담당자와 상태를 확인할 수 있습니다.</p>
+        <h2 id="empty-jobs-title">{emptyTitle}</h2>
       </section>
     );
   }
@@ -28,22 +40,21 @@ export function JobList({ jobs }: JobListProps) {
     <section className="panel" aria-labelledby="job-list-title">
       <div className="section-heading section-heading-inline">
         <div>
-          <p className="eyebrow">Openings</p>
-          <h2 id="job-list-title">Job 목록</h2>
+          <h2 id="job-list-title">{title}</h2>
         </div>
         <span className="count-label">{jobs.length}개</span>
       </div>
 
       <div className="table-wrap">
         <table className="job-table">
-          <caption className="sr-only">접근 가능한 Job 목록</caption>
+          <caption className="sr-only">접근 가능한 채용 요청 목록</caption>
           <thead>
             <tr>
               <th scope="col">직무</th>
               <th scope="col">부서</th>
               <th scope="col">상태</th>
-              <th scope="col">Recruiter</th>
-              <th scope="col">Hiring Manager</th>
+              <th scope="col">채용 담당자</th>
+              <th scope="col">채용 책임자</th>
               <th scope="col">최근 변경</th>
             </tr>
           </thead>
@@ -52,18 +63,19 @@ export function JobList({ jobs }: JobListProps) {
               <tr key={job.id}>
                 <th scope="row">
                   <Link className="job-title job-title-link" href={`/jobs/${job.id}`}>
-                    {job.title}
+                    {visibleCopy(job.title)}
                   </Link>
-                  <span className="job-id">ID {job.id.slice(0, 8)}</span>
                 </th>
-                <td>{job.department}</td>
+                <td>{visibleCopy(job.department)}</td>
                 <td>
                   <span className={`status-chip status-${job.status.toLowerCase()}`}>
-                    {statusLabels[job.status]}
+                    {job.posting_status
+                      ? postingStatusLabels[job.posting_status]
+                      : statusLabels[job.status]}
                   </span>
                 </td>
-                <td>{job.recruiter_name ?? "담당자 정보 없음"}</td>
-                <td>{job.hiring_manager_name ?? "담당자 정보 없음"}</td>
+                <td>{visibleCopy(job.recruiter_name ?? "담당자 정보 없음")}</td>
+                <td>{visibleCopy(job.hiring_manager_name ?? "담당자 정보 없음")}</td>
                 <td>{formatUpdatedAt(job.updated_at)}</td>
               </tr>
             ))}
@@ -77,11 +89,10 @@ export function JobList({ jobs }: JobListProps) {
 function formatUpdatedAt(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return "시간 정보 없음";
+    return "날짜 정보 없음";
   }
 
   return new Intl.DateTimeFormat("ko-SG", {
     dateStyle: "medium",
-    timeStyle: "short",
   }).format(date);
 }

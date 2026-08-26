@@ -20,6 +20,7 @@
         "An incident response example is stated"
       ],
       "alternative_evidence": ["On-call responsibility for a comparable service is stated"],
+      "partial_evidence_guidance": "Production development is stated without clear ownership or incident response scope",
       "evidence_fields": [
         {
           "field_name": "operational_scope",
@@ -43,6 +44,7 @@
       "definition": "Clarify communication practices through a structured interview.",
       "accepted_evidence": [],
       "alternative_evidence": [],
+      "partial_evidence_guidance": null,
       "evidence_fields": [
         {
           "field_name": "communication_example",

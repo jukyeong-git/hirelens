@@ -13,7 +13,7 @@
     "@hirelens/ai": "workspace:*",
     "@hirelens/database": "workspace:*",
     "@hirelens/domain": "workspace:*",
-    "next": "15.5.0",
+    "next": "15.5.23",
     "react": "19.1.0",
     "react-dom": "19.1.0"
   },

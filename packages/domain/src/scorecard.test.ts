@@ -4,8 +4,9 @@ import {
   scorecardAmbiguityReviewInputSchema,
   scorecardApprovalInputSchema,
   scorecardDraftSchema,
+  scorecardDraftUpdateInputSchema,
+  scorecardIssueConfirmationInputSchema,
   scorecardCriterionReviewSnapshotSchema,
-  scorecardRevisionInputSchema,
 } from "./scorecard";
 
 const validCriterion = {
@@ -15,6 +16,7 @@ const validCriterion = {
   definition: "운영 서비스에서 백엔드 시스템을 개발하고 운영한 경험",
   accepted_evidence: ["운영 서비스 책임 범위"],
   alternative_evidence: [],
+  partial_evidence_guidance: "개발 경험은 있으나 운영 책임 범위가 확인되지 않음",
   evidence_fields: [{ field_name: "operational_scope", description: "운영 서비스 책임 범위" }],
   resume_assessable: true,
   source_phrase: "Build reliable backend services",
@@ -32,6 +34,29 @@ describe("scorecard persistence contract", () => {
     });
 
     expect(result.success).toBe(true);
+  });
+
+  it("accepts a manually authored draft without an AI source phrase", () => {
+    const result = scorecardDraftSchema.safeParse({
+      ambiguous_phrases: [],
+      criteria: [{ ...validCriterion, source_phrase: null }],
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it.each([
+    ["an unsupported criterion type", { type: "AUTOMATIC_DECISION" }],
+    ["an unsupported ambiguity state", { ambiguity_status: "APPROVED" }],
+    ["a resume-assessable criterion without accepted evidence", { accepted_evidence: [] }],
+    ["an automatic hiring decision field", { decision: "PROCEED" }],
+  ])("rejects a manual draft with %s", (_label, override) => {
+    const result = scorecardDraftSchema.safeParse({
+      ambiguous_phrases: [],
+      criteria: [{ ...validCriterion, ...override }],
+    });
+
+    expect(result.success).toBe(false);
   });
 
   it("keeps human-only criteria out of resume assessment", () => {
@@ -116,55 +141,57 @@ describe("scorecard persistence contract", () => {
     expect(result.success).toBe(false);
   });
 
-  it("accepts an approval with a draft concurrency token and reason", () => {
+  it("accepts a hiring request with a draft concurrency token and no reason", () => {
     const result = scorecardApprovalInputSchema.safeParse({
       scorecardVersionId: "20000000-0000-0000-0000-000000000001",
       expectedVersionNumber: 1,
       expectedStatus: "DRAFT",
       expectedContentRevision: 3,
-      reason: "모든 기준을 검토하고 승인함",
     });
 
     expect(result.success).toBe(true);
   });
 
-  it.each([
-    ["invalid UUID", { scorecardVersionId: "not-a-uuid" }],
-    ["empty reason", { reason: "   " }],
-  ])("rejects approval input with %s", (_label, override) => {
+  it("accepts an update for a saved draft without collecting a reason", () => {
+    expect(
+      scorecardDraftUpdateInputSchema.safeParse({
+        scorecardVersionId: "20000000-0000-0000-0000-000000000001",
+        expectedVersionNumber: 1,
+        expectedStatus: "DRAFT",
+        expectedContentRevision: 2,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("accepts an evaluation-criterion confirmation", () => {
+    expect(
+      scorecardIssueConfirmationInputSchema.safeParse({
+        scorecardVersionId: "20000000-0000-0000-0000-000000000001",
+        expectedContentRevision: 2,
+        issueScope: "EVALUATION_CRITERION",
+        issueKey: "30000000-0000-0000-0000-000000000001",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects the legacy user-entered reason field for a saved draft update", () => {
+    expect(
+      scorecardDraftUpdateInputSchema.safeParse({
+        scorecardVersionId: "20000000-0000-0000-0000-000000000001",
+        expectedVersionNumber: 1,
+        expectedStatus: "DRAFT",
+        expectedContentRevision: 2,
+        reason: "평가 기준을 수정함",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects an approval input with an invalid UUID", () => {
     const result = scorecardApprovalInputSchema.safeParse({
-      scorecardVersionId: "20000000-0000-0000-0000-000000000001",
+      scorecardVersionId: "not-a-uuid",
       expectedVersionNumber: 1,
       expectedStatus: "DRAFT",
       expectedContentRevision: 3,
-      reason: "승인 사유",
-      ...override,
-    });
-
-    expect(result.success).toBe(false);
-  });
-
-  it("accepts an approved source token for a reasoned revision", () => {
-    const result = scorecardRevisionInputSchema.safeParse({
-      sourceScorecardVersionId: "20000000-0000-0000-0000-000000000001",
-      expectedVersionNumber: 1,
-      expectedStatus: "APPROVED",
-      reason: "새 요구사항을 별도 초안에서 검토함",
-    });
-
-    expect(result.success).toBe(true);
-  });
-
-  it.each([
-    ["invalid UUID", { sourceScorecardVersionId: "revision-1" }],
-    ["empty reason", { reason: "" }],
-  ])("rejects revision input with %s", (_label, override) => {
-    const result = scorecardRevisionInputSchema.safeParse({
-      sourceScorecardVersionId: "20000000-0000-0000-0000-000000000001",
-      expectedVersionNumber: 1,
-      expectedStatus: "APPROVED",
-      reason: "개정 사유",
-      ...override,
     });
 
     expect(result.success).toBe(false);

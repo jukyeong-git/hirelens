@@ -13,30 +13,30 @@ The HireLens runtime product is not designed as an autonomous multi-agent recrui
 
 Custom agent files live in `.codex/agents/`.
 
-| Agent | Mode | Use when | Expected output |
-|---|---|---|---|
-| `product_guardian` | read-only | validating scope, PRD, acceptance criteria | blockers, scope drift, missing decisions |
-| `code_mapper` | read-only | finding affected files and execution paths | file/symbol map and dependency path |
-| `frontend_builder` | workspace-write | implementing web UI and user flows | focused UI code plus tests |
-| `backend_builder` | workspace-write | migrations, APIs, queue, worker infrastructure | safe backend slice plus tests |
-| `ai_evidence_engineer` | workspace-write | prompts, schemas, extraction, evals | versioned AI contract plus regression report |
-| `security_reviewer` | read-only | reviewing RLS, secrets, PII, logs, storage | severity-ranked findings with file refs |
-| `qa_engineer` | workspace-write | closing unit/integration/E2E gaps | tests, fixtures, exact commands and results |
+| Agent                  | Mode            | Use when                                       | Expected output                              |
+| ---------------------- | --------------- | ---------------------------------------------- | -------------------------------------------- |
+| `product_guardian`     | read-only       | validating scope, PRD, acceptance criteria     | blockers, scope drift, missing decisions     |
+| `code_mapper`          | read-only       | finding affected files and execution paths     | file/symbol map and dependency path          |
+| `frontend_builder`     | workspace-write | implementing web UI and user flows             | focused UI code plus tests                   |
+| `backend_builder`      | workspace-write | migrations, APIs, queue, worker infrastructure | safe backend slice plus tests                |
+| `ai_evidence_engineer` | workspace-write | prompts, schemas, extraction, evals            | versioned AI contract plus regression report |
+| `security_reviewer`    | read-only       | reviewing RLS, secrets, PII, logs, storage     | severity-ranked findings with file refs      |
+| `qa_engineer`          | workspace-write | closing unit/integration/E2E gaps              | tests, fixtures, exact commands and results  |
 
 ## 3. Repository skills
 
 Skills live in `.agents/skills/<skill-name>/SKILL.md`.
 
-| Skill | Trigger/use |
-|---|---|
-| `$vertical-slice` | implement one feature across data, API, UI, tests, docs |
-| `$scorecard-contract` | create or change criteria, approval, and scorecard versioning |
-| `$evidence-pipeline` | build or change PDF-to-evidence processing |
-| `$ai-contract-change` | change prompt, model adapter, schema, or AI output |
-| `$supabase-safe-change` | create migrations, RLS, storage policy, and seed changes |
-| `$ats-ui` | build evidence-first ATS screens and states |
-| `$privacy-gate` | review a diff for PII, secret, access, retention, and AI data risks |
-| `$demo-readiness` | run final checks, reset, eval, E2E, and deployment smoke test |
+| Skill                   | Trigger/use                                                         |
+| ----------------------- | ------------------------------------------------------------------- |
+| `$vertical-slice`       | implement one feature across data, API, UI, tests, docs             |
+| `$scorecard-contract`   | create or change criteria, approval, and scorecard versioning       |
+| `$evidence-pipeline`    | build or change PDF-to-evidence processing                          |
+| `$ai-contract-change`   | change prompt, model adapter, schema, or AI output                  |
+| `$supabase-safe-change` | create migrations, RLS, storage policy, and seed changes            |
+| `$ats-ui`               | build evidence-first ATS screens and states                         |
+| `$privacy-gate`         | review a diff for PII, secret, access, retention, and AI data risks |
+| `$demo-readiness`       | run final checks, reset, eval, E2E, and deployment smoke test       |
 
 ## 4. Recommended orchestration recipes
 
@@ -74,7 +74,7 @@ Skills live in `.agents/skills/<skill-name>/SKILL.md`.
 ```text
 1. backend_builder uses $supabase-safe-change.
 2. security_reviewer checks RLS and secret-key boundaries.
-3. qa_engineer runs clean reset and authorization tests.
+3. qa_engineer runs hosted-Alpha rollback-only integration and authorization tests without Docker.
 ```
 
 ## 5. Parallelism rule
