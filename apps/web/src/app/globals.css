@@ -622,6 +622,10 @@ h2 {
   justify-content: flex-end;
 }
 
+.job-close-actions {
+  justify-content: flex-end;
+}
+
 .posting-content-editor {
   margin-top: 1.25rem;
   padding-top: 1.25rem;
@@ -2771,7 +2775,6 @@ h2 {
   min-width: max-content;
   margin-left: auto;
   padding: 0.3rem 0.5rem;
-  border-left: 1px solid #e1e7ef;
 }
 
 .panel {

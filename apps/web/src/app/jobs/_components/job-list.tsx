@@ -7,12 +7,18 @@ import { visibleCopy } from "../../_components/visible-copy";
 const statusLabels: Record<JobListItem["status"], string> = {
   DRAFT: "초안",
   SCORECARD_PENDING_APPROVAL: "채용 요청 대기",
-  READY_FOR_INTAKE: "접수 준비",
+  READY_FOR_INTAKE: "공고 게시 준비",
   ARCHIVED: "보관됨",
 };
 
+const postingStatusLabels = {
+  DRAFT: "공고 작성 중",
+  PUBLISHED: "게시 중",
+  CLOSED: "종료",
+} as const;
+
 interface JobListProps {
-  jobs: JobListItem[];
+  jobs: Array<JobListItem & { posting_status?: keyof typeof postingStatusLabels | null }>;
   title?: string;
   emptyTitle?: string;
 }
@@ -63,7 +69,9 @@ export function JobList({
                 <td>{visibleCopy(job.department)}</td>
                 <td>
                   <span className={`status-chip status-${job.status.toLowerCase()}`}>
-                    {statusLabels[job.status]}
+                    {job.posting_status
+                      ? postingStatusLabels[job.posting_status]
+                      : statusLabels[job.status]}
                   </span>
                 </td>
                 <td>{visibleCopy(job.recruiter_name ?? "담당자 정보 없음")}</td>

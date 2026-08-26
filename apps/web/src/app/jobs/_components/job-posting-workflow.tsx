@@ -1,14 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
 
-import type {
-  AppRole,
-  JobPostingRecord,
-  JobPostingStatusHistoryRecord,
-  JobRecord,
-  ScorecardWorkspace,
-} from "@hirelens/domain";
+import type { AppRole, JobPostingRecord, JobRecord, ScorecardWorkspace } from "@hirelens/domain";
 import { derivePublicPostingContentDraft } from "@hirelens/domain";
 
 import { initialJobPostingActionState } from "../action-state";
@@ -23,7 +17,6 @@ import { visibleCopy } from "../../_components/visible-copy";
 interface JobPostingWorkflowProps {
   job: JobRecord;
   posting: JobPostingRecord | null;
-  history: JobPostingStatusHistoryRecord[];
   viewerId: string;
   viewerRole: AppRole;
   scorecardWorkspace: ScorecardWorkspace;
@@ -38,7 +31,6 @@ const statusLabel = {
 export function JobPostingWorkflow({
   job,
   posting,
-  history,
   viewerId,
   viewerRole,
   scorecardWorkspace,
@@ -66,14 +58,16 @@ export function JobPostingWorkflow({
   const canPublish = Boolean(
     posting?.status === "DRAFT" && hasApprovedFramework && hasCompletePublicContent,
   );
-  const orderedHistory = [...history].sort((left, right) =>
-    left.created_at.localeCompare(right.created_at),
-  );
   const suggestedContent = derivePublicPostingContentDraft(job.raw_job_description);
   const usesSuggestedContent =
     !posting?.public_summary?.trim() ||
     !posting.public_responsibilities?.trim() ||
-    !posting.public_requirements?.trim();
+    !posting.public_requirements?.trim() ||
+    !posting.public_preferred_qualifications?.trim();
+  const [editingContent, setEditingContent] = useState(!hasCompletePublicContent);
+  useEffect(() => {
+    if (contentState.status === "success") setEditingContent(false);
+  }, [contentState.status]);
 
   return (
     <section className="panel" aria-labelledby="job-posting-title">
@@ -81,7 +75,7 @@ export function JobPostingWorkflow({
         <div>
           <h2 id="job-posting-title">채용 공고</h2>
         </div>
-        {posting ? (
+        {posting && posting.status !== "DRAFT" ? (
           <span className={`status-chip status-${posting.status.toLowerCase()}`}>
             {statusLabel[posting.status]}
           </span>
@@ -105,16 +99,22 @@ export function JobPostingWorkflow({
             <div>
               <h3 id="posting-content-title">공고 내용</h3>
             </div>
-            <span className="status-chip status-draft">
-              {hasCompletePublicContent ? "공개 문구 준비됨" : "공개 문구 입력 필요"}
-            </span>
+            {canManage && posting.status === "DRAFT" && !editingContent ? (
+              <button
+                className="button button-quiet"
+                type="button"
+                onClick={() => setEditingContent(true)}
+              >
+                수정
+              </button>
+            ) : null}
           </div>
 
           <p className="form-help">
             공개 URL 식별자: <code>/careers/{posting.public_slug}</code> (변경 불가)
           </p>
 
-          {canManage && posting.status === "DRAFT" ? (
+          {canManage && posting.status === "DRAFT" && editingContent ? (
             <form action={contentAction} className="posting-content-form">
               <input type="hidden" name="jobId" value={job.id} />
               {usesSuggestedContent ? (
@@ -166,6 +166,19 @@ export function JobPostingWorkflow({
                   required
                 />
               </label>
+              <label>
+                우대 사항
+                <textarea
+                  name="publicPreferredQualifications"
+                  defaultValue={
+                    posting.public_preferred_qualifications?.trim() ||
+                    suggestedContent.preferredQualifications
+                  }
+                  maxLength={10000}
+                  rows={6}
+                  required
+                />
+              </label>
               <div className="form-grid form-grid-two">
                 <label>
                   근무지
@@ -186,13 +199,20 @@ export function JobPostingWorkflow({
                   />
                 </label>
               </div>
-              <div className="form-actions">
-                <button className="button button-quiet" type="submit" disabled={contentPending}>
-                  {contentPending ? "공고 내용 저장 중…" : "공고 내용 저장"}
+              <div className="form-actions job-create-actions">
+                <button
+                  className="button button-quiet"
+                  type="button"
+                  onClick={() => setEditingContent(false)}
+                  disabled={contentPending}
+                >
+                  취소
                 </button>
-                <span className="form-help">저장 후 후보자 화면 확인</span>
-                <ActionMessage state={contentState} />
+                <button className="button button-quiet" type="submit" disabled={contentPending}>
+                  {contentPending ? "저장 중…" : "저장"}
+                </button>
               </div>
+              <ActionMessage state={contentState} />
             </form>
           ) : null}
 
@@ -202,14 +222,14 @@ export function JobPostingWorkflow({
             </p>
           ) : null}
 
-          <PublicPostingPreview posting={posting} />
+          {!editingContent ? <PublicPostingPreview posting={posting} /> : null}
         </section>
       ) : null}
 
-      {posting?.status === "DRAFT" && canManage ? (
+      {posting?.status === "DRAFT" && canManage && !editingContent ? (
         <form
           action={publishAction}
-          className="form-actions"
+          className="form-actions job-create-actions"
           onSubmit={(event) => {
             if (!window.confirm("이 공고를 후보자에게 공개하시겠습니까?")) {
               event.preventDefault();
@@ -224,9 +244,6 @@ export function JobPostingWorkflow({
           >
             {publishPending ? "게시 중…" : "공고 게시"}
           </button>
-          <span className="form-help">
-            승인된 지원서 평가 기준과 공고 내용이 있어야 게시할 수 있습니다.
-          </span>
           {!canPublish ? (
             <p className="form-alert form-alert-warning" role="status">
               {!hasApprovedFramework
@@ -241,7 +258,7 @@ export function JobPostingWorkflow({
       {posting?.status === "PUBLISHED" && canManage ? (
         <form
           action={closeAction}
-          className="form-actions"
+          className="form-actions job-close-actions"
           onSubmit={(event) => {
             if (!window.confirm("공고를 종료하면 다시 게시할 수 없습니다. 계속하시겠습니까?")) {
               event.preventDefault();
@@ -252,7 +269,6 @@ export function JobPostingWorkflow({
           <button className="button button-quiet" type="submit" disabled={closePending}>
             {closePending ? "종료 중…" : "공고 종료"}
           </button>
-          <span className="form-help">종료된 공고는 P0에서 재개할 수 없습니다.</span>
           <ActionMessage state={closeState} />
         </form>
       ) : null}
@@ -262,29 +278,6 @@ export function JobPostingWorkflow({
           이 공고는 종료되었습니다. 다시 채용하려면 새 공고를 만드세요.
         </p>
       ) : null}
-
-      <section aria-labelledby="job-posting-history-title">
-        <div className="section-heading">
-          <h3 id="job-posting-history-title">공고 상태 이력</h3>
-        </div>
-        {orderedHistory.length === 0 ? (
-          <p className="section-copy">아직 공고 상태 변경 이력이 없습니다.</p>
-        ) : (
-          <ol className="history-list" aria-label="시간 순 공고 상태 이력">
-            {orderedHistory.map((event) => (
-              <li key={event.id} className="history-item">
-                <strong>
-                  {event.prior_status ? statusLabel[event.prior_status] : "생성"} →{" "}
-                  {statusLabel[event.new_status]}
-                </strong>
-                <span>
-                  처리 역할: {event.actor_role} · 날짜: {formatDate(event.created_at)}
-                </span>
-              </li>
-            ))}
-          </ol>
-        )}
-      </section>
     </section>
   );
 }
@@ -295,6 +288,7 @@ function hasPublicContent(posting: JobPostingRecord | null) {
       posting.public_summary?.trim() &&
       posting.public_responsibilities?.trim() &&
       posting.public_requirements?.trim() &&
+      posting.public_preferred_qualifications?.trim() &&
       posting.public_location?.trim() &&
       posting.public_employment_type?.trim(),
   );
@@ -343,6 +337,10 @@ function PublicPostingPreview({ posting }: { posting: JobPostingRecord }) {
       <PreviewText title="포지션 소개" value={visibleCopy(posting.public_summary!)} />
       <PreviewText title="주요 업무" value={visibleCopy(posting.public_responsibilities!)} />
       <PreviewText title="필수 자격" value={visibleCopy(posting.public_requirements!)} />
+      <PreviewText
+        title="우대 사항"
+        value={visibleCopy(posting.public_preferred_qualifications!)}
+      />
     </article>
   );
 }
@@ -351,9 +349,13 @@ function PreviewText({ title, value }: { title: string; value: string }) {
   return (
     <section>
       <h6>{title}</h6>
-      <p className="preserve-lines">{value}</p>
+      <p className="preserve-lines">{formatPreviewText(value)}</p>
     </section>
   );
+}
+
+function formatPreviewText(value: string) {
+  return value.replace(/\s+-\s+/g, "\n- ");
 }
 
 function ActionMessage({ state }: { state: { status: string; message?: string } }) {
