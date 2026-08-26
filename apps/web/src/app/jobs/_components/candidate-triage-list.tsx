@@ -36,8 +36,7 @@ export function CandidateTriageList({ items }: { items: CandidateTriageItem[] })
                 접수
               </small>
               <span className="application-link-detail">
-                {item.atsStatus}
-                {item.evidenceCount > 0 ? ` · 검증 근거 ${item.evidenceCount}건` : ""}
+                {item.atsStatus} · 직접·부분 근거 {item.evidenceCount}건
               </span>
             </Link>
           ))}

@@ -137,7 +137,7 @@ Package and service versions must be verified and pinned during scaffolding.
 1. Web validates job and approved scorecard.
 2. Web creates candidate/application/file records in a transaction.
 3. Web uploads PDF to private storage.
-4. Web enqueues a task containing opaque IDs, not resume text; the database schedules a secret-protected Edge invocation after the transaction commits.
+4. Web enqueues a task containing opaque IDs, not resume text; while consumer mode is `EDGE`, the database schedules a secret-protected Edge invocation after the transaction commits.
 5. The immediate Edge invocation reads one task and creates a leased processing attempt. The one-minute Cron remains a fallback for missed wake-ups, transient invocation failures, and lease recovery while consumer mode is `EDGE`.
 6. The Edge consumer extracts and stores page text.
 7. The Edge consumer calls AI with minimum required data.
