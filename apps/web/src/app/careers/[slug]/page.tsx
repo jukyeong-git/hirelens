@@ -74,20 +74,33 @@ export default async function PublicCareerPostingPage({
 
           <section aria-labelledby="public-summary-title">
             <h2 id="public-summary-title">포지션 소개</h2>
-            <p>{visibleCopy(posting.summary)}</p>
+            <p className="preserve-lines">{formatPublicText(visibleCopy(posting.summary))}</p>
           </section>
 
           <section aria-labelledby="public-responsibilities-title">
             <h2 id="public-responsibilities-title">주요 업무</h2>
-            <p className="preserve-lines">{visibleCopy(posting.responsibilities)}</p>
+            <p className="preserve-lines">
+              {formatPublicText(visibleCopy(posting.responsibilities))}
+            </p>
           </section>
 
           <section aria-labelledby="public-requirements-title">
             <h2 id="public-requirements-title">필수 자격</h2>
-            <p className="preserve-lines">{visibleCopy(posting.requirements)}</p>
+            <p className="preserve-lines">{formatPublicText(visibleCopy(posting.requirements))}</p>
+          </section>
+
+          <section aria-labelledby="public-preferred-title">
+            <h2 id="public-preferred-title">우대 사항</h2>
+            <p className="preserve-lines">
+              {formatPublicText(visibleCopy(posting.preferred_qualifications))}
+            </p>
           </section>
         </article>
       </div>
     </main>
   );
+}
+
+function formatPublicText(value: string) {
+  return value.replace(/\s+-\s+/g, "\n- ");
 }

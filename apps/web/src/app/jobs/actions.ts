@@ -1248,6 +1248,7 @@ export async function updateJobPostingContentAction(
     publicSummary: formData.get("publicSummary"),
     publicResponsibilities: formData.get("publicResponsibilities"),
     publicRequirements: formData.get("publicRequirements"),
+    publicPreferredQualifications: formData.get("publicPreferredQualifications"),
     publicLocation: formData.get("publicLocation"),
     publicEmploymentType: formData.get("publicEmploymentType"),
   });

@@ -167,7 +167,7 @@ The requisition, screening-criteria, and posting states are independent.
 - `status` (`DRAFT`, `PUBLISHED`, `CLOSED`)
 - `public_slug` (opaque, immutable public URL identifier)
 - `public_title`, `public_summary`
-- `public_responsibilities`, `public_requirements`
+- `public_responsibilities`, `public_requirements`, `public_preferred_qualifications`
 - `public_location`, `public_employment_type`
 - `created_by`
 - `published_by`, `published_at`

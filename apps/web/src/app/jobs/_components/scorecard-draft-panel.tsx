@@ -133,11 +133,6 @@ export function ScorecardDraftPanel({
   }
 
   const isDraft = displayedVersion.version.status === "DRAFT";
-  const isHumanAuthored = displayedVersion.version.model_id === "HUMAN_AUTHORED";
-  const approver = workspace.versionHistory.find(
-    (version) => version.id === displayedVersion.version.id,
-  )?.approver;
-
   return (
     <>
       {navigationActionTarget && isDraft && canEdit
@@ -170,35 +165,15 @@ export function ScorecardDraftPanel({
             <h2 id="scorecard-title">지원서 평가 기준 {isDraft ? "초안" : "승인본"}</h2>
           </div>
           <div className="section-heading-actions">
-            <span
-              className={`status-chip ${scorecardStatusClass(displayedVersion.version.status)}`}
-            >
-              {scorecardStatusLabel(displayedVersion.version.status)}
-            </span>
+            {isDraft ? (
+              <span
+                className={`status-chip ${scorecardStatusClass(displayedVersion.version.status)}`}
+              >
+                {scorecardStatusLabel(displayedVersion.version.status)}
+              </span>
+            ) : null}
           </div>
         </div>
-
-        {isDraft ? (
-          isHumanAuthored ? (
-            <div className="draft-warning" role="note">
-              <strong>사람이 작성한 초안을 검토 중입니다.</strong> 명시적 승인이 완료되기 전에는 이
-              버전을 이력서 분석에 사용할 수 없습니다.
-            </div>
-          ) : (
-            <div className="draft-warning" role="note">
-              <strong>AI가 제안한 초안을 사람이 검토 중입니다.</strong> 명시적 승인이 완료되기
-              전에는 이 버전을 이력서 분석에 사용할 수 없습니다.
-            </div>
-          )
-        ) : (
-          <div className="approved-banner" role="status">
-            <strong>사람이 승인한 활성 버전입니다.</strong>
-            <span>
-              승인자 {visibleCopy(approver?.display_name ?? "확인 가능한 사용자")} ·{" "}
-              {formatDate(displayedVersion.version.approved_at)}
-            </span>
-          </div>
-        )}
 
         {isDraft && isEditing ? (
           <SavedReviewFrameworkEditor
@@ -1048,9 +1023,4 @@ function scorecardStatusClass(status: string) {
       : status === "PENDING_APPROVAL"
         ? "status-scorecard_pending_approval"
         : "status-draft";
-}
-function formatDate(value: string | null) {
-  return value
-    ? new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium" }).format(new Date(value))
-    : "날짜 미기록";
 }

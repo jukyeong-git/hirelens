@@ -26,7 +26,6 @@ export default async function PublicCareersPage() {
           <div>
             <h2 id="public-careers-list-title">채용 중인 포지션</h2>
           </div>
-          <span className="count-label">{postings.length}개</span>
         </div>
 
         {postings.length === 0 ? (
@@ -39,10 +38,10 @@ export default async function PublicCareersPage() {
                 href={`/careers/${posting.public_slug}`}
                 key={posting.public_slug}
               >
-                <span className="eyebrow">{visibleCopy(posting.employment_type)}</span>
                 <h3>{visibleCopy(posting.title)}</h3>
-                <p className="public-career-meta">{visibleCopy(posting.location)}</p>
-                <p>{visibleCopy(posting.summary)}</p>
+                <p className="public-career-meta">
+                  {visibleCopy(posting.location)} · {visibleCopy(posting.employment_type)}
+                </p>
                 <span className="public-career-link">공고 상세 →</span>
               </Link>
             ))}
