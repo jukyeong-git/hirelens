@@ -38,7 +38,7 @@ export default async function ResumeApplicationPage({
 
         <p className="public-application-required">필수 항목입니다.</p>
 
-        <p className="public-application-introduction">PDF · 최대 10MiB</p>
+        <p className="public-application-introduction">PDF · 최대 5 MiB</p>
 
         <div className="public-application-job-context">
           지원 포지션: <strong>{visibleCopy(posting.title)}</strong>

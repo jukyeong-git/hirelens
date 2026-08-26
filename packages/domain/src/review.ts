@@ -96,21 +96,6 @@ export interface InterviewProgressionReviewRecord {
   created_at: string;
 }
 
-export interface AuditEventRecord {
-  id: string;
-  event_type: string;
-  actor_type: "USER" | "SYSTEM";
-  actor_id: string | null;
-  aggregate_type: string;
-  aggregate_id: string;
-  safe_metadata: Record<string, unknown>;
-  before_data: Record<string, unknown> | null;
-  after_data: Record<string, unknown> | null;
-  source: string;
-  version_ref: string | null;
-  created_at: string;
-}
-
 export interface ReviewNoteRecord {
   id: string;
   application_id: string;

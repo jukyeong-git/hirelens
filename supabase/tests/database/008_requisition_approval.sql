@@ -1,6 +1,6 @@
 begin;
 
-select plan(38);
+select plan(37);
 
 set local role postgres;
 insert into public.jobs (id, title, department, raw_job_description, recruiter_id, hiring_manager_id)
@@ -108,11 +108,6 @@ select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000003
 select lives_ok(
   $$ select public.assign_requisition_approver('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000005') $$,
   'Assigned Hiring Manager can assign an approver while DRAFT'
-);
-select is(
-  (select count(*)::integer from public.audit_events where event_type = 'REQUISITION_APPROVER_ASSIGNED' and aggregate_id = '10000000-0000-0000-0000-000000000001'),
-  1,
-  'Approver designation writes an append-only accountability audit event'
 );
 select throws_ok(
   $$ select public.submit_requisition('10000000-0000-0000-0000-000000000001') $$,

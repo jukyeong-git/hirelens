@@ -1,5 +1,5 @@
 begin;
-select plan(22);
+select plan(20);
 
 set local role postgres;
 update public.scorecard_versions
@@ -46,10 +46,6 @@ select lives_ok(
 select is(
   (select count(*)::integer from public.human_reviews where application_id = '50000000-0000-0000-0000-000000000812' and reviewer_id = '00000000-0000-0000-0000-000000000001'),
   1, 'Admin override creates exactly one human review'
-);
-select is(
-  (select safe_metadata ->> 'actor_role' from public.audit_events where aggregate_id = '50000000-0000-0000-0000-000000000812' and event_type = 'HUMAN_DECISION_CREATED' order by created_at desc limit 1),
-  'ADMIN', 'Admin override audit records the actor role'
 );
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000003', true);
 select throws_ok(
@@ -119,10 +115,6 @@ select throws_ok(
   $$ update public.interview_progression_reviews set reason = 'mutated' where application_id = '50000000-0000-0000-0000-000000000811' $$,
   '55000', 'interview_progression_reviews is append-only',
   'outcome history cannot be updated'
-);
-select is(
-  (select count(*)::integer from public.audit_events where aggregate_id = '50000000-0000-0000-0000-000000000811' and event_type in ('HIRING_MANAGER_REVIEW_REQUESTED', 'INTERVIEW_PROGRESSION_RECORDED', 'INTERVIEW_PROGRESSION_CHANGED')),
-  3, 'request and both human outcomes have minimal audit events'
 );
 select is(
   (select count(*)::integer from public.human_reviews where application_id = '50000000-0000-0000-0000-000000000811'),

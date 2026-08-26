@@ -30,7 +30,7 @@ export const JOB_REQUISITION_DRAFT_SCHEMA_NAME = "hirelens_job_requisition_draft
 
 export const EVIDENCE_CONTRACT_VERSIONS = {
   pipeline: "evidence-pipeline-v1",
-  prompt: "evidence-extraction-prompt-v2",
+  prompt: "evidence-extraction-prompt-v4",
   schema: "evidence-extraction-schema-v2",
 } as const;
 export const EVIDENCE_SCHEMA_NAME = "hirelens_evidence_extraction_v2" as const;

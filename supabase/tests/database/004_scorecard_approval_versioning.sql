@@ -1,6 +1,6 @@
 begin;
 
-select plan(20);
+select plan(18);
 
 set local role authenticated;
 
@@ -207,39 +207,6 @@ select ok(
       and approved_at is not null
   ),
   'Approval stores the human approver and timestamp'
-);
-
-select ok(
-  exists (
-    select 1
-    from public.audit_events
-    where event_type = 'SCORECARD_APPROVED'
-      and aggregate_id = '10000000-0000-0000-0000-000000000001'
-      and actor_id = '00000000-0000-0000-0000-000000000003'
-      and safe_metadata->>'actor_role' = 'HIRING_MANAGER'
-      and reason is null
-      and correlation_id is not null
-      and source = 'scorecard_approval'
-      and result = 'SUCCESS'
-      and version_ref = '20000000-0000-0000-0000-000000000001'
-      and before_data->>'target_status' = 'DRAFT'
-      and after_data->>'approved_status' = 'APPROVED'
-  ),
-  'Approval appends complete safe actor, transition, and trace metadata without a reason'
-);
-
-select ok(
-  not exists (
-    select 1
-    from public.audit_events
-    where event_type = 'SCORECARD_APPROVED'
-      and (
-        safe_metadata::text like '%Build and operate reliable backend services%'
-        or before_data::text like '%운영 환경 백엔드 개발 경험%'
-        or after_data::text like '%운영 환경 백엔드 개발 경험%'
-      )
-  ),
-  'Approval audit payload excludes raw Job descriptions and criterion text'
 );
 
 select set_config(

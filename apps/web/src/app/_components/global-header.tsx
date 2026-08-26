@@ -23,10 +23,9 @@ export function GlobalHeader({
   const popoverRef = useRef<HTMLDivElement>(null);
   const isInternalWorkspace =
     pathname === "/jobs" || pathname.startsWith("/jobs/") || pathname.startsWith("/applications/");
-  const unreadCount = notifications.filter((notification) => !notification.read_at).length;
-  const recentNotifications = [...notifications]
-    .sort((left, right) => Number(Boolean(left.read_at)) - Number(Boolean(right.read_at)))
-    .slice(0, 5);
+  const pendingNotifications = notifications.filter((notification) => !notification.read_at);
+  const unreadCount = pendingNotifications.length;
+  const recentNotifications = pendingNotifications.slice(0, 5);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -94,7 +93,7 @@ export function GlobalHeader({
                       <div className="global-notification-item" key={notification.id}>
                         <div>
                           <strong>{notificationLabel(notification.event_type)}</strong>
-                          <span>{notification.read_at ? "확인 완료" : "처리 필요"}</span>
+                          <span>처리 필요</span>
                         </div>
                         <div className="global-notification-actions">
                           {notification.aggregate_type === "job" ? (
@@ -104,12 +103,10 @@ export function GlobalHeader({
                               지원서 열기
                             </Link>
                           ) : null}
-                          {!notification.read_at ? (
-                            <form action={markNotificationReadAction}>
-                              <input type="hidden" name="notificationId" value={notification.id} />
-                              <button type="submit">확인 완료</button>
-                            </form>
-                          ) : null}
+                          <form action={markNotificationReadAction}>
+                            <input type="hidden" name="notificationId" value={notification.id} />
+                            <button type="submit">확인 완료</button>
+                          </form>
                         </div>
                       </div>
                     ))}

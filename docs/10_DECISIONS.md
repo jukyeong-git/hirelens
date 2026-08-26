@@ -1168,3 +1168,33 @@ and existing data contracts without a migration. The Recruiter posting editor
 prefills empty, unsaved candidate-facing fields from this representation. It
 does not auto-save or overwrite a Recruiter's posting copy; location and
 employment type remain Recruiter-authored.
+
+## ADR-035 — Remove the generic audit-event subsystem
+
+- Status: Accepted
+- Date: 2026-08-26
+- Decision owner: Product team
+- Supersedes: ADR-020 and the generic audit-event portions of ADR-007
+
+### Decision
+
+The MVP removes the legacy SCIM-inspired `audit_events` table, its automatic
+Job and Review Framework triggers, its REST repository, and the application
+audit timeline. New code must not emit generic audit events.
+
+Accountability needed by an active workflow remains in typed domain records:
+requisition and posting status histories, immutable review-note versions,
+processing attempts, interview-progression rows, and superseding human
+decisions. These records keep their existing authorization and privacy rules.
+
+Applied migrations are not rewritten. A private, non-persistent compatibility
+sink temporarily absorbs legacy function-body inserts so existing workflows do
+not fail while retaining or exposing no audit rows.
+
+### Consequences
+
+- Existing generic audit rows are permanently removed by a forward migration.
+- The application no longer exposes a generic chronological audit timeline.
+- Domain histories remain available only in their relevant workflow context.
+- Restoring a generic audit subsystem requires a new product decision and
+  forward migration; removed history cannot be reconstructed.

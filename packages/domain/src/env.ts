@@ -16,7 +16,7 @@ const environmentSchema = z.object({
   OPENAI_STORE: z.enum(["true", "false"]).default("false"),
   AI_PIPELINE_VERSION: z.string().min(1).default("evidence-pipeline-v1"),
   AI_SCORECARD_PROMPT_VERSION: z.string().min(1).default("scorecard-v1"),
-  AI_EVIDENCE_PROMPT_VERSION: z.string().min(1).default("evidence-extraction-prompt-v2"),
+  AI_EVIDENCE_PROMPT_VERSION: z.string().min(1).default("evidence-extraction-prompt-v4"),
   AI_SCHEMA_VERSION: z.string().min(1).default("evidence-extraction-schema-v2"),
   AI_MAX_INPUT_TOKENS: z.coerce.number().int().positive().max(200_000).default(24_000),
   AI_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().max(32_000).default(8_000),

@@ -117,6 +117,29 @@ describe("role workspace", () => {
     expect(workspace.notifications).toHaveLength(1);
   });
 
+  it("omits completed notifications from workspace work items and metrics", () => {
+    const workspace = buildRoleWorkspace({
+      role: "HIRING_MANAGER",
+      jobs,
+      applications,
+      postings,
+      notifications: [
+        { ...notifications[0]!, event_type: "REVIEW_ASSIGNMENT", recipient_id: hiringManagerId },
+        {
+          ...notifications[0]!,
+          id: "80000000-0000-0000-0000-000000000099",
+          event_type: "REVIEW_ASSIGNMENT",
+          recipient_id: hiringManagerId,
+          read_at: "2026-08-26T00:00:00.000Z",
+        },
+      ],
+    });
+
+    expect(workspace.metrics.find((metric) => metric.label === "새 업무")?.value).toBe(1);
+    expect(workspace.notifications).toHaveLength(1);
+    expect(workspace.notifications[0]?.read_at).toBeNull();
+  });
+
   it("counts an intake-ready job without a published posting as Recruiter work", () => {
     const workspace = buildRoleWorkspace({
       role: "RECRUITER",

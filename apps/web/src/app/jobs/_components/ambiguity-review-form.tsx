@@ -185,7 +185,7 @@ export function AmbiguityReviewForm({
           {pending ? "검토 저장 중…" : "검토 결과 저장"}
         </button>
         <span className="form-help">
-          저장 후에도 AI가 처음 표시한 표현과 사람이 정한 결과가 구분되어 감사 기록에 남습니다.
+          저장 후에도 AI가 처음 표시한 표현과 사람이 정한 결과는 검토 상태에서 구분됩니다.
         </span>
       </div>
 

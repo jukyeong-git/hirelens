@@ -1,6 +1,6 @@
 begin;
 
-select plan(8);
+select plan(6);
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000003', true);
@@ -49,20 +49,6 @@ select ok(
   (select content_revision > current_setting('hirelens.update_revision')::integer
    from public.scorecard_versions where id = current_setting('hirelens.update_version_id')::uuid),
   'draft content revision advances'
-);
-
-select ok(
-  exists (select 1 from public.audit_events where event_type = 'SCORECARD_DRAFT_UPDATED'
-    and version_ref = current_setting('hirelens.update_version_id')),
-  'draft update appends an audit event'
-);
-
-select is(
-  (select reason from public.audit_events where event_type = 'SCORECARD_DRAFT_UPDATED'
-    and version_ref = current_setting('hirelens.update_version_id')
-    order by created_at desc limit 1),
-  null::text,
-  'draft update audit event does not store a user-entered reason'
 );
 
 select throws_ok(

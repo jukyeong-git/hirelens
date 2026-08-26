@@ -11,7 +11,7 @@ The web app owns:
 - resume upload and processing progress,
 - evidence-first candidate review,
 - human decision forms,
-- audit timeline display.
+- typed workflow and decision history display.
 
 It does not own PDF parsing, model prompts, queue consumption, or privileged database shortcuts.
 

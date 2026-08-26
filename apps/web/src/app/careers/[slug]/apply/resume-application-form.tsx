@@ -25,8 +25,8 @@ export function ResumeApplicationForm({ slug }: { slug: string }) {
       setState({ status: "error", message: "PDF 파일만 업로드할 수 있습니다." });
       return;
     }
-    if (file.size > 10_485_760) {
-      setState({ status: "error", message: "파일 크기는 10 MiB 이하여야 합니다." });
+    if (file.size > 5_242_880) {
+      setState({ status: "error", message: "파일 크기는 5 MiB 이하여야 합니다." });
       return;
     }
     setState({ status: "idle", fileName: file.name, fileSize: file.size });

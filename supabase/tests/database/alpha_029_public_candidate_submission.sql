@@ -1,7 +1,7 @@
 begin;
 
 -- Alpha verification only. Every fixture mutation is rolled back.
-select plan(17);
+select plan(16);
 
 select ok(
   not has_function_privilege(
@@ -88,17 +88,6 @@ select ok(
    where id = '60000000-0000-0000-0000-000000000029'),
   'Server derives the opaque private Storage path from the target job and generated IDs'
 );
-select ok(
-  not exists (
-    select 1
-    from public.audit_events
-    where event_type = 'PUBLIC_RESUME_SUBMISSION_RESERVED'
-      and aggregate_id = '50000000-0000-0000-0000-000000000029'
-      and safe_metadata::text like '%synthetic-public-resume.pdf%'
-  ),
-  'Public submission audit excludes the original filename'
-);
-
 set local role postgres;
 insert into storage.objects (bucket_id, name, metadata)
 select 'resumes', storage_path, '{"size":1024}'::jsonb

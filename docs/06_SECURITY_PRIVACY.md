@@ -32,7 +32,7 @@ The provided challenge document is confidential and must not be committed to the
 1. resume file exposed through a public bucket or long-lived URL,
 2. secret key included in browser bundle,
 3. weak or missing RLS,
-4. raw resume text copied into logs, audit, or error trackers,
+4. raw resume text copied into logs, workflow history, or error trackers,
 5. model output trusted without source validation,
 6. unauthorized user writes a decision,
 7. AI code path changes a decision,
@@ -133,7 +133,8 @@ model/prompt/schema versions when observability is needed.
 
 ### Audit
 
-Audit records store actions and references, not raw personal content.
+Domain-owned history records store only the fields required by their workflow,
+not raw resume content.
 
 ## 5. RLS security tests
 
@@ -143,7 +144,7 @@ At minimum prove:
 - a hiring manager cannot read an unassigned job,
 - a recruiter cannot approve a scorecard unless explicitly authorized,
 - a worker cannot create human review rows,
-- application roles cannot update/delete audit rows,
+- application roles cannot mutate immutable decision or workflow-history rows,
 - browser credentials cannot access secret-only operations.
 
 ## 6. Demo reset safety

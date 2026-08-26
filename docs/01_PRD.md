@@ -21,7 +21,7 @@ Build a demo-quality ATS that proves this statement:
 9. Criterion-level evidence extraction with exact source quote
 10. Recruiter and hiring-manager review
 11. Human-only decision with reason
-12. Minimal append-only change history
+12. Domain-owned workflow and decision histories
 13. Synthetic demo seed and reset
 14. Unit, integration, E2E, security, and AI eval gates
 15. Internal in-app notifications with role-based recipients
@@ -47,7 +47,7 @@ Build a demo-quality ATS that proves this statement:
 
 | Role                   | Main permissions                                                                                                                                                                      |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ADMIN`                | manage users and roles, inspect all jobs, reset demo, manage scorecards, processing, notes, decisions, and view audit                                                                 |
+| `ADMIN`                | manage users and roles, inspect all jobs, reset demo, and manage scorecards, processing, notes, and decisions                                                                         |
 | `RECRUITER`            | prepare/publish postings, upload internal demo applications, review evidence, request manager review, manage own temporary notes, and coordinate a manager-approved interview handoff |
 | `HIRING_MANAGER`       | create requisitions and the screening criteria, review assigned candidates, decide whether to progress them to interview, and save and change human decisions                         |
 | `REQUISITION_APPROVER` | reserved for a future enterprise approval workflow; not available in the MVP                                                                                                          |
@@ -105,7 +105,7 @@ Acceptance criteria:
 - AI must not invent compensation, legal/eligibility terms, company policy, or
   protected-trait preferences. Those terms remain human-provided or `TBD`.
 - A job cannot accept analysis until an approved scorecard version exists.
-- Creation is written to the audit trail.
+- Creation stores its authenticated actor and timestamps on the requisition record.
 
 ### FR-002 — Create an editable Review Framework draft
 
@@ -126,7 +126,7 @@ Acceptance criteria:
   questions. It must not define an authoritative total score, automatic
   ranking, knockout rule, or automatic applicant decision.
 - AI generation only fills the same editable, unsaved form. It never creates a
-  version, audit event, approval, analysis run, ranking, or hiring decision.
+  version, approval, analysis run, ranking, or hiring decision.
 - A human must explicitly save the form as a draft before the existing
   ambiguity-review and approval workflow begins.
 - A manually saved draft is explicitly recorded as human-authored rather than
@@ -312,33 +312,19 @@ Acceptance criteria:
 - The review stores actor, role, reason, prior value when changed, and time.
 - The review can be changed only through a new decision event, not silent overwrite.
 
-### FR-010 — Preserve audit history
+### FR-010 — Preserve domain-owned history
 
-The system records material events.
-
-Minimum events:
-
-- job created,
-- scorecard drafted,
-- scorecard approved,
-- resume uploaded,
-- processing started/completed/failed,
-- review assigned,
-- human decision created/changed,
-- user or role created/changed/disabled,
-- scorecard or job changed,
-- processing retried/quarantined,
-- evidence changed or restored,
-- review note created/edited/soft-deleted/restored,
-- demo reset,
-- notification sent or failed.
+The product does not maintain a generic audit-event log. Workflows that need
+history keep it in their own typed records: requisition and posting status
+history, review-note versions, processing attempts, interview progression, and
+human decision supersession.
 
 Acceptance criteria:
 
-- Events are append-only.
-- Events contain aggregate ID, actor or system identity and role, action, target, before/after values when applicable, reason when applicable, timestamp, correlation ID, source, result, and version references.
-- Admin may perform all product operations but may not update or delete audit events.
-- Audit payloads do not contain raw resume text.
+- Human decisions retain actor, reason, timestamp, and prior-value linkage.
+- Processing attempts retain model, prompt, schema, pipeline, status, and error metadata.
+- Workflow history tables remain role-protected and contain no raw resume text.
+- No generic `audit_events` timeline or API is exposed.
 
 ### FR-011 — Recover from processing errors
 
@@ -423,7 +409,7 @@ Then:
 - evidence is linked to exact pages,
 - invalid evidence cannot be persisted,
 - the final decision is human-authored,
-- the audit timeline explains who did what and under which versions.
+- typed workflow and decision histories explain the relevant human and processing changes.
 
 ## 8. Product metrics
 

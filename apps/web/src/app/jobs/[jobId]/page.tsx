@@ -7,9 +7,9 @@ import {
   getScorecardWorkspaceForJob,
   listApplicationsForJob,
   listEvidenceItemsForRuns,
-  listResumeProcessingRunsForApplication,
   listJobPostingStatusHistory,
   listProfiles,
+  listResumeProcessingRunsForApplication,
 } from "@hirelens/database";
 
 import { LoginForm } from "../_components/login-form";
@@ -95,25 +95,37 @@ export default async function JobDetailPage({
     listJobPostingStatusHistory(client, job.id),
     listProfiles(client),
   ]);
+  const latestRuns = await Promise.all(
+    applications.map(async (application) => {
+      const runs = await listResumeProcessingRunsForApplication(client, application.id);
+      return { applicationId: application.id, run: runs[0] ?? null };
+    }),
+  );
+  const latestRunByApplicationId = new Map(
+    latestRuns.map(({ applicationId, run }) => [applicationId, run]),
+  );
+  const latestRunIds = latestRuns.flatMap(({ run }) => (run ? [run.id] : []));
+  const evidenceItems = await listEvidenceItemsForRuns(client, latestRunIds);
+  const evidenceCountByRunId = new Map<string, number>();
+  for (const evidenceItem of evidenceItems) {
+    evidenceCountByRunId.set(
+      evidenceItem.processing_run_id,
+      (evidenceCountByRunId.get(evidenceItem.processing_run_id) ?? 0) + 1,
+    );
+  }
   const isAssignedHiringManager =
     viewer.role === "HIRING_MANAGER" && viewer.id === job.hiring_manager_id;
   const assignedRecruiter = profiles.find((profile) => profile.id === job.recruiter_id);
   const assignedHiringManager = profiles.find((profile) => profile.id === job.hiring_manager_id);
-  const triageItems = await Promise.all(
-    applications.map(async (application) => {
-      const runs = await listResumeProcessingRunsForApplication(client, application.id);
-      const latestRun = runs[0] ?? null;
-      const evidence = await listEvidenceItemsForRuns(client, latestRun ? [latestRun.id] : []);
-      return {
-        id: application.id,
-        label: visibleCopy(application.candidate?.demo_label ?? "Synthetic candidate"),
-        workflowState: application.workflow_state,
-        processingStatus: latestRun?.status ?? "QUEUED",
-        criterionStatuses: [...new Set(evidence.map((item) => item.status))],
-        submittedAt: application.submitted_at,
-      };
-    }),
-  );
+  const triageItems = applications.map((application) => ({
+    id: application.id,
+    label: visibleCopy(application.candidate?.demo_label ?? "지원자"),
+    submittedAt: application.submitted_at,
+    atsStatus: atsStatusLabel(latestRunByApplicationId.get(application.id)?.status),
+    evidenceCount: latestRunByApplicationId.get(application.id)
+      ? evidenceCountByRunId.get(latestRunByApplicationId.get(application.id)!.id) ?? 0
+      : 0,
+  }));
 
   return (
     <main className="app-shell" id="main-content">
@@ -253,4 +265,12 @@ function jobStatusLabel(status: string) {
       ARCHIVED: "보관됨",
     }[status] ?? status
   );
+}
+
+function atsStatusLabel(status: string | undefined) {
+  if (!status) return "분석 대기";
+  if (status === "COMPLETED") return "ATS 분석 완료";
+  if (status === "NEEDS_OCR") return "OCR 확인 필요";
+  if (status === "FAILED" || status === "QUARANTINED") return "ATS 분석 확인 필요";
+  return "ATS 분석 중";
 }

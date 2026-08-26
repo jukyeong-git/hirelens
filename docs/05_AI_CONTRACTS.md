@@ -304,7 +304,7 @@ Minimum checks:
 ## 14. Implemented evidence contract versions
 
 - pipeline: `evidence-pipeline-v1`
-- prompt: `evidence-extraction-prompt-v2`
+- prompt: `evidence-extraction-prompt-v4`
 - schema: `evidence-extraction-schema-v2`
 - model: supplied only by server-side `OPENAI_MODEL`
 
@@ -314,9 +314,12 @@ identifier minimization, and exact normalized quote validation before the
 transactional persistence RPC. Schema/source failures are quarantined and do
 not enter the trusted evidence UI.
 
-Evidence contract v2 supplies each approved criterion's name, definition,
-accepted evidence, alternative evidence, partial-evidence guidance, and named
+Evidence prompt contract v4 supplies each approved criterion's name, definition,
+accepted evidence, alternative evidence, excluded evidence, partial-evidence guidance, and named
 extraction fields. The model must evaluate only those approved criteria. It may
+never count an excluded-evidence example as support. It may
+not return a quote containing or crossing a direct-identifier redaction marker; it
+must select a different contiguous exact source passage or use `NOT_FOUND`. It may
 use `PARTIAL` only when the submitted material supports part of the criterion
 under the supplied guidance; absence remains `NOT_FOUND`, never a claim that
 the candidate lacks the capability. The contract exposes no total score,

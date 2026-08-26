@@ -1,7 +1,7 @@
 begin;
 
 -- Alpha verification only: every fixture mutation below is rolled back.
-select plan(45);
+select plan(41);
 
 set local role postgres;
 update public.profiles
@@ -171,22 +171,6 @@ select is(
   'Posting history records only valid forward transitions'
 );
 select is(
-  (select count(*)::integer from public.audit_events
-   where aggregate_type = 'job_posting'
-     and aggregate_id = (select id from public.job_postings where job_id = '10000000-0000-0000-0000-000000000027')
-     and event_type in ('POSTING_CREATED', 'POSTING_PUBLISHED', 'POSTING_CLOSED')),
-  3,
-  'Posting lifecycle has one safe append-only audit event per transition'
-);
-select is(
-  (select count(*)::integer from public.audit_events
-   where aggregate_type = 'job_posting'
-     and aggregate_id = (select id from public.job_postings where job_id = '10000000-0000-0000-0000-000000000027')
-     and (reason is not null or safe_metadata ? 'raw_job_description' or safe_metadata ? 'candidate_id' or safe_metadata ? 'resume_text')),
-  0,
-  'Posting audit records contain no free text, job description, candidate, or resume data'
-);
-select is(
   (select count(*)::integer from public.human_reviews
    where application_id in (select id from public.applications where job_id = '10000000-0000-0000-0000-000000000027')),
   0,
@@ -228,20 +212,6 @@ select throws_ok(
       where job_id = '10000000-0000-0000-0000-000000000027' $$,
   '42501', 'permission denied for table job_posting_status_history',
   'Direct posting-history updates are denied'
-);
-select throws_ok(
-  $$ update public.audit_events set event_type = 'POSTING_TAMPERED'
-      where aggregate_type = 'job_posting'
-        and aggregate_id = (select id from public.job_postings where job_id = '10000000-0000-0000-0000-000000000027') $$,
-  '42501', 'permission denied for table audit_events',
-  'Posting audit history cannot be updated directly'
-);
-select throws_ok(
-  $$ delete from public.audit_events
-      where aggregate_type = 'job_posting'
-        and aggregate_id = (select id from public.job_postings where job_id = '10000000-0000-0000-0000-000000000027') $$,
-  '42501', 'permission denied for table audit_events',
-  'Posting audit history cannot be deleted directly'
 );
 select ok(
   not has_table_privilege('anon', 'public.job_postings', 'SELECT'),

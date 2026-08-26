@@ -57,9 +57,9 @@ When documents conflict, stop and report the conflict. Do not silently choose on
    - Do not infer protected traits, personality, culture fit, health, family status, age, gender, ethnicity, religion, disability, or other job-irrelevant attributes.
    - Do not analyze faces, voices, photos, names, or addresses.
 
-8. **Append-only audit**
-   - Audit events are append-only.
-   - Do not expose update/delete paths for audit events in application code.
+8. **Domain-owned history**
+   - Do not add or restore a generic audit-event subsystem.
+   - Preserve typed requisition, posting, processing, note, interview, and human-decision histories.
 
 ## MVP scope
 
@@ -75,7 +75,7 @@ Job
 → recruiter review
 → hiring-manager review
 → human decision
-→ audit trail
+→ typed workflow and decision histories
 ```
 
 P1 only after P0 passes:

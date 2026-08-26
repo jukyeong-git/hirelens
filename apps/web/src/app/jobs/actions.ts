@@ -918,7 +918,7 @@ export async function saveHumanDecisionAction(
     return reviewActionError(error, "최종 결정을 저장하지 못했습니다. 다시 시도하세요.");
   }
   revalidatePath(`/applications/${parsed.data.applicationId}`);
-  return { status: "success", message: "사람의 최종 결정과 사유를 감사 이력에 저장했습니다." };
+  return { status: "success", message: "사람의 최종 결정과 사유를 결정 이력에 저장했습니다." };
 }
 
 export async function requestHiringManagerReviewAction(

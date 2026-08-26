@@ -38,7 +38,7 @@ export function buildRoleWorkspace(input: {
   notifications: NotificationRecord[];
 }): RoleWorkspace {
   const { role, jobs, applications, postings, notifications } = input;
-  const unreadNotifications = notifications.filter((notification) => !notification.read_at);
+  const pendingNotifications = notifications.filter((notification) => !notification.read_at);
   const criteriaPending = jobs.filter((job) => job.status === "SCORECARD_PENDING_APPROVAL").length;
   const newApplications = applications.filter(
     (application) => application.workflow_state === "NEW",
@@ -62,9 +62,9 @@ export function buildRoleWorkspace(input: {
         { label: "채용 요청", value: jobs.length },
         { label: "새 지원서", value: newApplications },
         { label: "게시 중 공고", value: publishedPostings },
-        { label: "새 업무", value: unreadNotifications.length + intakeReadyJobs },
+        { label: "새 업무", value: pendingNotifications.length + intakeReadyJobs },
       ],
-      notifications: notifications.filter(
+      notifications: pendingNotifications.filter(
         (notification) =>
           notification.event_type === "PROCESSING_COMPLETED" ||
           notification.event_type === "DECISION_FOLLOW_UP",
@@ -81,9 +81,9 @@ export function buildRoleWorkspace(input: {
         { label: "채용 요청", value: jobs.length },
         { label: "평가 기준 대기", value: criteriaPending },
         { label: "후보자 검토", value: managerReviewRequests },
-        { label: "새 업무", value: unreadNotifications.length },
+        { label: "새 업무", value: pendingNotifications.length },
       ],
-      notifications: notifications.filter(
+      notifications: pendingNotifications.filter(
         (notification) =>
           notification.event_type === "SCORECARD_APPROVAL_REQUEST" ||
           notification.event_type === "REVIEW_ASSIGNMENT" ||
@@ -102,10 +102,11 @@ export function buildRoleWorkspace(input: {
       { label: "검토 요청", value: managerReviewRequests },
       {
         label: "처리 실패",
-        value: unreadNotifications.filter((item) => item.event_type === "PROCESSING_FAILED").length,
+        value: pendingNotifications.filter((item) => item.event_type === "PROCESSING_FAILED")
+          .length,
       },
     ],
-    notifications: notifications.filter(
+    notifications: pendingNotifications.filter(
       (notification) => notification.event_type === "PROCESSING_FAILED",
     ),
   };

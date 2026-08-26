@@ -102,7 +102,6 @@ export type {
   ReviewAssignmentRecord,
   RequestHiringManagerReviewInput,
   RecordInterviewProgressionInput,
-  AuditEventRecord,
   ReviewConfidence,
   ReviewNoteRecord,
   ReviewNoteVersionRecord,

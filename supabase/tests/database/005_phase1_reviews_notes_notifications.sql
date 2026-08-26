@@ -1,6 +1,6 @@
 begin;
 
-select plan(32);
+select plan(28);
 
 insert into public.candidates (id, demo_label) values ('40000000-0000-0000-0000-000000000010', 'SQL synthetic candidate');
 insert into public.applications (id, candidate_id, job_id) values ('50000000-0000-0000-0000-000000000010', '40000000-0000-0000-0000-000000000010', '10000000-0000-0000-0000-000000000001');
@@ -34,8 +34,6 @@ select lives_ok($$ select public.update_review_note((select id from public.revie
 select is((select count(*)::integer from public.review_note_versions), 2, 'Note versions are immutable history');
 select lives_ok($$ select public.set_review_note_deleted((select id from public.review_notes where author_id = auth.uid() limit 1), true, 'No longer relevant') $$, 'Recruiter can soft delete own note with reason');
 select lives_ok($$ select public.set_review_note_deleted((select id from public.review_notes where author_id = auth.uid() limit 1), false, 'Relevant again') $$, 'Recruiter can restore own note with reason');
-select ok(not exists (select 1 from public.audit_events where event_type like 'REVIEW_NOTE%' and safe_metadata::text like '%Private working note%'), 'Note bodies are never copied to audit metadata');
-
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000004', true);
 select throws_ok($$ select public.create_human_review('50000000-0000-0000-0000-000000000010', '20000000-0000-0000-0000-000000000010', 'PROCEED', 'EVIDENCE_REVIEWED', 'Unassigned manager attempt.', 'HIGH') $$, '42501', 'not authorized to create human review', 'Unassigned Hiring Manager cannot create a decision');
 
@@ -61,13 +59,9 @@ select is((select count(*)::integer from public.review_notes where application_i
 
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000003', true);
 select lives_ok($$ select public.mark_notification_read((select id from public.notifications where event_type = 'REVIEW_ASSIGNMENT' limit 1)) $$, 'Recipient can mark own notification read');
-select is((select count(*)::integer from public.audit_events where event_type = 'NOTIFICATION_READ'), 0, 'Notification reads do not write audit events');
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000002', true);
 select throws_ok($$ select public.mark_notification_read((select id from public.notifications where event_type = 'REVIEW_ASSIGNMENT' limit 1)) $$, '42501', 'notification not found or not recipient', 'Non-recipient cannot mark notification read');
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000003', true);
 select is((select count(*)::integer from public.notifications where event_type = 'SCORECARD_APPROVAL_REQUEST' and aggregate_id = '10000000-0000-0000-0000-000000000002' and relevant_version = '20000000-0000-0000-0000-000000000011'), 1, 'Draft scorecard notification is created once per recipient/version');
-select ok(exists (select 1 from public.audit_events where event_type = 'HUMAN_DECISION_CHANGED' and aggregate_id = '50000000-0000-0000-0000-000000000010'), 'Decision change writes a safe audit event');
-select ok(not exists (select 1 from public.audit_events where event_type = 'HUMAN_DECISION_CHANGED' and reason = 'Need clarification in interview.'), 'Decision detail is not copied to audit history');
-
 select * from finish();
 rollback;

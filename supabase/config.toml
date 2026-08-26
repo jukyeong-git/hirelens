@@ -30,11 +30,11 @@ port = 54324
 
 [storage]
 enabled = true
-file_size_limit = "10MiB"
+file_size_limit = "5MiB"
 
 [storage.buckets.resumes]
 public = false
-file_size_limit = "10MiB"
+file_size_limit = "5MiB"
 allowed_mime_types = ["application/pdf"]
 
 [auth]
