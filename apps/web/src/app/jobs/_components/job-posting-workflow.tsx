@@ -63,9 +63,7 @@ export function JobPostingWorkflow({
   const hasApprovedFramework = scorecardWorkspace.activeApprovedVersion !== null;
   const hasCompletePublicContent = hasPublicContent(posting);
   const canPublish = Boolean(
-    posting?.status === "DRAFT" &&
-      hasApprovedFramework &&
-      hasCompletePublicContent,
+    posting?.status === "DRAFT" && hasApprovedFramework && hasCompletePublicContent,
   );
   const orderedHistory = [...history].sort((left, right) =>
     left.created_at.localeCompare(right.created_at),
@@ -77,35 +75,12 @@ export function JobPostingWorkflow({
         <div>
           <h2 id="job-posting-title">채용 공고</h2>
         </div>
-        <span className={`status-chip status-${posting?.status.toLowerCase() ?? "draft"}`}>
-          {posting ? statusLabel[posting.status] : "공고 초안 없음"}
-        </span>
+        {posting ? (
+          <span className={`status-chip status-${posting.status.toLowerCase()}`}>
+            {statusLabel[posting.status]}
+          </span>
+        ) : null}
       </div>
-
-      <dl className="metadata-grid" aria-label="공고 게시 조건">
-        <div>
-          <span>채용 요청</span>
-          <strong>작성됨</strong>
-        </div>
-        <div>
-          <span>지원서 검토 기준</span>
-          <strong>{hasApprovedFramework ? "승인됨" : "승인 전"}</strong>
-        </div>
-        <div>
-          <span>공개 범위</span>
-          <strong>{posting?.status === "PUBLISHED" ? "채용 사이트 공개" : "게시 전 비공개"}</strong>
-        </div>
-        <div>
-          <span>재게시</span>
-          <strong>{posting?.status === "CLOSED" ? "불가" : "해당 없음"}</strong>
-        </div>
-      </dl>
-
-      {!canManage ? (
-        <p className="info-banner" role="status">
-          배정된 채용 담당자 전용 · 관리자 운영 예외
-        </p>
-      ) : null}
 
       {!posting && canManage ? (
         <form action={createAction} className="form-actions">
@@ -133,7 +108,7 @@ export function JobPostingWorkflow({
             공개 URL 식별자: <code>/careers/{posting.public_slug}</code> (변경 불가)
           </p>
 
-          {canManage && posting.status !== "CLOSED" ? (
+          {canManage && posting.status === "DRAFT" ? (
             <form action={contentAction} className="posting-content-form">
               <input type="hidden" name="jobId" value={job.id} />
               <label>
@@ -205,7 +180,7 @@ export function JobPostingWorkflow({
             </form>
           ) : null}
 
-          {!canManage ? (
+          {!canManage && posting.status === "DRAFT" ? (
             <p className="info-banner" role="status">
               공고 내용은 배정된 채용 담당자 또는 관리자만 수정할 수 있습니다.
             </p>
@@ -234,12 +209,12 @@ export function JobPostingWorkflow({
             {publishPending ? "게시 중…" : "공고 게시"}
           </button>
           <span className="form-help">
-            승인된 지원서 검토 기준과 공고 내용이 있어야 게시할 수 있습니다.
+            승인된 지원서 평가 기준과 공고 내용이 있어야 게시할 수 있습니다.
           </span>
           {!canPublish ? (
             <p className="form-alert form-alert-warning" role="status">
               {!hasApprovedFramework
-                ? "승인된 지원서 검토 기준을 확인하세요."
+                ? "승인된 지원서 평가 기준을 확인하세요."
                 : "공고 내용을 모두 입력하고 저장하세요."}
             </p>
           ) : null}
@@ -287,7 +262,7 @@ export function JobPostingWorkflow({
                   {statusLabel[event.new_status]}
                 </strong>
                 <span>
-                  처리 역할: {event.actor_role} · 시각: {formatDate(event.created_at)}
+                  처리 역할: {event.actor_role} · 날짜: {formatDate(event.created_at)}
                 </span>
               </li>
             ))}
@@ -319,10 +294,18 @@ function PublicPostingPreview({ posting }: { posting: JobPostingRecord }) {
   }
 
   return (
-    <article className="public-posting-preview" aria-labelledby="public-preview-title">
+    <article
+      className={`public-posting-preview${posting.status === "PUBLISHED" ? " is-published" : ""}`}
+      aria-labelledby="public-preview-title"
+    >
       <div className="section-heading section-heading-inline">
         <div>
-          <h4 id="public-preview-title">공개 미리보기</h4>
+          <h4 id="public-preview-title">
+            {posting.status === "PUBLISHED" ? "게시된 채용 공고" : "공개 미리보기"}
+          </h4>
+          {posting.status === "PUBLISHED" && posting.published_at ? (
+            <p className="form-help">게시일 {formatDate(posting.published_at)}</p>
+          ) : null}
         </div>
         {posting.status === "PUBLISHED" ? (
           <a
@@ -335,11 +318,13 @@ function PublicPostingPreview({ posting }: { posting: JobPostingRecord }) {
           </a>
         ) : null}
       </div>
-      <h5>{visibleCopy(posting.public_title!)}</h5>
-      <p>
-        {visibleCopy(posting.public_location!)} · {visibleCopy(posting.public_employment_type!)}
-      </p>
-      <p>{visibleCopy(posting.public_summary!)}</p>
+      <header className="internal-public-posting-title">
+        <h5>{visibleCopy(posting.public_title!)}</h5>
+        <p>
+          {visibleCopy(posting.public_location!)} · {visibleCopy(posting.public_employment_type!)}
+        </p>
+      </header>
+      <PreviewText title="포지션 소개" value={visibleCopy(posting.public_summary!)} />
       <PreviewText title="주요 업무" value={visibleCopy(posting.public_responsibilities!)} />
       <PreviewText title="필수 자격" value={visibleCopy(posting.public_requirements!)} />
     </article>
@@ -374,7 +359,5 @@ function ActionMessage({ state }: { state: { status: string; message?: string } 
 }
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short" }).format(
-    new Date(value),
-  );
+  return new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium" }).format(new Date(value));
 }

@@ -5,7 +5,7 @@ This document defines the conceptual P0 model. SQL migrations remain the executa
 ## Terminology
 
 The versioned evaluation-policy aggregate is called **Review Framework** in the
-product and `지원서 검토 기준` in the user interface. Existing schema names such
+product and `지원서 평가 기준` in the user interface. Existing schema names such
 as `scorecard_versions` and `criteria` are legacy implementation identifiers;
 they retain the same Review Framework meaning until a separately approved
 forward-only compatibility migration replaces them.
@@ -145,6 +145,13 @@ candidate, resume, or evidence data.
 - `updated_at`
 
 `jobs` is the implementation's current name for the Job Requisition aggregate.
+Before its Review Framework is approved, the assigned Hiring Manager or Admin
+may update basic information through `update_job_basic_info`. The RPC uses the
+row timestamp as a concurrency token, keeps the Hiring Manager assignment
+fixed, validates the selected Recruiter role, and does not copy the raw job
+description or request reason into audit metadata. Changing the job description
+clears stale description ambiguity items and advances the draft framework
+revision. An approved or intake-ready Job is immutable.
 The requisition, screening-criteria, and posting states are independent.
 
 ### `job_postings`
@@ -236,9 +243,13 @@ Invariant: an approved version cannot be updated.
 
 An assigned Hiring Manager or Admin may replace the structured contents of a
 `DRAFT` version through the controlled `update_scorecard_draft` workflow. The
-workflow requires the expected version and content revision plus a human-written
-reason, advances `content_revision`, and appends a safe audit event. It cannot
-update an `APPROVED` or `SUPERSEDED` version.
+workflow requires the expected version and content revision, advances
+`content_revision`, and appends a safe audit event containing the actor, time,
+and before/after revision metadata. Draft content edits do not collect or store
+a free-text reason. The Hiring Manager's `채용 요청` action is separate, does
+not collect a free-text reason, and records actor, time, version, and state
+transition in the append-only audit trail. The workflow cannot update an
+`APPROVED` or `SUPERSEDED` version.
 
 ### `criteria`
 
@@ -293,8 +304,10 @@ rejects stale edits. It retains the original AI `ambiguous_phrases` metadata
 and writes a safe before/after audit event with the human reason.
 
 For HL-023, the assigned Hiring Manager or Admin approves a `DRAFT` through
-the atomic `approve_scorecard` RPC. Every approval requires a reason and is
-blocked while any criterion remains `AMBIGUOUS`. Approval sets the Job to
+the atomic `approve_scorecard` RPC. The `채용 요청` action requires every
+generated confirmation item to be acknowledged and does not collect a reason.
+`AMBIGUOUS` and `HUMAN_ONLY` source metadata remains preserved after human
+confirmation. Approval sets the Job to
 `READY_FOR_INTAKE`. The approved framework is final for that Job and there is
 at most one `APPROVED` version per Job.
 

@@ -192,7 +192,7 @@ function InterviewProgressionHistory({
           </strong>
           <p>{review.reason}</p>
           <span>
-            {profileNames[review.reviewer_id] ?? "채용 책임자"} · {formatTime(review.created_at)}
+            {profileNames[review.reviewer_id] ?? "채용 책임자"} · {formatDate(review.created_at)}
           </span>
         </article>
       ))}
@@ -214,7 +214,7 @@ function DecisionForm({
   if (!approvedVersion)
     return (
       <p className="form-alert form-alert-warning" role="status">
-        승인된 지원서 검토 기준이 아직 없어 최종 결정을 저장할 수 없습니다.
+        승인된 지원서 평가 기준이 아직 없어 최종 결정을 저장할 수 없습니다.
       </p>
     );
   return (
@@ -410,7 +410,7 @@ function DecisionHistory({
           </p>
           <p>{review.reason_detail}</p>
           <span>
-            {profileNames[review.reviewer_id] ?? "사용자"} · {formatTime(review.created_at)} · 검토
+            {profileNames[review.reviewer_id] ?? "사용자"} · {formatDate(review.created_at)} · 검토
             기준 {review.scorecard_version_id.slice(0, 8)}
           </span>
         </article>
@@ -429,10 +429,8 @@ function interviewLabel(value: string) {
     )[value] ?? value
   );
 }
-function formatTime(value: string) {
-  return new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short" }).format(
-    new Date(value),
-  );
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium" }).format(new Date(value));
 }
 function ActionMessage({
   state,

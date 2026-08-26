@@ -127,7 +127,6 @@ export default async function ApplicationReviewPage({
                   {event.actor_id ? (profileNames[event.actor_id] ?? "사용자") : "시스템"} ·{" "}
                   {new Intl.DateTimeFormat("ko-KR", {
                     dateStyle: "medium",
-                    timeStyle: "short",
                   }).format(new Date(event.created_at))}
                 </span>
               </li>

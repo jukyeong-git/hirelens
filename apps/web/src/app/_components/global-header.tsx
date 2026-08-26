@@ -24,7 +24,9 @@ export function GlobalHeader({
   const isInternalWorkspace =
     pathname === "/jobs" || pathname.startsWith("/jobs/") || pathname.startsWith("/applications/");
   const unreadCount = notifications.filter((notification) => !notification.read_at).length;
-  const recentNotifications = notifications.slice(0, 5);
+  const recentNotifications = [...notifications]
+    .sort((left, right) => Number(Boolean(left.read_at)) - Number(Boolean(right.read_at)))
+    .slice(0, 5);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -113,13 +115,6 @@ export function GlobalHeader({
                     ))}
                   </div>
                 )}
-                <Link
-                  className="global-notification-all"
-                  href="/jobs"
-                  onClick={() => setIsOpen(false)}
-                >
-                  전체 업무 보기
-                </Link>
               </div>
             ) : null}
           </div>
@@ -145,7 +140,7 @@ export function GlobalHeader({
 function notificationLabel(eventType: NotificationRecord["event_type"]) {
   return (
     {
-      SCORECARD_APPROVAL_REQUEST: "검토 기준 승인 검토 요청",
+      SCORECARD_APPROVAL_REQUEST: "채용 요청 확인",
       REVIEW_ASSIGNMENT: "지원서 검토가 배정되었습니다",
       PROCESSING_COMPLETED: "지원서 처리가 완료되었습니다",
       PROCESSING_FAILED: "지원서 처리에 실패했습니다",

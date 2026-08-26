@@ -55,7 +55,7 @@ and append-only audit event constraints from docs/04_DATA_MODEL.md.
 Add tests that prove unauthorized reads and writes fail.
 ```
 
-### Turn 3 — Requisition과 서류 검토 기준
+### Turn 3 — Requisition과 서류 평가 기준
 
 ```text
 Use $scorecard-contract, $supabase-safe-change, and $vertical-slice.

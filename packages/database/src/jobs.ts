@@ -1,6 +1,7 @@
 import type {
   AssignRequisitionApproverInput,
   CreateJobInput,
+  DiscardJobDraftInput,
   JobPostingActionInput,
   JobPostingContentInput,
   JobPostingRecord,
@@ -13,6 +14,7 @@ import type {
   RequisitionStatusHistoryRecord,
   ResolveRequisitionApprovalInput,
   SubmitRequisitionInput,
+  UpdateJobBasicInfoInput,
 } from "@hirelens/domain";
 
 import type { SupabaseRestClient } from "./rest";
@@ -25,10 +27,25 @@ const scorecardJobSelect =
 export async function listJobs(client: SupabaseRestClient): Promise<JobSummary[]> {
   const params = new URLSearchParams({
     select: jobSelect,
+    status: "neq.ARCHIVED",
     order: "updated_at.desc",
   });
 
   return client.request<JobSummary[]>(`/rest/v1/jobs?${params.toString()}`);
+}
+
+export async function discardJobDraft(
+  client: SupabaseRestClient,
+  input: DiscardJobDraftInput,
+): Promise<void> {
+  await client.request<unknown>("/rest/v1/rpc/discard_job_draft", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      target_job_id: input.jobId,
+      expected_updated_at: input.expectedUpdatedAt,
+    }),
+  });
 }
 
 export async function listProfiles(client: SupabaseRestClient): Promise<ProfileRecord[]> {
@@ -94,6 +111,25 @@ export async function createJob(
   }
 
   return job;
+}
+
+export async function updateJobBasicInfo(
+  client: SupabaseRestClient,
+  input: UpdateJobBasicInfoInput,
+): Promise<void> {
+  await client.request<unknown>("/rest/v1/rpc/update_job_basic_info", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      target_job_id: input.jobId,
+      expected_updated_at: input.expectedUpdatedAt,
+      updated_title: input.title,
+      updated_department: input.department,
+      updated_hiring_need: input.hiringNeed,
+      updated_job_description: input.rawJobDescription,
+      updated_recruiter_id: input.recruiterId,
+    }),
+  });
 }
 
 export async function assignRequisitionApprover(
