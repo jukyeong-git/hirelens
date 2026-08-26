@@ -82,7 +82,7 @@ if (!command || (!(command in messages) && command !== "eval:ai")) {
     }
   }
   console.log(
-    `AI contract eval passed: ${scorecardDraft.criteria.length} scorecard criteria, ${scorecardDraft.ambiguous_phrases.length} ambiguous phrases, requisition ${requisitionDraft.contract}, evidence ${evidenceGolden.version} (${acceptedEvidenceCases} accepted, ${evidenceGolden.cases.length - acceptedEvidenceCases} expected quarantine).`,
+    `AI contract eval passed: ${scorecardDraft.criteria.length} scorecard criteria, ${scorecardDraft.ambiguous_phrases.length} ambiguous phrases, requisition ${Object.keys(requisitionDraft).length} structured fields, evidence ${evidenceGolden.version} (${acceptedEvidenceCases} accepted, ${evidenceGolden.cases.length - acceptedEvidenceCases} expected quarantine).`,
   );
 } else {
   console.log(messages[command]);

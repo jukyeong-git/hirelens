@@ -13,7 +13,10 @@ export interface JobActionState {
 export interface JobRequisitionDraftActionState {
   status: "idle" | "success" | "error";
   message?: string;
-  rawJobDescription?: string;
+  roleSummary?: string;
+  responsibilities?: string;
+  requirements?: string;
+  preferredQualifications?: string;
   promptVersion?: string;
 }
 

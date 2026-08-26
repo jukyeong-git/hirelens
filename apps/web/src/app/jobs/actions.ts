@@ -141,7 +141,10 @@ export async function createJobAction(
     title: formData.get("title"),
     department: formData.get("department"),
     hiringNeed: formData.get("hiringNeed"),
-    rawJobDescription: formData.get("rawJobDescription"),
+    roleSummary: formData.get("roleSummary"),
+    responsibilities: formData.get("responsibilities"),
+    requirements: formData.get("requirements"),
+    preferredQualifications: formData.get("preferredQualifications"),
     recruiterId: formData.get("recruiterId"),
     hiringManagerId: viewer.id,
   });
@@ -149,7 +152,7 @@ export async function createJobAction(
   if (!parsed.success) {
     return {
       status: "error",
-      message: "직무명, 부서, 채용 담당자, 직무 설명, 요청 사유를 확인하세요.",
+      message: "직무명, 부서, 채용 담당자, 직무 설명 항목, 요청 사유를 확인하세요.",
     };
   }
 
@@ -191,7 +194,10 @@ export async function updateJobBasicInfoAction(
     title: formData.get("title"),
     department: formData.get("department"),
     hiringNeed: formData.get("hiringNeed"),
-    rawJobDescription: formData.get("rawJobDescription"),
+    roleSummary: formData.get("roleSummary"),
+    responsibilities: formData.get("responsibilities"),
+    requirements: formData.get("requirements"),
+    preferredQualifications: formData.get("preferredQualifications"),
     recruiterId: formData.get("recruiterId"),
   });
   if (!parsed.success) {
@@ -319,7 +325,10 @@ export async function generateJobRequisitionDraftAction(
     return {
       status: "success",
       message: "AI 초안을 직무 설명에 채웠습니다. 내용을 검토·수정한 뒤 직접 저장하세요.",
-      rawJobDescription: generated.draft.raw_job_description,
+      roleSummary: generated.draft.role_summary,
+      responsibilities: generated.draft.responsibilities,
+      requirements: generated.draft.requirements,
+      preferredQualifications: generated.draft.preferred_qualifications,
       promptVersion: generated.versions.prompt,
     };
   } catch (error) {

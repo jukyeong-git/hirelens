@@ -8,10 +8,10 @@ const input = {
   department: "Platform Engineering",
 };
 const draft = {
-  contract: "JOB_REQUISITION_DRAFT",
-  draft_only: true,
-  raw_job_description:
-    "Build and operate reliable backend services for the Platform Engineering team.",
+  role_summary: "Build and operate reliable backend services.",
+  responsibilities: "Design service APIs and improve operational reliability.",
+  requirements: "Production backend development or operations experience.",
+  preferred_qualifications: "Experience operating high-traffic services.",
 };
 
 function createAdapter(fetchImpl: typeof fetch) {
@@ -65,8 +65,8 @@ describe("job requisition draft Responses adapter", () => {
     expect(result.versions).toEqual({
       model: "test-model",
       pipeline: "ai-pipeline-v1",
-      prompt: "job-requisition-draft-prompt-v3",
-      schema: "job-requisition-draft-schema-v1",
+      prompt: "job-requisition-draft-prompt-v4",
+      schema: "job-requisition-draft-schema-v2",
     });
   });
 
@@ -121,7 +121,9 @@ describe("job requisition draft Responses adapter", () => {
     await expect(adapter({ ...input, title: "x".repeat(161) })).rejects.toMatchObject({
       name: "ZodError",
     });
-    await expect(adapter({ ...input, hiring_need: "x".repeat(4_001) } as never)).rejects.toMatchObject({
+    await expect(
+      adapter({ ...input, hiring_need: "x".repeat(4_001) } as never),
+    ).rejects.toMatchObject({
       name: "ZodError",
     });
     expect(fetchImpl).not.toHaveBeenCalled();
