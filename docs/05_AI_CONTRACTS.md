@@ -23,8 +23,7 @@ Input:
 
 Output:
 
-- one editable raw job-description draft.
-- exactly four sections: 역할 개요, 주요 책임, 자격 요건, 우대 사항;
+- exactly four editable fields: 역할 개요, 주요 책임, 자격 요건, 우대 사항;
 - no benefits, working conditions, compensation, location, employment, or
   company-policy section.
 
@@ -79,16 +78,18 @@ Illustrative structure:
 
 ```json
 {
-  "contract": "JOB_REQUISITION_DRAFT",
-  "draft_only": true,
-  "raw_job_description": "..."
+  "role_summary": "...",
+  "responsibilities": "...",
+  "requirements": "...",
+  "preferred_qualifications": "..."
 }
 ```
 
 Rules:
 
 - all object schemas use strict validation and reject unknown keys;
-- the raw description is an editable drafting suggestion, never a saved record;
+- all four fields are editable drafting suggestions and are never saved by the
+  AI request itself;
 - the model receives only title and department; internal hiring need remains on
   the requisition record and is excluded from the request;
 - prompts and schemas are versioned independently from the Review Framework

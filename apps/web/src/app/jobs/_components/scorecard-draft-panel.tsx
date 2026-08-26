@@ -38,6 +38,10 @@ export function JobDescriptionIssuesPanel({
   isAssignedHiringManager,
   workspace,
 }: ScorecardDraftPanelProps) {
+  if (viewerRole === "RECRUITER") {
+    return null;
+  }
+
   const displayedVersion = workspace.latestWorkingVersion ?? workspace.activeApprovedVersion;
 
   if (!displayedVersion) {
@@ -61,6 +65,10 @@ export function EvaluationCriteriaIssuesPanel({
   isAssignedHiringManager,
   workspace,
 }: ScorecardDraftPanelProps) {
+  if (viewerRole === "RECRUITER") {
+    return null;
+  }
+
   const displayedVersion = workspace.latestWorkingVersion ?? workspace.activeApprovedVersion;
 
   if (!displayedVersion) {

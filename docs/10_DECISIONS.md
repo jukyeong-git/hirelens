@@ -1149,3 +1149,22 @@ the prior text, clears prior confirmations, updates the source hash, and
 advances the draft Review Framework revision. Approved, intake-ready, and
 archived Jobs remain immutable. The update is concurrency checked and audited
 without storing raw job-description or request-reason text in audit payloads.
+
+## ADR-034 — Structured Job description authoring with compatibility serialization
+
+- Status: Accepted
+- Date: 2026-08-26
+- Decision owner: Product team
+
+Hiring Managers author Job descriptions through four explicit fields: role
+summary, responsibilities, requirements, and preferred qualifications. The AI
+draft contract returns exactly those four fields and never receives the
+internal request reason. Existing title, department, Recruiter assignment, and
+request reason remain unchanged when an AI draft is requested.
+
+For the MVP, the four fields are serialized deterministically into the existing
+`raw_job_description` column. This preserves Review Framework source hashing
+and existing data contracts without a migration. The Recruiter posting editor
+prefills empty, unsaved candidate-facing fields from this representation. It
+does not auto-save or overwrite a Recruiter's posting copy; location and
+employment type remain Recruiter-authored.
