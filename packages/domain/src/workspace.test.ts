@@ -112,7 +112,20 @@ describe("role workspace", () => {
 
     expect(workspace.title).toBe("채용 담당자 홈");
     expect(workspace.metrics.find((metric) => metric.label === "게시 중 공고")?.value).toBe(1);
+    expect(workspace.metrics.find((metric) => metric.label === "새 업무")?.value).toBe(1);
     expect(workspace.notifications).toHaveLength(1);
+  });
+
+  it("counts an intake-ready job without a published posting as Recruiter work", () => {
+    const workspace = buildRoleWorkspace({
+      role: "RECRUITER",
+      jobs,
+      applications: [],
+      postings: [],
+      notifications: [],
+    });
+
+    expect(workspace.metrics.find((metric) => metric.label === "새 업무")?.value).toBe(1);
   });
 
   it("uses hiring-manager review data instead of recruiter publishing data", () => {

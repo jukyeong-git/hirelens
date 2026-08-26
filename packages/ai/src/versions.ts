@@ -15,7 +15,7 @@ export const SCORECARD_DRAFT_SCHEMA_NAME = "hirelens_scorecard_draft" as const;
 
 export const JOB_REQUISITION_DRAFT_CONTRACT_VERSIONS = {
   pipeline: "ai-pipeline-v1",
-  prompt: "job-requisition-draft-prompt-v4",
+  prompt: "job-requisition-draft-prompt-v5",
   schema: "job-requisition-draft-schema-v2",
 } as const;
 
