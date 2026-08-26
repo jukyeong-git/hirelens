@@ -6,7 +6,7 @@ HireLens는 **AI가 지원자를 대신 선발하는 시스템이 아니라, 사
 
 ## MVP의 한 문장
 
-> Hiring Manager가 채용 요청과 서류 검토 기준을 만들고, 승인된 공고의 모든 이력서에서 기준별 원문 근거를 찾아 보여준 뒤, Recruiter와 Hiring Manager가 사람의 판단과 이유를 기록한다.
+> Hiring Manager가 채용 요청과 서류 평가 기준을 만들고, 승인된 공고의 모든 이력서에서 기준별 원문 근거를 찾아 보여준 뒤, Recruiter와 Hiring Manager가 사람의 판단과 이유를 기록한다.
 
 ## 이 스타터에 포함된 것
 
@@ -119,7 +119,7 @@ hirelens/
 ## 업무 흐름 기준 구현 순서
 
 ```text
-Hiring Manager: Job Requisition + 서류 검토 기준 작성
+Hiring Manager: Job Requisition + 서류 평가 기준 작성
 → Requisition Approver: 업무 승인/반려
 → Recruiter: 공고 게시
 → 지원자: PDF 이력서 제출

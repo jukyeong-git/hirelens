@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 
 import type {
@@ -17,12 +18,11 @@ import {
   initialScorecardDraftGenerationActionState,
 } from "../action-state";
 import {
+  confirmScorecardIssueAction,
   generateScorecardDraftAction,
   saveScorecardDraftAction,
   updateScorecardDraftAction,
 } from "../actions";
-import { AmbiguityReviewForm } from "./ambiguity-review-form";
-import { ScorecardApprovalForm } from "./scorecard-approval-form";
 import { visibleCopy } from "../../_components/visible-copy";
 
 interface ScorecardDraftPanelProps {
@@ -30,6 +30,52 @@ interface ScorecardDraftPanelProps {
   viewerRole: AppRole;
   isAssignedHiringManager: boolean;
   workspace: ScorecardWorkspace;
+}
+
+export function JobDescriptionIssuesPanel({
+  jobId,
+  viewerRole,
+  isAssignedHiringManager,
+  workspace,
+}: ScorecardDraftPanelProps) {
+  const displayedVersion = workspace.latestWorkingVersion ?? workspace.activeApprovedVersion;
+
+  if (!displayedVersion) {
+    return null;
+  }
+
+  return (
+    <section className="panel" aria-labelledby="job-description-issues-title">
+      <JobDescriptionIssues
+        jobId={jobId}
+        canConfirm={viewerRole === "ADMIN" || isAssignedHiringManager}
+        scorecard={displayedVersion}
+      />
+    </section>
+  );
+}
+
+export function EvaluationCriteriaIssuesPanel({
+  jobId,
+  viewerRole,
+  isAssignedHiringManager,
+  workspace,
+}: ScorecardDraftPanelProps) {
+  const displayedVersion = workspace.latestWorkingVersion ?? workspace.activeApprovedVersion;
+
+  if (!displayedVersion) {
+    return null;
+  }
+
+  return (
+    <section className="panel" aria-labelledby="evaluation-criteria-issues-title">
+      <EvaluationCriteriaIssues
+        jobId={jobId}
+        canConfirm={viewerRole === "ADMIN" || isAssignedHiringManager}
+        scorecard={displayedVersion}
+      />
+    </section>
+  );
 }
 
 const criterionTypeLabels = {
@@ -50,32 +96,34 @@ export function ScorecardDraftPanel({
   workspace,
 }: ScorecardDraftPanelProps) {
   const canEdit = viewerRole === "ADMIN" || isAssignedHiringManager;
-  const canApprove = viewerRole === "ADMIN" || isAssignedHiringManager;
   const workingVersion = workspace.latestWorkingVersion;
   const approvedVersion = workspace.activeApprovedVersion;
   const displayedVersion = workingVersion ?? approvedVersion;
   const [isEditing, setIsEditing] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [navigationActionTarget, setNavigationActionTarget] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setNavigationActionTarget(document.getElementById("review-framework-navigation-action"));
+  }, []);
 
   if (!displayedVersion) {
     return (
       <section className="panel" aria-labelledby="scorecard-title">
         <div className="section-heading">
-          <h2 id="scorecard-title">지원서 검토 기준</h2>
+          <h2 id="scorecard-title">지원서 평가 기준</h2>
         </div>
         {canEdit ? (
           <ReviewFrameworkDraftEditor jobId={jobId} />
         ) : (
           <p className="info-banner" role="status">
-            검토 기준 초안 요청은 배정된 채용 책임자 또는 관리자가 수행합니다.
+            평가 기준 초안 요청은 배정된 채용 책임자 또는 관리자가 수행합니다.
           </p>
         )}
       </section>
     );
   }
 
-  const unresolvedCount = displayedVersion.criteria.filter(
-    (criterion) => criterion.ambiguity_status === "AMBIGUOUS",
-  ).length;
   const isDraft = displayedVersion.version.status === "DRAFT";
   const isHumanAuthored = displayedVersion.version.model_id === "HUMAN_AUTHORED";
   const approver = workspace.versionHistory.find(
@@ -84,21 +132,36 @@ export function ScorecardDraftPanel({
 
   return (
     <>
+      {navigationActionTarget && isDraft && canEdit
+        ? createPortal(
+            <button
+              className={`button ${isEditing ? "button-primary" : "button-quiet"} button-compact`}
+              type="button"
+              disabled={isEditing && !hasUnsavedChanges}
+              onClick={() => {
+                if (!isEditing) {
+                  setHasUnsavedChanges(false);
+                  setIsEditing(true);
+                  return;
+                }
+
+                const form = document.getElementById("saved-review-framework-form");
+                if (form instanceof HTMLFormElement) {
+                  form.requestSubmit();
+                }
+              }}
+            >
+              {isEditing ? "저장" : "수정"}
+            </button>,
+            navigationActionTarget,
+          )
+        : null}
       <section className="panel" aria-labelledby="scorecard-title">
         <div className="section-heading section-heading-inline">
           <div>
-            <h2 id="scorecard-title">지원서 검토 기준 {isDraft ? "초안" : "승인본"}</h2>
+            <h2 id="scorecard-title">지원서 평가 기준 {isDraft ? "초안" : "승인본"}</h2>
           </div>
           <div className="section-heading-actions">
-            {isDraft && canEdit && !isEditing ? (
-              <button
-                className="button button-quiet"
-                type="button"
-                onClick={() => setIsEditing(true)}
-              >
-                수정
-              </button>
-            ) : null}
             <span
               className={`status-chip ${scorecardStatusClass(displayedVersion.version.status)}`}
             >
@@ -133,45 +196,15 @@ export function ScorecardDraftPanel({
           <SavedReviewFrameworkEditor
             jobId={jobId}
             scorecard={displayedVersion}
-            onCancel={() => setIsEditing(false)}
+            onCancel={() => {
+              setHasUnsavedChanges(false);
+              setIsEditing(false);
+            }}
+            onDirtyChange={setHasUnsavedChanges}
           />
         ) : (
-          <>
-            <AmbiguitySection
-              jobId={jobId}
-              canReview={canApprove && isDraft}
-              isDraft={isDraft}
-              scorecard={displayedVersion}
-              unresolvedCount={unresolvedCount}
-            />
-            <CriteriaSection scorecard={displayedVersion} />
-          </>
+          <CriteriaSection scorecard={displayedVersion} />
         )}
-
-        {!isEditing && isDraft ? (
-          <section
-            className="subsection scorecard-workflow"
-            aria-labelledby="scorecard-workflow-title"
-          >
-            <div className="section-heading">
-              <h3 id="scorecard-workflow-title">승인 및 버전 관리</h3>
-            </div>
-            {isDraft ? (
-              canApprove ? (
-                <ScorecardApprovalForm
-                  jobId={jobId}
-                  version={displayedVersion.version}
-                  unresolvedCount={unresolvedCount}
-                />
-              ) : (
-                <p className="info-banner" role="status">
-                  채용 담당자는 검토 기준을 읽을 수 있지만 승인할 수 없습니다. 담당 채용 책임자 또는
-                  관리자가 사유를 남기고 승인합니다.
-                </p>
-              )
-            ) : null}
-          </section>
-        ) : null}
       </section>
     </>
   );
@@ -181,10 +214,12 @@ function SavedReviewFrameworkEditor({
   jobId,
   scorecard,
   onCancel,
+  onDirtyChange,
 }: {
   jobId: string;
   scorecard: ScorecardDetail;
   onCancel: () => void;
+  onDirtyChange: (dirty: boolean) => void;
 }) {
   const router = useRouter();
   const [state, action, pending] = useActionState(
@@ -192,6 +227,16 @@ function SavedReviewFrameworkEditor({
     initialScorecardActionState,
   );
   const [draft, setDraft] = useState<ScorecardDraft>(() => scorecardToDraft(scorecard));
+  const initialDraftJson = useMemo(
+    () => JSON.stringify(normalizeDraft(scorecardToDraft(scorecard))),
+    [scorecard],
+  );
+
+  const updateDraft = (nextDraft: ScorecardDraft) => {
+    const normalizedDraft = normalizeDraft(nextDraft);
+    setDraft(normalizedDraft);
+    onDirtyChange(JSON.stringify(normalizedDraft) !== initialDraftJson);
+  };
 
   useEffect(() => {
     if (state.status === "success") {
@@ -201,7 +246,11 @@ function SavedReviewFrameworkEditor({
   }, [onCancel, router, state.status]);
 
   return (
-    <form action={action} className="scorecard-workflow-form review-framework-draft-form">
+    <form
+      id="saved-review-framework-form"
+      action={action}
+      className="scorecard-workflow-form review-framework-draft-form"
+    >
       <input type="hidden" name="jobId" value={jobId} />
       <input type="hidden" name="scorecardVersionId" value={scorecard.version.id} />
       <input type="hidden" name="expectedVersionNumber" value={scorecard.version.version_number} />
@@ -212,17 +261,14 @@ function SavedReviewFrameworkEditor({
         value={scorecard.version.content_revision}
       />
       <input type="hidden" name="draftJson" value={JSON.stringify(normalizeDraft(draft))} />
-      <label>
-        수정 사유
-        <textarea name="reason" required maxLength={1000} />
-      </label>
       <CriteriaEditor
         draft={draft}
         disabled={pending}
-        onChange={setDraft}
+        onChange={updateDraft}
         submitLabel="변경 저장"
         pendingLabel="변경 저장 중…"
         onCancel={onCancel}
+        showSubmitAction={false}
       />
       {state.status === "error" ? <ActionAlert message={visibleCopy(state.message)} /> : null}
     </form>
@@ -259,7 +305,7 @@ function ReviewFrameworkDraftEditor({ jobId }: { jobId: string }) {
     <div className="review-framework-editor">
       {!draft ? (
         <>
-          <div className="review-framework-start-actions" aria-label="검토 기준 초안 시작 방법">
+          <div className="review-framework-start-actions" aria-label="평가 기준 초안 시작 방법">
             <button className="button button-quiet" type="button" onClick={openManualDraft}>
               직접 작성
             </button>
@@ -309,6 +355,7 @@ function CriteriaEditor({
   submitLabel = "초안 저장",
   pendingLabel = "초안 저장 중…",
   onCancel,
+  showSubmitAction = true,
 }: {
   draft: ScorecardDraft;
   disabled: boolean;
@@ -316,6 +363,7 @@ function CriteriaEditor({
   submitLabel?: string;
   pendingLabel?: string;
   onCancel?: () => void;
+  showSubmitAction?: boolean;
 }) {
   const [openCriterionIds, setOpenCriterionIds] = useState<Set<string>>(
     () => new Set(draft.criteria.slice(0, 1).map((criterion) => criterion.client_id)),
@@ -372,7 +420,7 @@ function CriteriaEditor({
 
   return (
     <fieldset className="criteria-editor" disabled={disabled}>
-      <legend className="sr-only">검토 기준 편집</legend>
+      <legend className="sr-only">평가 기준 편집</legend>
       <div className="criteria-list">
         {draft.criteria.length === 0 ? (
           <p className="info-banner" role="status">
@@ -609,9 +657,11 @@ function CriteriaEditor({
             취소
           </button>
         ) : null}
-        <button className="button button-primary" type="submit" disabled={disabled}>
-          {disabled ? pendingLabel : submitLabel}
-        </button>
+        {showSubmitAction ? (
+          <button className="button button-primary" type="submit" disabled={disabled}>
+            {disabled ? pendingLabel : submitLabel}
+          </button>
+        ) : null}
       </div>
     </fieldset>
   );
@@ -668,7 +718,7 @@ function ListTextArea({
 }
 
 function ActionAlert({ message }: { message?: string }) {
-  const stale = message?.includes("이미 검토 기준 초안이 있습니다");
+  const stale = message?.includes("이미 평가 기준 초안이 있습니다");
   return (
     <div className="form-alert form-alert-error" role="alert">
       <p>{message ?? "요청을 완료하지 못했습니다. 다시 시도하세요."}</p>
@@ -736,82 +786,168 @@ function createClientId() {
     : `criterion-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-function AmbiguitySection({
+function JobDescriptionIssues({
   jobId,
-  canReview,
-  isDraft,
+  canConfirm,
   scorecard,
-  unresolvedCount,
 }: {
   jobId: string;
-  canReview: boolean;
-  isDraft: boolean;
+  canConfirm: boolean;
   scorecard: ScorecardDetail;
-  unresolvedCount: number;
 }) {
+  const issues = scorecard.version.ambiguous_phrases
+    .map((phrase, index) => ({ phrase, issueKey: String(index) }))
+    .filter(({ phrase }) => phrase.ambiguity_status !== "CLEAR");
+  const unconfirmedIssues = issues.filter(
+    ({ issueKey }) => !scorecard.version.confirmed_job_description_issue_keys.includes(issueKey),
+  );
+  const completedCount = issues.length - unconfirmedIssues.length;
+
   return (
-    <section className="subsection" aria-labelledby="ambiguous-phrases-title">
+    <section className="subsection subsection-flush" aria-labelledby="job-description-issues-title">
       <div className="section-heading section-heading-inline">
-        <div>
-          <h3 id="ambiguous-phrases-title">모호한 표현 검토</h3>
-        </div>
-        <span className="count-label">{unresolvedCount}개 미해결</span>
+        <h2 id="job-description-issues-title">직무 설명 확인 사항</h2>
+        <span className="count-label">
+          {unconfirmedIssues.length}개 미확인 · {completedCount}개 완료
+        </span>
       </div>
-      {scorecard.version.ambiguous_phrases.length > 0 ? (
+      {unconfirmedIssues.length > 0 ? (
         <ul className="ambiguity-list">
-          {scorecard.version.ambiguous_phrases.map((phrase) => {
-            const criterion = scorecard.criteria.find(
-              (item) => item.source_phrase === phrase.source_phrase,
-            );
-            const currentStatus = criterion?.ambiguity_status ?? phrase.ambiguity_status;
-            return (
-              <li key={`${phrase.source_phrase}-${phrase.ambiguity_note}`}>
-                <div className="ambiguity-item-heading">
-                  <strong>“{phrase.source_phrase ?? "모호한 표현"}”</strong>
-                  <span className="status-chip status-scorecard_pending_approval">
-                    {ambiguityStatusLabels[currentStatus]}
-                  </span>
-                </div>
-                <span>{phrase.ambiguity_note ?? "추가 검토가 필요한 표현입니다."}</span>
-                {phrase.suggested_interview_question ? (
-                  <p className="ambiguity-question">
-                    <strong>AI 제안 질문</strong> {phrase.suggested_interview_question}
-                  </p>
+          {unconfirmedIssues.map(({ phrase, issueKey }) => (
+            <li key={issueKey}>
+              <div className="ambiguity-item-heading">
+                <strong>“{phrase.source_phrase ?? "모호한 표현"}”</strong>
+                {canConfirm ? (
+                  <IssueConfirmButton
+                    jobId={jobId}
+                    scorecard={scorecard}
+                    issueScope="JOB_DESCRIPTION"
+                    issueKey={issueKey}
+                  />
                 ) : null}
-                {criterion ? (
-                  <div className="ambiguity-linked-criterion">
-                    <div>
-                      <span className="eyebrow">연결된 평가 기준</span>
-                      <strong>{criterion.name}</strong>
-                      <p>{criterion.definition}</p>
-                    </div>
-                    {canReview ? (
-                      <AmbiguityReviewForm
-                        jobId={jobId}
-                        scorecardVersionId={scorecard.version.id}
-                        criterion={criterion}
-                      />
-                    ) : isDraft ? (
-                      <p className="info-banner" role="status">
-                        이 표현은 담당 채용 책임자 또는 관리자가 검토할 수 있습니다.
-                      </p>
-                    ) : null}
-                  </div>
-                ) : (
-                  <p className="info-banner" role="status">
-                    연결된 평가 기준을 찾지 못했습니다. 승인 전에 사람의 확인이 필요합니다.
-                  </p>
-                )}
-              </li>
-            );
-          })}
+              </div>
+              <span>{phrase.ambiguity_note ?? "추가 확인이 필요한 표현입니다."}</span>
+              {phrase.suggested_interview_question ? (
+                <p className="ambiguity-question">
+                  <strong>AI 제안 질문</strong> {phrase.suggested_interview_question}
+                </p>
+              ) : null}
+            </li>
+          ))}
         </ul>
       ) : (
         <p className="info-banner" role="status">
-          AI가 별도 검토가 필요한 표현을 찾지 못했습니다. 기준은 여전히 사람의 승인 대상입니다.
+          {issues.length > 0
+            ? "직무 설명 확인 사항을 모두 완료했습니다."
+            : "직무 설명에서 별도 확인이 필요한 표현을 찾지 못했습니다."}
         </p>
       )}
     </section>
+  );
+}
+
+function EvaluationCriteriaIssues({
+  jobId,
+  canConfirm,
+  scorecard,
+}: {
+  jobId: string;
+  canConfirm: boolean;
+  scorecard: ScorecardDetail;
+}) {
+  const issueCriteria = scorecard.criteria.filter(
+    (criterion) => criterion.ambiguity_status !== "CLEAR",
+  );
+  const unconfirmedCriteria = issueCriteria.filter(
+    (criterion) => !scorecard.version.confirmed_evaluation_criterion_ids.includes(criterion.id),
+  ).length;
+  const visibleCriteria = issueCriteria.filter(
+    (criterion) => !scorecard.version.confirmed_evaluation_criterion_ids.includes(criterion.id),
+  );
+  const completedCount = issueCriteria.length - visibleCriteria.length;
+
+  return (
+    <section
+      className="subsection subsection-flush"
+      aria-labelledby="evaluation-criteria-issues-title"
+    >
+      <div className="section-heading section-heading-inline">
+        <h2 id="evaluation-criteria-issues-title">평가 기준 확인 사항</h2>
+        <span className="count-label">
+          {unconfirmedCriteria}개 미확인 · {completedCount}개 완료
+        </span>
+      </div>
+      {visibleCriteria.length > 0 ? (
+        <ul className="ambiguity-list">
+          {visibleCriteria.map((criterion) => (
+            <li key={criterion.id}>
+              <div className="ambiguity-item-heading">
+                <strong>{criterion.name}</strong>
+                {canConfirm ? (
+                  <IssueConfirmButton
+                    jobId={jobId}
+                    scorecard={scorecard}
+                    issueScope="EVALUATION_CRITERION"
+                    issueKey={criterion.id}
+                  />
+                ) : null}
+              </div>
+              <span>{criterion.ambiguity_note ?? "평가 방법을 사람이 확인해야 합니다."}</span>
+              {criterion.suggested_interview_question ? (
+                <p className="ambiguity-question">
+                  <strong>AI 제안 질문</strong> {criterion.suggested_interview_question}
+                </p>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="info-banner" role="status">
+          {issueCriteria.length > 0
+            ? "평가 기준 확인 사항을 모두 완료했습니다."
+            : "별도 확인이 필요한 평가 기준을 찾지 못했습니다."}
+        </p>
+      )}
+    </section>
+  );
+}
+
+function IssueConfirmButton({
+  jobId,
+  scorecard,
+  issueScope,
+  issueKey,
+}: {
+  jobId: string;
+  scorecard: ScorecardDetail;
+  issueScope: "JOB_DESCRIPTION" | "EVALUATION_CRITERION";
+  issueKey: string;
+}) {
+  const router = useRouter();
+  const [state, action, pending] = useActionState(
+    confirmScorecardIssueAction,
+    initialScorecardActionState,
+  );
+
+  useEffect(() => {
+    if (state.status === "success") router.refresh();
+  }, [router, state.status]);
+
+  return (
+    <form action={action} className="inline-action-form">
+      <input type="hidden" name="jobId" value={jobId} />
+      <input type="hidden" name="scorecardVersionId" value={scorecard.version.id} />
+      <input
+        type="hidden"
+        name="expectedContentRevision"
+        value={scorecard.version.content_revision}
+      />
+      <input type="hidden" name="issueScope" value={issueScope} />
+      <input type="hidden" name="issueKey" value={issueKey} />
+      <button className="button button-quiet button-compact" type="submit" disabled={pending}>
+        {pending ? "확인 중…" : "확인"}
+      </button>
+    </form>
   );
 }
 
@@ -907,8 +1043,6 @@ function scorecardStatusClass(status: string) {
 }
 function formatDate(value: string | null) {
   return value
-    ? new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short" }).format(
-        new Date(value),
-      )
-    : "시각 미기록";
+    ? new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium" }).format(new Date(value))
+    : "날짜 미기록";
 }

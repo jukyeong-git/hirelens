@@ -40,7 +40,7 @@ export default async function JobsPage() {
           <h2 id="unsupported-role-title">Requisition Approver</h2>
           <p className="section-copy">
             채용 요청 승인 역할은 현재 MVP 범위에 포함되지 않습니다. Hiring Manager가 채용 요청을
-            작성하고, 승인된 검토 기준을 기준으로 다음 단계로 진행합니다.
+            작성하고, 승인된 평가 기준을 기준으로 다음 단계로 진행합니다.
           </p>
         </section>
       </main>
@@ -185,7 +185,7 @@ export default async function JobsPage() {
 function notificationLabel(eventType: string) {
   return (
     {
-      SCORECARD_APPROVAL_REQUEST: "검토 기준 승인 검토 요청",
+      SCORECARD_APPROVAL_REQUEST: "채용 요청 확인",
       REVIEW_ASSIGNMENT: "지원서 검토가 배정되었습니다",
       PROCESSING_COMPLETED: "지원서 처리가 완료되었습니다",
       PROCESSING_FAILED: "처리에 실패했습니다",

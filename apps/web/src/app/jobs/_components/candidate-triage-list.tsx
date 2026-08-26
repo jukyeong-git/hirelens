@@ -84,7 +84,6 @@ export function CandidateTriageList({ items }: { items: CandidateTriageItem[] })
               <small>
                 {new Intl.DateTimeFormat("ko-KR", {
                   dateStyle: "medium",
-                  timeStyle: "short",
                 }).format(new Date(item.submittedAt))}
               </small>
             </Link>

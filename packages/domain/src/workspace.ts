@@ -23,9 +23,11 @@ export function selectWorkspaceJobs(
 ): JobSummary[] {
   if (role === "ADMIN") return jobs;
 
-  return jobs.filter((job) =>
-    role === "RECRUITER" ? job.recruiter_id === viewerId : job.hiring_manager_id === viewerId,
-  );
+  if (role === "RECRUITER") {
+    return jobs.filter((job) => job.recruiter_id === viewerId && job.status === "READY_FOR_INTAKE");
+  }
+
+  return jobs.filter((job) => job.hiring_manager_id === viewerId);
 }
 
 export function buildRoleWorkspace(input: {
@@ -72,7 +74,7 @@ export function buildRoleWorkspace(input: {
       emptyJobsTitle: "채용 요청이 없습니다.",
       metrics: [
         { label: "채용 요청", value: jobs.length },
-        { label: "검토 기준 대기", value: criteriaPending },
+        { label: "평가 기준 대기", value: criteriaPending },
         { label: "후보자 검토", value: managerReviewRequests },
         { label: "새 업무", value: unreadNotifications.length },
       ],
@@ -91,7 +93,7 @@ export function buildRoleWorkspace(input: {
     emptyJobsTitle: "채용 요청이 없습니다.",
     metrics: [
       { label: "전체 채용 요청", value: jobs.length },
-      { label: "검토 기준 대기", value: criteriaPending },
+      { label: "평가 기준 대기", value: criteriaPending },
       { label: "검토 요청", value: managerReviewRequests },
       {
         label: "처리 실패",

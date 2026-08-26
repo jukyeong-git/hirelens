@@ -108,7 +108,7 @@ function uploadErrorMessage(error: unknown) {
     if (error.status === 401 || error.status === 403)
       return "현재 사용자에게 이 채용 요청의 업로드 권한이 없습니다.";
     if (/ready for intake|approved scorecard/iu.test(error.responseBody))
-      return "승인된 지원서 검토 기준이 있는 접수 준비 채용 요청에서만 업로드할 수 있습니다.";
+      return "승인된 지원서 평가 기준이 있는 접수 준비 채용 요청에서만 업로드할 수 있습니다.";
   }
   return "업로드에 실패했습니다. 파일을 확인한 뒤 다시 시도하세요.";
 }

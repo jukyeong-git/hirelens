@@ -72,11 +72,11 @@ test.describe("Job and scorecard workspace", () => {
       "채용 요청 상태",
     );
     await expect(page.getByLabel("채용 요청 상태", { exact: true })).toContainText(
-      "검토 기준 상태",
+      "평가 기준 상태",
     );
     await expect(page.getByRole("button", { name: "채용 요청 제출" })).toBeDisabled();
     await expect(
-      page.getByText("승인자와 승인된 검토 기준이 있어야 제출할 수 있습니다."),
+      page.getByText("승인자와 승인된 평가 기준이 있어야 제출할 수 있습니다."),
     ).toBeVisible();
   });
 
@@ -97,16 +97,16 @@ test.describe("Job and scorecard workspace", () => {
     await expect(page.getByRole("button", { name: "채용 요청 제출" })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "사람의 최종 결정" })).toHaveCount(0);
     await expect(
-      page.getByRole("heading", { name: /지원서 검토 기준 (?:초안|승인본)/ }),
+      page.getByRole("heading", { name: /지원서 평가 기준 (?:초안|승인본)/ }),
     ).toBeVisible();
     await expect(page.getByText("면접에서 확인").first()).toBeVisible();
     await expect(page.getByText("gpt-5.6-luna")).toBeVisible();
     await expect(page.getByRole("button", { name: "검토 결과 저장" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "v1 승인" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "빈 검토 기준 초안 만들기" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "AI로 검토 기준 제안 받기" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "빈 평가 기준 초안 만들기" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "AI로 평가 기준 제안 받기" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "사람이 검토한 초안 저장" })).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: "검토 기준 버전 이력" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "평가 기준 버전 이력" })).toHaveCount(0);
   });
 
   test("posting management is visible to the assigned recruiter with both publication gates", async ({
@@ -117,7 +117,7 @@ test.describe("Job and scorecard workspace", () => {
 
     await expect(page.getByRole("heading", { name: "채용 공고" })).toBeVisible();
     await expect(page.getByLabel("공고 게시 조건")).toContainText("채용 요청 승인");
-    await expect(page.getByLabel("공고 게시 조건")).toContainText("지원서 검토 기준");
+    await expect(page.getByLabel("공고 게시 조건")).toContainText("지원서 평가 기준");
     await expect(page.getByRole("button", { name: "공고 초안 만들기" })).toBeVisible();
     await expect(page.getByText("게시 후 공개 경로 활성화")).toBeVisible();
     await expect(page.getByRole("button", { name: "공고 게시" })).toHaveCount(0);
@@ -178,21 +178,43 @@ test.describe("Job and scorecard workspace", () => {
     await expect(page.getByRole("button", { name: "공고 종료" })).toHaveCount(0);
   });
 
-  test("hiring manager can open the ambiguity review form", async ({ page }) => {
+  test("hiring manager sees separated job-description and evaluation-criteria issues", async ({
+    page,
+  }) => {
     await signIn(page, "hiring-manager@demo.hirelens.example");
 
     await openSeededJob(page, seededBackendJobPath);
 
-    await expect(page.getByRole("heading", { name: "모호한 표현 검토" })).toBeVisible();
-    const reviewResult = page.getByLabel("검토 결과");
-    if ((await reviewResult.count()) === 1) {
-      await expect(reviewResult).toBeEditable();
-      await expect(page.getByLabel("검토 사유")).toBeEditable();
-      await expect(page.getByRole("button", { name: "검토 결과 저장" })).toBeVisible();
-    } else {
-      await expect(page.getByText("0개 미해결")).toBeVisible();
-      await expect(page.getByText("사람이 승인한 활성 버전입니다.")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "직무 설명 확인 사항" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "요청 사유" })).toBeVisible();
+    const basicInfoEditButton = page.getByRole("button", { name: "수정" });
+    if ((await basicInfoEditButton.count()) === 1) {
+      await basicInfoEditButton.click();
+      const basicInfoSaveButton = page.getByRole("button", { name: "저장" });
+      await expect(basicInfoSaveButton).toBeVisible();
+      await expect(basicInfoSaveButton).toBeDisabled();
+      const requestReason = page.getByLabel("요청 사유");
+      await requestReason.fill(`${await requestReason.inputValue()} 수정`);
+      await expect(basicInfoSaveButton).toBeEnabled();
     }
+    await page.getByRole("link", { name: "평가 기준" }).click();
+    await expect(page.getByRole("heading", { name: "평가 기준 확인 사항" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "직무 설명 확인 사항" })).toHaveCount(0);
+    const editButton = page.getByRole("button", { name: "수정" });
+    if ((await editButton.count()) === 1) {
+      await editButton.click();
+      const saveButton = page.getByRole("button", { name: "저장" });
+      await expect(saveButton).toBeVisible();
+      await expect(saveButton).toBeDisabled();
+      const criterionName = page.getByLabel("기준명").first();
+      await criterionName.fill(`${await criterionName.inputValue()} 수정`);
+      await expect(saveButton).toBeEnabled();
+      await expect(page.getByRole("button", { name: "변경 저장" })).toHaveCount(0);
+    }
+
+    await expect(page.getByLabel("검토 결과")).toHaveCount(0);
+    await expect(page.getByLabel("검토 사유")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "검토 결과 저장" })).toHaveCount(0);
   });
 
   test("recruiter can open an assigned application but cannot see the final-decision form", async ({
@@ -242,7 +264,7 @@ test.describe("Job and scorecard workspace", () => {
     } else {
       await expect(
         page.getByText(
-          "승인된 지원서 검토 기준이 있는 ‘접수 준비’ 채용 요청에서만 업로드할 수 있습니다.",
+          "승인된 지원서 평가 기준이 있는 ‘접수 준비’ 채용 요청에서만 업로드할 수 있습니다.",
         ),
       ).toBeVisible();
     }
