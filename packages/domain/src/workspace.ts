@@ -47,6 +47,11 @@ export function buildRoleWorkspace(input: {
     (application) => application.workflow_state === "MANAGER_REVIEW_REQUESTED",
   ).length;
   const publishedPostings = postings.filter((posting) => posting.status === "PUBLISHED").length;
+  const intakeReadyJobs = jobs.filter(
+    (job) =>
+      job.status === "READY_FOR_INTAKE" &&
+      !postings.some((posting) => posting.job_id === job.id && posting.status === "PUBLISHED"),
+  ).length;
 
   if (role === "RECRUITER") {
     return {
@@ -57,7 +62,7 @@ export function buildRoleWorkspace(input: {
         { label: "채용 요청", value: jobs.length },
         { label: "새 지원서", value: newApplications },
         { label: "게시 중 공고", value: publishedPostings },
-        { label: "새 업무", value: unreadNotifications.length },
+        { label: "새 업무", value: unreadNotifications.length + intakeReadyJobs },
       ],
       notifications: notifications.filter(
         (notification) =>

@@ -89,7 +89,9 @@ containing role summary, responsibilities, requirements, and preferred
 qualifications. The
 hiring need is retained as internal requisition context and is not sent to the
 model. Before saving, they may explicitly request an AI-proposed, editable
-job-description draft for those four fields from the title and department. The
+job-description draft for those four fields from the title, department, and
+any existing values in those four fields. Existing values are reference context
+and blank fields are generated. The
 requisition includes the initial screening-criteria workflow.
 
 Acceptance criteria:
