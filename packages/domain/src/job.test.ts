@@ -4,21 +4,49 @@ import {
   appRoleSchema,
   assignRequisitionApproverInputSchema,
   createJobInputSchema,
+  derivePublicPostingContentDraft,
   discardJobDraftInputSchema,
   jobPostingActionInputSchema,
   jobPostingContentInputSchema,
   jobRequisitionDraftInputSchema,
+  parseJobDescriptionSections,
   postingStatusSchema,
   resolveRequisitionApprovalInputSchema,
   submitRequisitionInputSchema,
   updateJobBasicInfoInputSchema,
 } from "./job";
 
+describe("derivePublicPostingContentDraft", () => {
+  it("derives public posting fields from the Hiring Manager job description", () => {
+    expect(
+      derivePublicPostingContentDraft(`역할 개요
+백엔드 서비스를 설계하고 운영합니다.
+
+주요 책임
+- API를 설계합니다.
+- 장애 대응 체계를 개선합니다.
+
+자격 요건
+- 백엔드 개발 경험
+
+우대 사항
+- 클라우드 운영 경험`),
+    ).toEqual({
+      summary: "백엔드 서비스를 설계하고 운영합니다.",
+      responsibilities: "- API를 설계합니다.\n- 장애 대응 체계를 개선합니다.",
+      requirements: "- 백엔드 개발 경험",
+    });
+  });
+});
+
 const validInput = {
   title: "Backend Engineer",
   department: "Engineering",
   hiringNeed: "Expand the backend team for the next release.",
-  rawJobDescription: "Build reliable backend services for the synthetic demo.",
+  roleSummary: "Build reliable backend services.",
+  responsibilities: "Design and operate APIs.",
+  requirements: "Backend development experience.",
+  preferredQualifications: "Cloud operations experience.",
   recruiterId: "00000000-0000-0000-0000-000000000002",
   hiringManagerId: "00000000-0000-0000-0000-000000000003",
 };
@@ -30,13 +58,14 @@ describe("createJobInputSchema", () => {
       title: "  Backend Engineer  ",
       department: " Engineering ",
       hiringNeed: " Expand the backend team. ",
-      rawJobDescription: "  Synthetic description  ",
+      roleSummary: "  Synthetic summary  ",
     });
 
     expect(result.title).toBe("Backend Engineer");
     expect(result.department).toBe("Engineering");
     expect(result.hiringNeed).toBe("Expand the backend team.");
-    expect(result.rawJobDescription).toBe("Synthetic description");
+    expect(result.rawJobDescription).toContain("역할 개요\nSynthetic summary");
+    expect(result.rawJobDescription).toContain("우대 사항\nCloud operations experience.");
   });
 
   it("rejects an empty required field", () => {
@@ -54,7 +83,7 @@ describe("createJobInputSchema", () => {
   it("bounds the job description size", () => {
     const result = createJobInputSchema.safeParse({
       ...validInput,
-      rawJobDescription: "x".repeat(20_001),
+      responsibilities: "x".repeat(10_001),
     });
 
     expect(result.success).toBe(false);
@@ -123,12 +152,50 @@ describe("updateJobBasicInfoInputSchema", () => {
       title: " Backend Engineer ",
       department: " Engineering ",
       hiringNeed: " Replacement hire ",
-      rawJobDescription: " Build backend services. ",
+      roleSummary: " Build backend services. ",
+      responsibilities: " Design APIs. ",
+      requirements: " Backend experience. ",
+      preferredQualifications: " Cloud experience. ",
       recruiterId: "00000000-0000-0000-0000-000000000002",
     });
 
     expect(result.title).toBe("Backend Engineer");
     expect(result.hiringNeed).toBe("Replacement hire");
+  });
+});
+
+describe("job description sections", () => {
+  it("parses the canonical structured representation", () => {
+    expect(
+      parseJobDescriptionSections(createJobInputSchema.parse(validInput).rawJobDescription),
+    ).toEqual({
+      roleSummary: validInput.roleSummary,
+      responsibilities: validInput.responsibilities,
+      requirements: validInput.requirements,
+      preferredQualifications: validInput.preferredQualifications,
+    });
+  });
+
+  it("preserves an unstructured legacy description as the role summary", () => {
+    expect(parseJobDescriptionSections("Legacy description")).toEqual({
+      roleSummary: "Legacy description",
+      responsibilities: "",
+      requirements: "",
+      preferredQualifications: "",
+    });
+  });
+
+  it("parses supported legacy headings with markdown, colons, and CRLF", () => {
+    expect(
+      parseJobDescriptionSections(
+        "## 직무 개요:\r\n요약\r\n## 주요 업무:\r\n업무\r\n## 필수 자격:\r\n자격\r\n## 우대 자격:\r\n우대",
+      ),
+    ).toEqual({
+      roleSummary: "요약",
+      responsibilities: "업무",
+      requirements: "자격",
+      preferredQualifications: "우대",
+    });
   });
 });
 

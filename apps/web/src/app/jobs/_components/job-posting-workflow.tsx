@@ -9,6 +9,7 @@ import type {
   JobRecord,
   ScorecardWorkspace,
 } from "@hirelens/domain";
+import { derivePublicPostingContentDraft } from "@hirelens/domain";
 
 import { initialJobPostingActionState } from "../action-state";
 import {
@@ -68,6 +69,11 @@ export function JobPostingWorkflow({
   const orderedHistory = [...history].sort((left, right) =>
     left.created_at.localeCompare(right.created_at),
   );
+  const suggestedContent = derivePublicPostingContentDraft(job.raw_job_description);
+  const usesSuggestedContent =
+    !posting?.public_summary?.trim() ||
+    !posting.public_responsibilities?.trim() ||
+    !posting.public_requirements?.trim();
 
   return (
     <section className="panel" aria-labelledby="job-posting-title">
@@ -111,6 +117,12 @@ export function JobPostingWorkflow({
           {canManage && posting.status === "DRAFT" ? (
             <form action={contentAction} className="posting-content-form">
               <input type="hidden" name="jobId" value={job.id} />
+              {usesSuggestedContent ? (
+                <p className="form-alert form-alert-info" role="status">
+                  채용 책임자가 작성한 직무 설명을 공고 초안으로 불러왔습니다. 공개 전에 내용을
+                  확인하고 저장하세요.
+                </p>
+              ) : null}
               <label>
                 공개 직무명
                 <input
@@ -124,7 +136,7 @@ export function JobPostingWorkflow({
                 공개 요약
                 <textarea
                   name="publicSummary"
-                  defaultValue={posting.public_summary ?? ""}
+                  defaultValue={posting.public_summary?.trim() || suggestedContent.summary}
                   maxLength={4000}
                   rows={4}
                   required
@@ -134,7 +146,9 @@ export function JobPostingWorkflow({
                 주요 업무
                 <textarea
                   name="publicResponsibilities"
-                  defaultValue={posting.public_responsibilities ?? ""}
+                  defaultValue={
+                    posting.public_responsibilities?.trim() || suggestedContent.responsibilities
+                  }
                   maxLength={10000}
                   rows={6}
                   required
@@ -144,7 +158,9 @@ export function JobPostingWorkflow({
                 필수 자격
                 <textarea
                   name="publicRequirements"
-                  defaultValue={posting.public_requirements ?? ""}
+                  defaultValue={
+                    posting.public_requirements?.trim() || suggestedContent.requirements
+                  }
                   maxLength={10000}
                   rows={6}
                   required

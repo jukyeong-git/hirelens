@@ -25,7 +25,16 @@ export function JobCreateForm({ viewerId, viewerName, profiles }: JobCreateFormP
   const [department, setDepartment] = useState("");
   const [recruiterId, setRecruiterId] = useState("");
   const [hiringNeed, setHiringNeed] = useState("");
-  const [rawJobDescription, setRawJobDescription] = useState("");
+  const [roleSummary, setRoleSummary] = useState("");
+  const [responsibilities, setResponsibilities] = useState("");
+  const [requirements, setRequirements] = useState("");
+  const [preferredQualifications, setPreferredQualifications] = useState("");
+  const draftRequestSnapshot = useRef({
+    roleSummary: "",
+    responsibilities: "",
+    requirements: "",
+    preferredQualifications: "",
+  });
   const recruiters = profiles.filter((profile) => profile.role === "RECRUITER");
 
   useEffect(() => {
@@ -35,15 +44,37 @@ export function JobCreateForm({ viewerId, viewerName, profiles }: JobCreateFormP
       setDepartment("");
       setRecruiterId("");
       setHiringNeed("");
-      setRawJobDescription("");
+      setRoleSummary("");
+      setResponsibilities("");
+      setRequirements("");
+      setPreferredQualifications("");
     }
   }, [state.status]);
 
   useEffect(() => {
-    if (draftState.status === "success" && draftState.rawJobDescription) {
-      setRawJobDescription(draftState.rawJobDescription);
+    if (draftState.status === "success") {
+      setRoleSummary((current) =>
+        current === draftRequestSnapshot.current.roleSummary
+          ? (draftState.roleSummary ?? current)
+          : current,
+      );
+      setResponsibilities((current) =>
+        current === draftRequestSnapshot.current.responsibilities
+          ? (draftState.responsibilities ?? current)
+          : current,
+      );
+      setRequirements((current) =>
+        current === draftRequestSnapshot.current.requirements
+          ? (draftState.requirements ?? current)
+          : current,
+      );
+      setPreferredQualifications((current) =>
+        current === draftRequestSnapshot.current.preferredQualifications
+          ? (draftState.preferredQualifications ?? current)
+          : current,
+      );
     }
-  }, [draftState.rawJobDescription, draftState.status]);
+  }, [draftState]);
 
   return (
     <section className="panel" aria-label="채용 생성 입력">
@@ -133,17 +164,54 @@ export function JobCreateForm({ viewerId, viewerName, profiles }: JobCreateFormP
         </div>
 
         <div className="field">
-          <label htmlFor="rawJobDescription">
-            직무 설명 {draftState.status === "success" ? "(AI 초안)" : ""}
-          </label>
+          <label htmlFor="roleSummary">역할 개요</label>
           <textarea
-            id="rawJobDescription"
-            name="rawJobDescription"
-            rows={7}
-            maxLength={20_000}
+            id="roleSummary"
+            name="roleSummary"
+            rows={4}
+            maxLength={4_000}
             required
-            value={rawJobDescription}
-            onChange={(event) => setRawJobDescription(event.target.value)}
+            value={roleSummary}
+            onChange={(event) => setRoleSummary(event.target.value)}
+          />
+        </div>
+
+        <div className="field">
+          <label htmlFor="responsibilities">주요 책임</label>
+          <textarea
+            id="responsibilities"
+            name="responsibilities"
+            rows={6}
+            maxLength={10_000}
+            required
+            value={responsibilities}
+            onChange={(event) => setResponsibilities(event.target.value)}
+          />
+        </div>
+
+        <div className="field">
+          <label htmlFor="requirements">자격 요건</label>
+          <textarea
+            id="requirements"
+            name="requirements"
+            rows={6}
+            maxLength={10_000}
+            required
+            value={requirements}
+            onChange={(event) => setRequirements(event.target.value)}
+          />
+        </div>
+
+        <div className="field">
+          <label htmlFor="preferredQualifications">우대 사항</label>
+          <textarea
+            id="preferredQualifications"
+            name="preferredQualifications"
+            rows={5}
+            maxLength={10_000}
+            required
+            value={preferredQualifications}
+            onChange={(event) => setPreferredQualifications(event.target.value)}
           />
         </div>
 
@@ -173,6 +241,14 @@ export function JobCreateForm({ viewerId, viewerName, profiles }: JobCreateFormP
             formAction={draftFormAction}
             formNoValidate
             disabled={pending || draftPending}
+            onClick={() => {
+              draftRequestSnapshot.current = {
+                roleSummary,
+                responsibilities,
+                requirements,
+                preferredQualifications,
+              };
+            }}
           >
             {draftPending ? "AI 초안 생성 중…" : "AI 초안"}
           </button>
