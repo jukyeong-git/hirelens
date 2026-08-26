@@ -4,12 +4,14 @@ import {
   appRoleSchema,
   assignRequisitionApproverInputSchema,
   createJobInputSchema,
+  discardJobDraftInputSchema,
   jobPostingActionInputSchema,
   jobPostingContentInputSchema,
   jobRequisitionDraftInputSchema,
   postingStatusSchema,
   resolveRequisitionApprovalInputSchema,
   submitRequisitionInputSchema,
+  updateJobBasicInfoInputSchema,
 } from "./job";
 
 const validInput = {
@@ -109,6 +111,37 @@ describe("jobRequisitionDraftInputSchema", () => {
     ).toMatchObject({
       title: "x".repeat(120),
       department: "x".repeat(120),
+    });
+  });
+});
+
+describe("updateJobBasicInfoInputSchema", () => {
+  it("accepts editable basic information with a concurrency token", () => {
+    const result = updateJobBasicInfoInputSchema.parse({
+      jobId: "10000000-0000-0000-0000-000000000001",
+      expectedUpdatedAt: "2026-08-26T00:00:00.000Z",
+      title: " Backend Engineer ",
+      department: " Engineering ",
+      hiringNeed: " Replacement hire ",
+      rawJobDescription: " Build backend services. ",
+      recruiterId: "00000000-0000-0000-0000-000000000002",
+    });
+
+    expect(result.title).toBe("Backend Engineer");
+    expect(result.hiringNeed).toBe("Replacement hire");
+  });
+});
+
+describe("discardJobDraftInputSchema", () => {
+  it("requires a job id and optimistic concurrency timestamp", () => {
+    expect(
+      discardJobDraftInputSchema.parse({
+        jobId: "10000000-0000-0000-0000-000000000001",
+        expectedUpdatedAt: "2026-08-26T00:00:00.000Z",
+      }),
+    ).toEqual({
+      jobId: "10000000-0000-0000-0000-000000000001",
+      expectedUpdatedAt: "2026-08-26T00:00:00.000Z",
     });
   });
 });

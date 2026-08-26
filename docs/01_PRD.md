@@ -105,7 +105,7 @@ Acceptance criteria:
 
 ### FR-002 — Create an editable Review Framework draft
 
-The assigned Hiring Manager or an Admin may start the initial `지원서 검토 기준`
+The assigned Hiring Manager or an Admin may start the initial `지원서 평가 기준`
 (Review Framework) either from a blank structured form or from an explicit AI
 proposal. Recruiters can read the saved framework but cannot create, save, or
 approve it.
@@ -192,7 +192,7 @@ Acceptance criteria:
 
 The Hiring Manager explicitly requests an AI-proposed application-review-criteria
 draft from a job description. `Scorecard` remains the internal contract name;
-the user-facing term is `지원서 검토 기준`.
+the user-facing term is `지원서 평가 기준`.
 
 Acceptance criteria:
 

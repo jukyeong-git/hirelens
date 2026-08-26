@@ -177,10 +177,21 @@ export const scorecardApprovalInputSchema = z
     expectedVersionNumber: z.number().int().positive(),
     expectedStatus: z.literal("DRAFT"),
     expectedContentRevision: z.number().int().positive(),
-    reason: z.string().trim().min(1, "Approval reason is required").max(1_000),
   })
   .strict();
 export type ScorecardApprovalInput = z.infer<typeof scorecardApprovalInputSchema>;
+
+export const scorecardIssueConfirmationInputSchema = z
+  .object({
+    scorecardVersionId: postgresUuidSchema,
+    expectedContentRevision: z.number().int().positive(),
+    issueScope: z.enum(["JOB_DESCRIPTION", "EVALUATION_CRITERION"]),
+    issueKey: z.string().trim().min(1).max(100),
+  })
+  .strict();
+export type ScorecardIssueConfirmationInput = z.infer<
+  typeof scorecardIssueConfirmationInputSchema
+>;
 
 export const scorecardDraftUpdateInputSchema = z
   .object({
@@ -188,7 +199,6 @@ export const scorecardDraftUpdateInputSchema = z
     expectedVersionNumber: z.number().int().positive(),
     expectedStatus: z.literal("DRAFT"),
     expectedContentRevision: z.number().int().positive(),
-    reason: z.string().trim().min(1, "Update reason is required").max(1_000),
   })
   .strict();
 export type ScorecardDraftUpdateInput = z.infer<typeof scorecardDraftUpdateInputSchema>;
@@ -203,6 +213,8 @@ export interface ScorecardVersionRecord {
   schema_version: string;
   model_id: string;
   ambiguous_phrases: AmbiguousPhrase[];
+  confirmed_job_description_issue_keys: string[];
+  confirmed_evaluation_criterion_ids: string[];
   created_by: string;
   approved_by: string | null;
   approved_at: string | null;

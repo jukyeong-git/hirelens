@@ -41,15 +41,31 @@ export const createJobInputSchema = z.object({
 });
 export type CreateJobInput = z.infer<typeof createJobInputSchema>;
 
+export const updateJobBasicInfoInputSchema = createJobInputSchema
+  .omit({ hiringManagerId: true })
+  .extend({
+    jobId: postgresUuidSchema,
+    expectedUpdatedAt: z.string().datetime({ offset: true }),
+  });
+export type UpdateJobBasicInfoInput = z.infer<typeof updateJobBasicInfoInputSchema>;
+
+export const discardJobDraftInputSchema = z.object({
+  jobId: postgresUuidSchema,
+  expectedUpdatedAt: z.string().datetime({ offset: true }),
+});
+export type DiscardJobDraftInput = z.infer<typeof discardJobDraftInputSchema>;
+
 /**
  * Minimal human-authored inputs for a transient AI requisition draft. Hiring
  * need is persisted with the requisition but deliberately excluded from the
  * AI request.
  */
-export const jobRequisitionDraftInputSchema = z.object({
-  title: z.string().trim().min(1).max(120),
-  department: z.string().trim().min(1).max(120),
-}).strict();
+export const jobRequisitionDraftInputSchema = z
+  .object({
+    title: z.string().trim().min(1).max(120),
+    department: z.string().trim().min(1).max(120),
+  })
+  .strict();
 export type JobRequisitionDraftInput = z.infer<typeof jobRequisitionDraftInputSchema>;
 
 const requisitionReasonSchema = z.string().trim().min(1).max(1000);

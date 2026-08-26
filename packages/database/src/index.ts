@@ -6,6 +6,7 @@ export {
   assignRequisitionApprover,
   closeJobPosting,
   createJob,
+  discardJobDraft,
   createJobPostingDraft,
   getJobPosting,
   listJobPostingsForJobs,
@@ -20,6 +21,7 @@ export {
   resolveRequisitionApproval,
   publishJobPosting,
   updateJobPostingContent,
+  updateJobBasicInfo,
   submitRequisition,
 } from "./jobs";
 export {
@@ -29,6 +31,7 @@ export {
 } from "./applications";
 export {
   approveScorecard,
+  confirmScorecardIssue,
   createScorecardDraft,
   getScorecardForJob,
   getScorecardVersion,

@@ -1,6 +1,6 @@
 begin;
 
-select plan(7);
+select plan(8);
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000003', true);
@@ -32,7 +32,7 @@ select set_config(
 
 select lives_ok(
   format(
-    $$select public.update_scorecard_draft(%L, 1, 'DRAFT', %s, 'Clarified evidence', '[]'::jsonb,
+    $$select public.update_scorecard_draft(%L, 1, 'DRAFT', %s, null, '[]'::jsonb,
       '[{"client_id":"criterion-1","name":"Production backend experience","type":"REQUIRED","definition":"Delivered backend services in production","accepted_evidence":["Production project delivery"],"alternative_evidence":[],"partial_evidence_guidance":"Scope is unclear","resume_assessable":true,"evidence_fields":[],"source_phrase":null,"ambiguity_note":null,"ambiguity_status":"CLEAR","suggested_interview_question":null,"display_order":0}]'::jsonb)$$,
     current_setting('hirelens.update_version_id'), current_setting('hirelens.update_revision')
   ),
@@ -57,9 +57,17 @@ select ok(
   'draft update appends an audit event'
 );
 
+select is(
+  (select reason from public.audit_events where event_type = 'SCORECARD_DRAFT_UPDATED'
+    and version_ref = current_setting('hirelens.update_version_id')
+    order by created_at desc limit 1),
+  null::text,
+  'draft update audit event does not store a user-entered reason'
+);
+
 select throws_ok(
   format(
-    $$select public.update_scorecard_draft(%L, 1, 'DRAFT', %s, 'Stale update', '[]'::jsonb, '[]'::jsonb)$$,
+    $$select public.update_scorecard_draft(%L, 1, 'DRAFT', %s, null, '[]'::jsonb, '[]'::jsonb)$$,
     current_setting('hirelens.update_version_id'), current_setting('hirelens.update_revision')
   ),
   '40001', null,
@@ -69,7 +77,7 @@ select throws_ok(
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000002', true);
 select throws_ok(
   format(
-    $$select public.update_scorecard_draft(%L, 1, 'DRAFT', %s, 'Unauthorized update', '[]'::jsonb, '[]'::jsonb)$$,
+    $$select public.update_scorecard_draft(%L, 1, 'DRAFT', %s, null, '[]'::jsonb, '[]'::jsonb)$$,
     current_setting('hirelens.update_version_id'),
     (select content_revision from public.scorecard_versions where id = current_setting('hirelens.update_version_id')::uuid)
   ),
@@ -87,7 +95,7 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000003', true);
 select throws_ok(
   format(
-    $$select public.update_scorecard_draft(%L, 1, 'APPROVED', %s, 'Attempt immutable update', '[]'::jsonb, '[]'::jsonb)$$,
+    $$select public.update_scorecard_draft(%L, 1, 'APPROVED', %s, null, '[]'::jsonb, '[]'::jsonb)$$,
     current_setting('hirelens.update_version_id'),
     (select content_revision from public.scorecard_versions where id = current_setting('hirelens.update_version_id')::uuid)
   ),

@@ -27,6 +27,7 @@ export {
   appRoleSchema,
   assignRequisitionApproverInputSchema,
   createJobInputSchema,
+  discardJobDraftInputSchema,
   jobRequisitionDraftInputSchema,
   jobPostingActionInputSchema,
   jobPostingContentInputSchema,
@@ -35,11 +36,13 @@ export {
   requisitionStatusSchema,
   resolveRequisitionApprovalInputSchema,
   submitRequisitionInputSchema,
+  updateJobBasicInfoInputSchema,
 } from "./job";
 export type {
   AppRole,
   AssignRequisitionApproverInput,
   CreateJobInput,
+  DiscardJobDraftInput,
   JobRequisitionDraftInput,
   JobPostingActionInput,
   JobPostingContentInput,
@@ -57,6 +60,7 @@ export type {
   RequisitionStatusHistoryRecord,
   ResolveRequisitionApprovalInput,
   SubmitRequisitionInput,
+  UpdateJobBasicInfoInput,
 } from "./job";
 export {
   ambiguityResolutionSchema,
@@ -69,6 +73,7 @@ export {
   scorecardCriterionReviewSnapshotSchema,
   scorecardDraftSchema,
   scorecardDraftUpdateInputSchema,
+  scorecardIssueConfirmationInputSchema,
   scorecardStatusSchema,
 } from "./scorecard";
 export {
@@ -147,6 +152,7 @@ export type {
   ScorecardDetail,
   ScorecardDraft,
   ScorecardDraftUpdateInput,
+  ScorecardIssueConfirmationInput,
   ScorecardStatus,
   ScorecardVersionRecord,
   ScorecardVersionHistoryRecord,

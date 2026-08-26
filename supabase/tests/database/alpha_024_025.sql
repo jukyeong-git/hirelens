@@ -128,7 +128,7 @@ select lives_ok(
 
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000005', true);
 select lives_ok(
-  $$ select public.resolve_requisition_approval('10000000-0000-0000-0000-000000000097', 'APPROVED', '채용 요청과 검토 기준을 승인합니다.') $$,
+  $$ select public.resolve_requisition_approval('10000000-0000-0000-0000-000000000097', 'APPROVED', '채용 요청과 평가 기준을 승인합니다.') $$,
   'Designated approver can approve the resubmitted requisition'
 );
 

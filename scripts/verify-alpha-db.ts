@@ -19,6 +19,9 @@ const testFiles = [
   "supabase/tests/database/016_job_hiring_need.sql",
   "supabase/tests/database/017_review_framework_draft_update.sql",
   "supabase/tests/database/018_single_review_framework.sql",
+  "supabase/tests/database/019_scorecard_issue_confirmation_gate.sql",
+  "supabase/tests/database/020_job_basic_info_update.sql",
+  "supabase/tests/database/021_discard_job_draft.sql",
 ];
 
 if (environment.SUPABASE_ENV !== "hosted-alpha" || !environment.DATABASE_URL) {

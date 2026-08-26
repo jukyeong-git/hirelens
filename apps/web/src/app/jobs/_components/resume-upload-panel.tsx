@@ -77,7 +77,7 @@ export function ResumeUploadPanel({ jobId, enabled }: { jobId: string; enabled: 
         </form>
       ) : (
         <p className="form-alert form-alert-warning" role="status">
-          승인된 지원서 검토 기준이 있는 ‘접수 준비’ 채용 요청에서만 업로드할 수 있습니다. 현재는
+          승인된 지원서 평가 기준이 있는 ‘접수 준비’ 채용 요청에서만 업로드할 수 있습니다. 현재는
           파일을 저장하지 않았습니다.
         </p>
       )}
