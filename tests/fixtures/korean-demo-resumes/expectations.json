@@ -1,0 +1,192 @@
+{
+  "fixture_version": "korean-demo-resumes-v1",
+  "criteria": {
+    "k8s_operations": "운영 환경 Kubernetes 경험",
+    "production_backend": "운영 서비스 백엔드 개발",
+    "high_traffic": "대용량 트래픽 처리",
+    "communication": "커뮤니케이션 (면접 전용)"
+  },
+  "cases": [
+    {
+      "file": "ko-resume-01.pdf",
+      "label": "지원자 01",
+      "expected": {
+        "k8s_operations": "SUPPORTED",
+        "production_backend": "SUPPORTED"
+      },
+      "required_source_phrase": "개인 프로젝트를 Kubernetes로 배포했습니다."
+    },
+    {
+      "file": "ko-resume-02.pdf",
+      "label": "지원자 02",
+      "expected": {
+        "k8s_operations": "SUPPORTED",
+        "production_backend": "SUPPORTED"
+      },
+      "required_source_phrase": "쿠버네티스를 학습한 뒤 사이드 프로젝트에 적용했습니다."
+    },
+    {
+      "file": "ko-resume-03.pdf",
+      "label": "지원자 03",
+      "expected": {
+        "k8s_operations": "SUPPORTED",
+        "production_backend": "SUPPORTED"
+      },
+      "required_source_phrase": "공식 튜토리얼을 따라 K8s 클러스터를 직접 구성해 보았습니다."
+    },
+    {
+      "file": "ko-resume-04.pdf",
+      "label": "지원자 04",
+      "expected": {
+        "k8s_operations": "SUPPORTED",
+        "production_backend": "SUPPORTED"
+      },
+      "required_source_phrase": "로컬 환경에 minikube로 클러스터를 띄워 실습했습니다."
+    },
+    {
+      "file": "ko-resume-05.pdf",
+      "label": "지원자 05",
+      "expected": {
+        "k8s_operations": "SUPPORTED",
+        "production_backend": "SUPPORTED",
+        "high_traffic": "SUPPORTED"
+      },
+      "required_source_phrase": "운영 중인 EKS 클러스터 3개를 관리하며 장애 대응을 담당했습니다."
+    },
+    {
+      "file": "ko-resume-06.pdf",
+      "label": "지원자 06",
+      "expected": {
+        "k8s_operations": "PARTIAL",
+        "production_backend": "SUPPORTED"
+      },
+      "required_source_phrase": "Kubernetes 기반 배포 파이프라인 구축에 참여했습니다."
+    },
+    {
+      "file": "ko-resume-07.pdf",
+      "label": "지원자 07",
+      "expected": {
+        "k8s_operations": "PARTIAL",
+        "production_backend": "SUPPORTED"
+      },
+      "required_source_phrase": "컨테이너 오케스트레이션 도입 논의에 참여하고 문서를 작성했습니다."
+    },
+    {
+      "file": "ko-resume-08.pdf",
+      "label": "지원자 08",
+      "expected": {
+        "k8s_operations": "PARTIAL",
+        "production_backend": "SUPPORTED"
+      },
+      "required_source_phrase": "사내 K8s 클러스터를 사용해 서비스를 배포한 경험이 있습니다."
+    },
+    {
+      "file": "ko-resume-09.pdf",
+      "label": "지원자 09",
+      "expected": {
+        "k8s_operations": "CONTRADICTED",
+        "production_backend": "SUPPORTED"
+      },
+      "required_source_phrase": "컨테이너 오케스트레이션 운영 경험은 없으며 입사 후 학습할 계획입니다."
+    },
+    {
+      "file": "ko-resume-10.pdf",
+      "label": "지원자 10",
+      "expected": {
+        "k8s_operations": "NOT_FOUND",
+        "production_backend": "SUPPORTED",
+        "high_traffic": "SUPPORTED"
+      },
+      "required_source_phrase": "일 평균 900만 요청을 처리하는 광고 입찰 서버를 운영했습니다."
+    },
+    {
+      "file": "ko-resume-11.pdf",
+      "label": "지원자 11",
+      "expected": {
+        "k8s_operations": "NOT_FOUND",
+        "production_backend": "SUPPORTED"
+      },
+      "required_source_phrase": null
+    },
+    {
+      "file": "ko-resume-12.pdf",
+      "label": "지원자 12",
+      "expected": {
+        "k8s_operations": "NOT_FOUND",
+        "production_backend": "SUPPORTED"
+      },
+      "required_source_phrase": null
+    },
+    {
+      "file": "ko-resume-13.pdf",
+      "label": "지원자 13",
+      "expected": {
+        "k8s_operations": "NOT_FOUND",
+        "production_backend": "SUPPORTED"
+      },
+      "required_source_phrase": null
+    },
+    {
+      "file": "ko-resume-14.pdf",
+      "label": "지원자 14",
+      "expected": {
+        "k8s_operations": "NOT_FOUND",
+        "production_backend": "SUPPORTED"
+      },
+      "required_source_phrase": null
+    },
+    {
+      "file": "ko-resume-15.pdf",
+      "label": "지원자 15",
+      "expected": {
+        "k8s_operations": "NOT_FOUND",
+        "production_backend": "SUPPORTED"
+      },
+      "required_source_phrase": null
+    },
+    {
+      "file": "ko-resume-16.pdf",
+      "label": "지원자 16",
+      "expected": {
+        "k8s_operations": "NOT_FOUND",
+        "production_backend": "SUPPORTED"
+      },
+      "required_source_phrase": null
+    },
+    {
+      "file": "ko-resume-17.pdf",
+      "label": "지원자 17",
+      "expected": {
+        "k8s_operations": "NOT_FOUND",
+        "production_backend": "SUPPORTED"
+      },
+      "required_source_phrase": null
+    },
+    {
+      "file": "ko-resume-18.pdf",
+      "label": "지원자 18",
+      "expected": {
+        "k8s_operations": "NOT_FOUND",
+        "production_backend": "SUPPORTED"
+      },
+      "required_source_phrase": null
+    },
+    {
+      "file": "ko-resume-19.pdf",
+      "label": "지원자 19",
+      "expected": {
+        "k8s_operations": "NOT_FOUND",
+        "production_backend": "SUPPORTED"
+      },
+      "required_source_phrase": null
+    },
+    {
+      "file": "ko-resume-20-image-only.pdf",
+      "label": "지원자 20",
+      "expected": {
+        "processing": "NEEDS_OCR"
+      },
+      "required_source_phrase": null
+    }
+  ]
+}

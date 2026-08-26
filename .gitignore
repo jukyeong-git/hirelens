@@ -28,3 +28,6 @@ references/*.xlsx
 # Resume fixtures are generated or explicitly synthetic only
 tmp/
 uploads/
+
+# Python
+__pycache__/
