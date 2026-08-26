@@ -12,6 +12,7 @@ const input = {
       definition: "Production operations",
       accepted_evidence: ["Stated operations responsibility"],
       alternative_evidence: [],
+      excluded_evidence: ["Coursework without production responsibility"],
       partial_evidence_guidance: "Development without operations responsibility",
       evidence_fields: [{ field_name: "scope", description: "Operations scope" }],
       resume_assessable: true,
@@ -85,7 +86,7 @@ describe("evidence Responses adapter", () => {
     });
     expect(result.versions).toMatchObject({
       model: "test-model",
-      prompt: "evidence-extraction-prompt-v2",
+      prompt: "evidence-extraction-prompt-v4",
       schema: "evidence-extraction-schema-v2",
     });
   });

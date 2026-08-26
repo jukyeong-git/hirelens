@@ -214,13 +214,10 @@ may resubmit only after return. It is separate from
 Scorecard approval history and does not grant the dormant approver scorecard,
 application, resume, or evidence access.
 
-Approver designation or replacement is recorded separately as an append-only
-job audit event with the assigning actor and prior/new approver IDs. A former
-approver may retain read access only to status-history rows they personally
-acted on; this does not restore access to the requisition, scorecard, or
-candidate data. Submission, approval, and return create additional safe audit
-events containing only the status transition; the free-text business reason is
-not duplicated into `audit_events`.
+Approver designation and requisition transitions are represented by the typed
+requisition status history. A former approver may retain read access only to
+status-history rows they personally acted on; this does not restore access to
+the requisition, scorecard, or candidate data.
 
 ### `scorecard_versions`
 
@@ -253,11 +250,9 @@ Invariant: an approved version cannot be updated.
 An assigned Hiring Manager or Admin may replace the structured contents of a
 `DRAFT` version through the controlled `update_scorecard_draft` workflow. The
 workflow requires the expected version and content revision, advances
-`content_revision`, and appends a safe audit event containing the actor, time,
-and before/after revision metadata. Draft content edits do not collect or store
-a free-text reason. The Hiring Manager's `채용 요청` action is separate, does
-not collect a free-text reason, and records actor, time, version, and state
-transition in the append-only audit trail. The workflow cannot update an
+`content_revision`. Draft content edits do not collect or store a free-text
+reason. The Hiring Manager's `채용 요청` action is separate and does not
+collect a free-text reason. The workflow cannot update an
 `APPROVED` or `SUPERSEDED` version.
 
 ### `criteria`
@@ -418,9 +413,9 @@ Storage path uses opaque IDs. Do not embed names or emails.
 
 For the first intake slice, `intake_status` is `UPLOADED` only: the object and
 durable metadata exist, but queueing, PDF extraction, and AI processing have
-not started. The existing 10 MiB bucket limit is a demo technical limit;
-customer file-size policy remains TBD. Original filenames are restricted
-application metadata and never copied into audit payloads.
+not started. The resume bucket limit is 5 MiB for the MVP upload boundary.
+Original filenames are restricted
+application metadata and never copied into logs or processing errors.
 
 ### `resume_pages`
 
@@ -529,9 +524,8 @@ A changed decision appends a new row and references the prior review.
 Every initial decision and every changed decision requires both a bounded
 reason code and non-empty human-written detail. Decisions are append-only and
 are stored against the active approved Scorecard version for the application's
-Job. The safe audit record captures actor, timestamp, prior decision, new
-decision, confidence, and reason code; it does not copy free-form decision
-detail or Recruiter-note bodies.
+Job. Each decision row captures actor, timestamp, decision, confidence, reason
+code, and a supersession reference; it does not copy Recruiter-note bodies.
 
 ### `review_notes` and `review_note_versions`
 
@@ -539,32 +533,25 @@ detail or Recruiter-note bodies.
 `deleted_by`) and `review_note_versions` holds immutable, numbered text
 versions. A Recruiter may create, edit, soft-delete, and restore only their
 own notes; Admin may manage all notes. Assigned Hiring Managers may read active
-notes only. Delete and restore each require a reason and create a safe audit
-event without copying note text.
+notes only. Delete and restore each require a reason and remain represented by
+the note's immutable version history without copying note text elsewhere.
 
 ### `notifications`
 
 In-app notifications use a recipient, event type, aggregate reference,
 relevant version, safe metadata, and read timestamp. The recipient marks only
-their own notification read; reading does not create an audit event. Delivery
+their own notification read; reading does not create a separate history row. Delivery
 is idempotent by recipient/event/aggregate/version. Creating a Scorecard draft
 notifies the assigned Hiring Manager. The Phase 3 worker will create the
 processing-completion and Admin-only processing-failure events after bounded
 retries exist.
 
-### `audit_events`
+### Domain-owned histories
 
-- `id`
-- `event_type`
-- `actor_type`
-- `actor_id`
-- `aggregate_type`
-- `aggregate_id`
-- `correlation_id`
-- `safe_metadata`
-- `created_at`
-
-No update/delete path for application roles.
+The active schema has no generic `audit_events` table or user-facing audit
+timeline. Requisition and posting transitions, review-note versions,
+processing attempts, interview progression, and human decisions retain their
+own typed histories and authorization rules.
 
 ## 3. Separation of concerns
 
@@ -587,27 +574,24 @@ They are independent dimensions.
 - `review_assignments(assigned_to, status, due_at)`
 - `hiring_manager_review_outcomes(application_id, created_at desc)`
 - `human_reviews(application_id, created_at desc)`
-- `audit_events(aggregate_type, aggregate_id, created_at)`
 
 Add indexes based on actual query plans, not only this list.
 
 ## 5. RLS access matrix
 
-| Resource                       | Admin                               | Recruiter                           | Hiring manager                    | Requisition approver                                    |
-| ------------------------------ | ----------------------------------- | ----------------------------------- | --------------------------------- | ------------------------------------------------------- |
-| Requisitions                   | all demo jobs; no business approval | assigned                            | create/read assigned              | read; approve/return only designated requisitions       |
-| Scorecards                     | all                                 | read assigned                       | create/read/edit/approve assigned | no access unless also assigned another role             |
-| Applications                   | all                                 | assigned job                        | assigned job                      | no access by role alone                                 |
-| Resume files/objects           | all assigned demo jobs              | assigned job                        | assigned job                      | no access by role alone                                 |
-| Resume pages                   | all                                 | assigned job                        | assigned job                      | no access by role alone                                 |
-| Evidence                       | all                                 | assigned job                        | assigned job                      | no access by role alone                                 |
-| Review requests                | all read                            | create/read assigned job            | read/complete when assigned       | no access by role alone                                 |
-| Interview-progression outcomes | read                                | read assigned job                   | create/read/change when assigned  | no access by role alone                                 |
-| Human reviews                  | create/read/change                  | read only                           | read/create/change when assigned  | no access by role alone                                 |
-| Recruiter notes                | create/read/edit/delete/restore     | own create/read/edit/delete/restore | assigned active notes read        | no access by role alone                                 |
-| Notifications                  | all read; own read receipt          | own read; own read receipt          | own read; own read receipt        | own read; own read receipt                              |
-| Audit                          | read                                | assigned aggregate read             | assigned aggregate read           | no access by role alone; use requisition status history |
-| Audit update/delete            | never                               | never                               | never                             | never                                                   |
+| Resource                       | Admin                               | Recruiter                           | Hiring manager                    | Requisition approver                              |
+| ------------------------------ | ----------------------------------- | ----------------------------------- | --------------------------------- | ------------------------------------------------- |
+| Requisitions                   | all demo jobs; no business approval | assigned                            | create/read assigned              | read; approve/return only designated requisitions |
+| Scorecards                     | all                                 | read assigned                       | create/read/edit/approve assigned | no access unless also assigned another role       |
+| Applications                   | all                                 | assigned job                        | assigned job                      | no access by role alone                           |
+| Resume files/objects           | all assigned demo jobs              | assigned job                        | assigned job                      | no access by role alone                           |
+| Resume pages                   | all                                 | assigned job                        | assigned job                      | no access by role alone                           |
+| Evidence                       | all                                 | assigned job                        | assigned job                      | no access by role alone                           |
+| Review requests                | all read                            | create/read assigned job            | read/complete when assigned       | no access by role alone                           |
+| Interview-progression outcomes | read                                | read assigned job                   | create/read/change when assigned  | no access by role alone                           |
+| Human reviews                  | create/read/change                  | read only                           | read/create/change when assigned  | no access by role alone                           |
+| Recruiter notes                | create/read/edit/delete/restore     | own create/read/edit/delete/restore | assigned active notes read        | no access by role alone                           |
+| Notifications                  | all read; own read receipt          | own read; own read receipt          | own read; own read receipt        | own read; own read receipt                        |
 
 Server-side secret access does not replace user authorization. Privileged server operations must still verify the authenticated user or system task.
 

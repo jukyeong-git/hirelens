@@ -9,6 +9,7 @@ export { processingRunStatusSchema } from "./evidence";
 import { processingRunStatusSchema } from "./evidence";
 export { processingFailureCategorySchema as processingErrorCategorySchema } from "./evidence";
 import { processingFailureCategorySchema } from "./evidence";
+export const MAXIMUM_RESUME_BYTES = 5_242_880;
 export const resumePdfMimeTypeSchema = z.literal("application/pdf");
 export const resumeSha256Schema = z.string().regex(/^[0-9a-f]{64}$/iu, "Invalid SHA-256");
 
@@ -26,7 +27,7 @@ export const createResumeUploadReservationInputSchema = z
       .max(255)
       .regex(/\.pdf$/iu, "Resume filename must use the PDF extension"),
     mimeType: resumePdfMimeTypeSchema,
-    byteSize: z.number().int().positive().max(10_485_760),
+    byteSize: z.number().int().positive().max(MAXIMUM_RESUME_BYTES),
     sha256: resumeSha256Schema,
   })
   .strict();
@@ -44,7 +45,7 @@ export const publicResumeSubmissionInputSchema = z
       .max(255)
       .regex(/\.pdf$/iu, "Resume filename must use the PDF extension"),
     mimeType: resumePdfMimeTypeSchema,
-    byteSize: z.number().int().positive().max(10_485_760),
+    byteSize: z.number().int().positive().max(MAXIMUM_RESUME_BYTES),
     sha256: resumeSha256Schema,
   })
   .strict();

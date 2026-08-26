@@ -55,7 +55,7 @@ export function PublicApplicationForm({ slug }: { slug: string }) {
                 >
                   <strong>이력서로 지원</strong>
                   <span>PDF 이력서를 제출하면 지원서 접수와 검토 처리를 시작합니다.</span>
-                  <small>PDF · 파일당 10 MiB · 비공개 저장</small>
+                  <small>PDF · 파일당 5 MiB · 비공개 저장</small>
                 </button>
                 <button type="button" onClick={() => setMode("manual")}>
                   <strong>수기 지원</strong>

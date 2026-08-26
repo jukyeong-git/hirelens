@@ -1,6 +1,6 @@
 begin;
 
-select plan(23);
+select plan(18);
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000003', true);
@@ -58,14 +58,6 @@ select lives_ok(
   'Assigned Hiring Manager can submit the requisition after criteria approval'
 );
 
-select is(
-  (select count(*)::integer from public.audit_events
-   where aggregate_id = '10000000-0000-0000-0000-000000000097'
-     and event_type = 'REQUISITION_SUBMITTED'),
-  1,
-  'Requisition submission has one safe audit event'
-);
-
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000005', true);
 select is(
   (select requisition_status::text from public.jobs where id = '10000000-0000-0000-0000-000000000097'),
@@ -104,22 +96,6 @@ select lives_ok(
   'Designated approver can return the requisition with a reason'
 );
 
-select is(
-  (select count(*)::integer from public.audit_events
-   where aggregate_id = '10000000-0000-0000-0000-000000000097'
-     and event_type = 'REQUISITION_RETURNED'),
-  1,
-  'Requisition return has one safe audit event'
-);
-
-select is(
-  (select reason from public.audit_events
-   where aggregate_id = '10000000-0000-0000-0000-000000000097'
-     and event_type = 'REQUISITION_RETURNED'),
-  null,
-  'Safe audit event does not duplicate the free-text return reason'
-);
-
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000003', true);
 select lives_ok(
   $$ select public.submit_requisition('10000000-0000-0000-0000-000000000097') $$,
@@ -132,13 +108,6 @@ select lives_ok(
   'Designated approver can approve the resubmitted requisition'
 );
 
-select is(
-  (select count(*)::integer from public.audit_events
-   where aggregate_id = '10000000-0000-0000-0000-000000000097'
-     and event_type = 'REQUISITION_APPROVED'),
-  1,
-  'Requisition approval has one safe audit event'
-);
 select throws_ok(
   $$ select public.resolve_requisition_approval('10000000-0000-0000-0000-000000000097', 'RETURNED', 'Stale second resolution') $$,
   '55000', 'only pending requisitions can be approved or returned',
@@ -150,14 +119,6 @@ select is(
   4,
   'Stale resolution does not append another status-history event'
 );
-select is(
-  (select reason from public.audit_events
-   where aggregate_id = '10000000-0000-0000-0000-000000000097'
-     and event_type = 'REQUISITION_APPROVED'),
-  null,
-  'Safe approval audit event does not duplicate the free-text approval reason'
-);
-
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true);
 select throws_ok(
   $$ select public.resolve_requisition_approval('10000000-0000-0000-0000-000000000097', 'APPROVED', 'Admin cannot approve') $$,

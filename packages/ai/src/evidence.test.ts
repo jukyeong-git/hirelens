@@ -39,6 +39,7 @@ const promptCriterion = {
   definition: "Operate production services with direct responsibility.",
   accepted_evidence: ["Direct production ownership"],
   alternative_evidence: ["Equivalent on-call responsibility"],
+  excluded_evidence: ["Coursework without production responsibility"],
   partial_evidence_guidance: "Production development without stated operational ownership",
   evidence_fields: [{ field_name: "operational_scope", description: "Scope owned directly" }],
   resume_assessable: true,
@@ -59,7 +60,7 @@ describe("evidence contract boundary", () => {
 
     expect(EVIDENCE_CONTRACT_VERSIONS).toEqual({
       pipeline: "evidence-pipeline-v1",
-      prompt: "evidence-extraction-prompt-v2",
+      prompt: "evidence-extraction-prompt-v4",
       schema: "evidence-extraction-schema-v2",
     });
     expect(EVIDENCE_SCHEMA_NAME).toBe("hirelens_evidence_extraction_v2");
@@ -67,6 +68,8 @@ describe("evidence contract boundary", () => {
       `Contract version: ${EVIDENCE_CONTRACT_VERSIONS.prompt}`,
     );
     expect(EVIDENCE_SYSTEM_PROMPT).toMatch(/partial-evidence guidance/iu);
+    expect(EVIDENCE_SYSTEM_PROMPT).toMatch(/excluded evidence/iu);
+    expect(EVIDENCE_SYSTEM_PROMPT).toMatch(/never quote\s+across a redacted segment/iu);
     expect(prompt.contract_version).toBe(EVIDENCE_CONTRACT_VERSIONS.prompt);
     expect(prompt.approved_criteria).toEqual([promptCriterion]);
   });

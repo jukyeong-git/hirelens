@@ -1,6 +1,6 @@
 begin;
 
-select plan(5);
+select plan(4);
 
 set local role postgres;
 insert into public.jobs (
@@ -39,13 +39,6 @@ select is(
   (select status::text from public.jobs where id = '10000000-0000-0000-0000-000000000097'),
   'ARCHIVED',
   'discarded draft is archived'
-);
-select is(
-  (select count(*)::integer from public.audit_events
-   where aggregate_id = '10000000-0000-0000-0000-000000000097'
-     and event_type = 'JOB_DRAFT_DISCARDED'),
-  1,
-  'discard is recorded in append-only audit'
 );
 select throws_ok(
   $$select public.discard_job_draft(

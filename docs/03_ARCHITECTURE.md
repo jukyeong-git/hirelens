@@ -37,7 +37,7 @@ Recruiter / Hiring Manager / Admin
 - progress and failure UI,
 - evidence review,
 - human decision forms,
-- audit timeline.
+- typed workflow and decision histories.
 
 ### `supabase/functions/process-evidence-queue`
 
@@ -80,7 +80,7 @@ passes. It must not consume the queue at the same time as the Edge Function.
 
 - typed repositories,
 - transaction helpers,
-- audit event writer,
+- typed workflow-history repositories,
 - queue and storage adapters.
 
 ### `supabase`
@@ -113,21 +113,21 @@ The worker should:
 
 ## 5. Planned technology choices
 
-| Concern | Choice | Reason |
-|---|---|---|
-| Web | Next.js App Router + TypeScript | one repository for UI and server boundaries |
-| UI | Tailwind + shadcn/ui | fast, accessible business UI |
-| Database | Supabase PostgreSQL | relational workflow and strong constraints |
-| Auth | Supabase Auth | role-backed demo authentication |
-| Files | Supabase Storage | private PDF storage |
-| Queue | Supabase Queues | durable background jobs near the data |
-| Worker | Supabase Edge Function | queue-local deployment without a separate always-on host |
-| PDF | PDF.js | page-aware text extraction and rendering |
-| AI | OpenAI Responses API | direct structured model requests |
-| Runtime validation | Zod + JSON Schema | untrusted boundary validation |
-| Unit tests | Vitest | fast TypeScript tests |
-| E2E | Playwright | real browser flow |
-| Hosting | Vercel + Supabase Edge Functions | web and bounded background processing without a third host |
+| Concern            | Choice                           | Reason                                                     |
+| ------------------ | -------------------------------- | ---------------------------------------------------------- |
+| Web                | Next.js App Router + TypeScript  | one repository for UI and server boundaries                |
+| UI                 | Tailwind + shadcn/ui             | fast, accessible business UI                               |
+| Database           | Supabase PostgreSQL              | relational workflow and strong constraints                 |
+| Auth               | Supabase Auth                    | role-backed demo authentication                            |
+| Files              | Supabase Storage                 | private PDF storage                                        |
+| Queue              | Supabase Queues                  | durable background jobs near the data                      |
+| Worker             | Supabase Edge Function           | queue-local deployment without a separate always-on host   |
+| PDF                | PDF.js                           | page-aware text extraction and rendering                   |
+| AI                 | OpenAI Responses API             | direct structured model requests                           |
+| Runtime validation | Zod + JSON Schema                | untrusted boundary validation                              |
+| Unit tests         | Vitest                           | fast TypeScript tests                                      |
+| E2E                | Playwright                       | real browser flow                                          |
+| Hosting            | Vercel + Supabase Edge Functions | web and bounded background processing without a third host |
 
 Package and service versions must be verified and pinned during scaffolding.
 
@@ -137,8 +137,8 @@ Package and service versions must be verified and pinned during scaffolding.
 1. Web validates job and approved scorecard.
 2. Web creates candidate/application/file records in a transaction.
 3. Web uploads PDF to private storage.
-4. Web enqueues task containing opaque IDs, not resume text.
-5. Cron invokes the secret-protected Edge consumer only while the database consumer mode is `EDGE`; it reads one task and creates a leased processing attempt.
+4. Web enqueues a task containing opaque IDs, not resume text; the database schedules a secret-protected Edge invocation after the transaction commits.
+5. The immediate Edge invocation reads one task and creates a leased processing attempt. The one-minute Cron remains a fallback for missed wake-ups, transient invocation failures, and lease recovery while consumer mode is `EDGE`.
 6. The Edge consumer extracts and stores page text.
 7. The Edge consumer calls AI with minimum required data.
 8. The Edge consumer validates strict output.
@@ -146,7 +146,7 @@ Package and service versions must be verified and pinned during scaffolding.
 10. A fenced heartbeat renews the lease during long extraction or model calls. The Edge consumer stores evidence, marks the attempt complete, and only then archives the queue message.
 11. Web subscribes or polls for progress.
 12. Human reviews and writes a decision through an authorized path.
-13. Audit event is appended.
+13. Domain-owned processing and decision records retain the relevant history.
 ```
 
 The preceding business workflow is enforced at the web/domain boundary:

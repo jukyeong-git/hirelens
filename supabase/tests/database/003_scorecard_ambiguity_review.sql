@@ -1,6 +1,6 @@
 begin;
 
-select plan(10);
+select plan(8);
 
 set local role authenticated;
 
@@ -185,29 +185,6 @@ select throws_ok(
   '42501',
   'not authorized to review scorecard ambiguity',
   'Unassigned Hiring Manager cannot resolve ambiguity'
-);
-
-select ok(
-  exists (
-    select 1
-    from public.audit_events
-    where event_type = 'SCORECARD_AMBIGUITY_REVIEWED'
-      and aggregate_id = '10000000-0000-0000-0000-000000000001'
-      and safe_metadata ? 'criterion_id'
-      and before_data ? 'ambiguity_status'
-      and after_data ? 'ambiguity_status'
-  ),
-  'Ambiguity review writes actor-safe before/after audit metadata'
-);
-
-select ok(
-  not exists (
-    select 1
-    from public.audit_events
-    where event_type = 'SCORECARD_AMBIGUITY_REVIEWED'
-      and safe_metadata::text like '%협업 상황에서%'
-  ),
-  'Ambiguity review audit metadata excludes criterion text'
 );
 
 select * from finish();

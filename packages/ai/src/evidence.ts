@@ -93,6 +93,7 @@ export const evidencePromptCriterionSchema = z
     definition: nonEmptyText(2_000),
     accepted_evidence: z.array(nonEmptyText(500)).max(32),
     alternative_evidence: z.array(nonEmptyText(500)).max(32),
+    excluded_evidence: z.array(nonEmptyText(500)).max(20),
     partial_evidence_guidance: nullableText(1_000),
     evidence_fields: z.array(evidenceFieldSchema).max(20),
     resume_assessable: z.boolean(),

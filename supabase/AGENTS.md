@@ -28,12 +28,12 @@ These instructions extend the repository root `AGENTS.md` for `supabase`.
 - Upload type and size must be validated.
 - Deletion must remove the file and related derived artifacts according to the retention workflow.
 
-## Audit rules
+## History rules
 
-- `audit_events` is append-only.
-- Application roles receive no update/delete grants on audit rows.
-- Store event type, actor, aggregate ID, prior/new references, timestamp, and correlation ID.
-- Do not copy raw resume text into audit payloads.
+- Do not add or restore a generic audit-event table.
+- Keep required history in typed domain tables with explicit RLS.
+- Human decisions retain actor, reason, timestamp, and supersession linkage.
+- Do not copy raw resume text into history or error payloads.
 
 ## Seed rules
 

@@ -1,6 +1,6 @@
 begin;
 
-select plan(10);
+select plan(9);
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000003', true);
@@ -88,13 +88,6 @@ select is(
    where id = current_setting('hirelens.confirm_version_id')::uuid),
   'APPROVED',
   'hiring request approves and fixes the evaluation criteria'
-);
-
-select is(
-  (select reason from public.audit_events where event_type = 'SCORECARD_APPROVED'
-   and version_ref = current_setting('hirelens.confirm_version_id') order by created_at desc limit 1),
-  null::text,
-  'hiring request audit event stores no approval reason'
 );
 
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000002', true);

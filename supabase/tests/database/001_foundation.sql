@@ -1,6 +1,6 @@
 begin;
 
-select plan(18);
+select plan(11);
 
 set local role authenticated;
 
@@ -119,89 +119,10 @@ select lives_ok(
   'Hiring Manager can create an assigned requisition'
 );
 
-select ok(
-  exists (
-    select 1
-    from public.audit_events
-    where aggregate_type = 'job'
-      and aggregate_id = '10000000-0000-0000-0000-000000000001'
-  ),
-  'Assigned Hiring Manager can read the job audit history'
-);
-
-select is(
-  (select count(*)::integer from public.audit_events where aggregate_id = '10000000-0000-0000-0000-000000000002'),
-  0,
-  'Assigned Hiring Manager cannot read another job audit history'
-);
-
 select set_config(
   'request.jwt.claim.sub',
   '00000000-0000-0000-0000-000000000001',
   true
-);
-
-select ok(
-  exists (
-    select 1
-    from public.audit_events
-    where event_type = 'JOB_CREATED'
-      and aggregate_id = '10000000-0000-0000-0000-000000000001'
-  ),
-  'Admin can inspect job audit events'
-);
-
-select throws_ok(
-  $$
-    update public.audit_events
-    set reason = 'tampered'
-    where aggregate_id = '10000000-0000-0000-0000-000000000001'
-  $$,
-  '42501',
-  'permission denied for table audit_events',
-  'Audit events cannot be updated'
-);
-
-select throws_ok(
-  $$
-    delete from public.audit_events
-    where aggregate_id = '10000000-0000-0000-0000-000000000001'
-  $$,
-  '42501',
-  'permission denied for table audit_events',
-  'Audit events cannot be deleted'
-);
-
-select throws_ok(
-  $$
-    insert into public.audit_events (
-      event_type,
-      actor_type,
-      aggregate_type,
-      aggregate_id,
-      source,
-      result
-    ) values (
-      'FORGED_EVENT',
-      'USER',
-      'job',
-      '10000000-0000-0000-0000-000000000001',
-      'test',
-      'SUCCESS'
-    )
-  $$,
-  '42501',
-  'permission denied for table audit_events',
-  'Application roles cannot insert audit events directly'
-);
-
-select ok(
-  not exists (
-    select 1
-    from public.audit_events
-    where safe_metadata::text like '%Build and operate reliable backend services%'
-  ),
-  'Audit metadata does not copy the raw job description'
 );
 
 select * from finish();

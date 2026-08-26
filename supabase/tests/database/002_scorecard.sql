@@ -1,6 +1,6 @@
 begin;
 
-select plan(14);
+select plan(12);
 
 set local role authenticated;
 
@@ -170,27 +170,6 @@ select throws_ok(
 );
 
 set local role authenticated;
-
-select ok(
-  exists (
-    select 1
-    from public.audit_events
-    where event_type = 'SCORECARD_DRAFT_CREATED'
-      and aggregate_id = '10000000-0000-0000-0000-000000000001'
-      and safe_metadata ? 'source_job_description_hash'
-  ),
-  'Scorecard draft creation writes safe audit metadata'
-);
-
-select ok(
-  not exists (
-    select 1
-    from public.audit_events
-    where event_type = 'SCORECARD_DRAFT_CREATED'
-      and safe_metadata::text like '%Build and operate reliable backend services%'
-  ),
-  'Scorecard audit metadata excludes raw job description text'
-);
 
 select * from finish();
 rollback;

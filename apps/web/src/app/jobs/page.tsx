@@ -146,7 +146,7 @@ export default async function JobsPage() {
               <div key={notification.id} className="workspace-task-item">
                 <div>
                   <strong>{notificationLabel(notification.event_type)}</strong>
-                  <p>{notification.read_at ? "확인 완료" : "처리 필요"}</p>
+                  <p>처리 필요</p>
                 </div>
                 <div className="workspace-task-actions">
                   {notification.aggregate_type === "job" ? (
@@ -164,7 +164,7 @@ export default async function JobsPage() {
                       지원서 열기
                     </Link>
                   ) : null}
-                  {!notification.read_at && notification.recipient_id === viewer.id ? (
+                  {notification.recipient_id === viewer.id ? (
                     <form action={markNotificationReadAction}>
                       <input type="hidden" name="notificationId" value={notification.id} />
                       <button className="button button-quiet" type="submit">

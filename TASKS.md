@@ -25,10 +25,7 @@ This is the execution checklist. Product behavior is defined in `docs/01_PRD.md`
 - [x] Add synthetic demo users.
 - [x] Add RLS policies and denial tests.
 - [x] Add private `resumes` storage bucket.
-- [x] Add append-only `audit_events`.
-- [x] Add SCIM-style audit event fields and coverage for all material state-changing actions (legacy implementation; no longer an active P0 requirement).
-- [x] Retain minimal append-only change history without expanding the SCIM-style audit schema.
-- [x] Enforce that audit events cannot be updated or deleted by any application role, including Admin.
+- [x] Remove the legacy SCIM-inspired `audit_events` subsystem; retain typed workflow and decision histories.
 - [x] Add versioned Recruiter review notes with soft delete and restore history.
 - [x] Add internal notifications and role-based recipients; processing failures notify Admin only in P0 (the failure producer is completed with the Phase 3 bounded-retry worker).
 - [x] Add synthetic demo seed and reset command.
@@ -55,12 +52,12 @@ This is the execution checklist. Product behavior is defined in `docs/01_PRD.md`
       retain criterion-level evidence without total scores or automatic ranking.
 - [x] Implement ambiguous phrase detection.
 - [x] Implement criterion types: `REQUIRED`, `PREFERRED`, `INTERVIEW_ONLY`.
-- [x] Implement HL-022 human ambiguity review and resolution audit path.
+- [x] Implement HL-022 human ambiguity review and resolution path.
 - [x] Implement human scorecard approval.
 - [x] Lock the single approved Review Framework for each Job and remove replacement-version controls.
 - [x] Allow an assigned Hiring Manager or Admin to reopen and revise a saved
       Review Framework draft with optimistic concurrency, a required reason,
-      and append-only audit history; approved versions remain immutable.
+      while approved versions remain immutable.
 - [x] Block Job intake and expose no analysis-ready version when no approved scorecard exists; Phase 3 enqueue repeats this gate.
 - [x] Add unit, integration, and E2E tests.
 
@@ -79,6 +76,7 @@ This is the execution checklist. Product behavior is defined in `docs/01_PRD.md`
 - [x] Notify Admin in-app after the bounded retry is exhausted.
 - [x] Prove duplicate delivery does not duplicate results.
 - [x] Add the Supabase Edge single-message consumer, service-role dequeue/settlement, lease recovery, malformed-message quarantine, and Vault-backed Cron configuration.
+- [x] Wake the Edge consumer immediately after durable queue enqueue; retain the one-minute Cron as recovery fallback.
 - [ ] Pass deployed Alpha Edge PDF.js smoke and 20-file partial-batch test, then retire the Node polling rollback path.
 
 ## Phase 4 — Evidence extraction
@@ -92,7 +90,7 @@ This is the execution checklist. Product behavior is defined in `docs/01_PRD.md`
 - [x] Quarantine invalid model output.
 - [x] Add golden AI fixtures and eval command.
 
-## Phase 5 — Human review and audit
+## Phase 5 — Human review and history
 
 - [x] Build evidence-first candidate list.
 - [x] Build split-view candidate detail page.
@@ -103,7 +101,7 @@ This is the execution checklist. Product behavior is defined in `docs/01_PRD.md`
 - [x] Allow decision writes for authenticated `HIRING_MANAGER` and `ADMIN`; deny Recruiter, AI, and worker identities.
 - [x] Record decision change history.
 - [x] Show Recruiter note history separately from AI evidence and human decisions.
-- [x] Show audit timeline.
+- [x] Show domain-owned review, note, processing, and decision histories where relevant.
 - [x] Prove AI processing never writes a human decision.
 - [x] Split the internal home workspace by role: Recruiter sees assigned requisitions, new applications, published postings, and operational tasks; Hiring Manager sees assigned requisitions, Review Framework work, and candidate-review requests; Admin sees all operational work and processing failures.
 - [x] Move Hiring Manager requisition drafting to a separate `/jobs/new` screen; keep the workspace page focused on overview and assigned requisitions.

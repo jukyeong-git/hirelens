@@ -22,6 +22,7 @@ const testFiles = [
   "supabase/tests/database/019_scorecard_issue_confirmation_gate.sql",
   "supabase/tests/database/020_job_basic_info_update.sql",
   "supabase/tests/database/021_discard_job_draft.sql",
+  "supabase/tests/database/022_remove_audit_events.sql",
 ];
 
 if (environment.SUPABASE_ENV !== "hosted-alpha" || !environment.DATABASE_URL) {

@@ -1,7 +1,7 @@
 begin;
 
 -- Alpha verification only. Every fixture mutation is rolled back.
-select plan(35);
+select plan(34);
 
 set local role postgres;
 update public.profiles
@@ -283,14 +283,5 @@ select throws_ok(
   '42501', 'permission denied for table job_postings',
   'Authenticated clients cannot mutate the immutable public slug directly'
 );
-select is(
-  (select count(*)::integer from public.audit_events
-   where aggregate_type = 'job_posting'
-     and aggregate_id = (select id from public.job_postings where job_id = '10000000-0000-0000-0000-000000000029')
-     and event_type = 'POSTING_CONTENT_UPDATED'),
-  1,
-  'Public content changes append one safe audit event'
-);
-
 select * from finish();
 rollback;

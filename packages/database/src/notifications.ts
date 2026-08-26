@@ -6,7 +6,11 @@ const notificationSelect =
   "id,recipient_id,event_type,aggregate_type,aggregate_id,relevant_version,safe_metadata,read_at,created_at";
 
 export async function listNotifications(client: SupabaseRestClient): Promise<NotificationRecord[]> {
-  const params = new URLSearchParams({ select: notificationSelect, order: "created_at.desc" });
+  const params = new URLSearchParams({
+    select: notificationSelect,
+    read_at: "is.null",
+    order: "created_at.desc",
+  });
   return client.request<NotificationRecord[]>(`/rest/v1/notifications?${params.toString()}`);
 }
 

@@ -52,7 +52,6 @@ export {
   requestHiringManagerReview,
   listInterviewProgressionReviews,
   recordInterviewProgression,
-  listApplicationAuditEvents,
 } from "./reviews";
 export {
   createReviewNote,

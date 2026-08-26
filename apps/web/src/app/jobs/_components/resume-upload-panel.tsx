@@ -57,7 +57,7 @@ export function ResumeUploadPanel({ jobId, enabled }: { jobId: string; enabled: 
       <div className="section-heading">
         <h2 id="resume-upload-title">이력서 업로드</h2>
       </div>
-      <p className="form-help">PDF · 파일당 최대 10 MiB · 다중 선택 가능</p>
+      <p className="form-help">PDF · 파일당 최대 5 MiB · 다중 선택 가능</p>
       {enabled ? (
         <form className="scorecard-workflow-form" onSubmit={submit}>
           <label>
@@ -91,7 +91,7 @@ export function ResumeUploadPanel({ jobId, enabled }: { jobId: string; enabled: 
               <strong>{result.filename}</strong>
               <span>
                 {result.status === "success"
-                  ? "UPLOADED — 처리가 아직 시작되지 않음"
+                  ? "업로드 완료 · ATS 분석을 시작했습니다."
                   : visibleCopy(result.message ?? "업로드 실패")}
               </span>
             </div>

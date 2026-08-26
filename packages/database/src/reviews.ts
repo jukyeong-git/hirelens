@@ -1,5 +1,4 @@
 import type {
-  AuditEventRecord,
   CreateHumanReviewInput,
   HumanReviewRecord,
   InterviewProgressionReviewRecord,
@@ -101,18 +100,4 @@ export async function recordInterviewProgression(
       new_reason: input.reason,
     }),
   });
-}
-
-export async function listApplicationAuditEvents(
-  client: SupabaseRestClient,
-  applicationId: string,
-): Promise<AuditEventRecord[]> {
-  const params = new URLSearchParams({
-    select:
-      "id,event_type,actor_type,actor_id,aggregate_type,aggregate_id,safe_metadata,before_data,after_data,source,version_ref,created_at",
-    aggregate_type: "eq.application",
-    aggregate_id: `eq.${applicationId}`,
-    order: "created_at.desc",
-  });
-  return client.request<AuditEventRecord[]>(`/rest/v1/audit_events?${params.toString()}`);
 }

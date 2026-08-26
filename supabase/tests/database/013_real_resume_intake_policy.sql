@@ -2,7 +2,7 @@ begin;
 
 -- This file is safe for hosted verification only when migration 026 is loaded
 -- earlier in the same transaction. Every fixture mutation is rolled back.
-select plan(45);
+select plan(43);
 
 set local role postgres;
 
@@ -243,21 +243,6 @@ select ok(
   ),
   'Internal Storage path remains opaque and exact'
 );
-select ok(
-  exists (
-    select 1
-    from public.audit_events
-    where event_type = 'RESUME_UPLOAD_RESERVED'
-      and aggregate_id = '50000000-0000-0000-0000-000000000261'
-      and safe_metadata ->> 'mime_type' = 'application/pdf'
-      and safe_metadata::text not like '%applicant.pdf%'
-      and safe_metadata::text not like '%attest%'
-      and safe_metadata::text not like '%classification%'
-      and safe_metadata::text not like '%notice%'
-  ),
-  'Internal reservation audit is safe and excludes filename and content-policy metadata'
-);
-
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true);
 select throws_ok(
@@ -429,19 +414,6 @@ select is(
   ),
   'Public application',
   'New public candidates receive a neutral label'
-);
-select ok(
-  exists (
-    select 1
-    from public.audit_events
-    where event_type = 'PUBLIC_RESUME_SUBMISSION_RESERVED'
-      and aggregate_id = '50000000-0000-0000-0000-000000000264'
-      and safe_metadata::text not like '%applicant.pdf%'
-      and safe_metadata::text not like '%attest%'
-      and safe_metadata::text not like '%classification%'
-      and safe_metadata::text not like '%notice%'
-  ),
-  'Public reservation audit excludes filename and content-policy metadata'
 );
 insert into storage.objects (bucket_id, name, metadata)
 select 'resumes', storage_path, '{"size":1024}'::jsonb

@@ -13,7 +13,7 @@ import {
   SupabaseConfigurationError,
 } from "../../../../../../lib/supabase-server";
 
-const maximumResumeBytes = 10_485_760;
+const maximumResumeBytes = 5_242_880;
 
 export async function POST(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -111,7 +111,7 @@ async function validateResumeFile(file: File): Promise<string | null> {
     return "PDF 파일만 제출할 수 있습니다.";
   }
   if (file.size === 0 || file.size > maximumResumeBytes) {
-    return "파일 크기: 1바이트 이상, 10 MiB 이하";
+    return "파일 크기: 1바이트 이상, 5 MiB 이하";
   }
   const header = new TextDecoder().decode(await file.slice(0, 5).arrayBuffer());
   return header === "%PDF-" ? null : "유효한 PDF 서명(%PDF-)을 찾지 못했습니다.";

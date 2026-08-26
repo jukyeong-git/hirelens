@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  MAXIMUM_RESUME_BYTES,
   createResumeUploadReservationInputSchema,
   publicResumeSubmissionInputSchema,
 } from "./resume";
@@ -41,9 +42,13 @@ describe("resume intake contracts", () => {
 
   it("rejects oversized files, non-PDF MIME types, and unknown fields", () => {
     expect(
-      createResumeUploadReservationInputSchema.safeParse({ ...input, byteSize: 10_485_761 })
+      createResumeUploadReservationInputSchema.safeParse({ ...input, byteSize: MAXIMUM_RESUME_BYTES + 1 })
         .success,
     ).toBe(false);
+    expect(
+      createResumeUploadReservationInputSchema.safeParse({ ...input, byteSize: MAXIMUM_RESUME_BYTES })
+        .success,
+    ).toBe(true);
     expect(
       createResumeUploadReservationInputSchema.safeParse({ ...input, mimeType: "text/plain" })
         .success,
