@@ -76,7 +76,17 @@ export default async function ApplicationReviewPage({
           <Link className="back-link" href={`/jobs/${job.id}`}>
             ← {visibleCopy(job.title)}로
           </Link>
-          <h1>{visibleCopy(application.candidate?.demo_label ?? "Synthetic candidate")}</h1>
+          <h1>
+            {visibleCopy(
+              latestRun?.status === "COMPLETED"
+                ? (application.candidate?.full_name ??
+                    application.candidate?.demo_label ??
+                    "이름 미입력")
+                : application.source === "PUBLIC_POSTING"
+                  ? "공개 지원"
+                  : (application.candidate?.demo_label ?? "지원자"),
+            )}
+          </h1>
           <p className="lede">{application.workflow_state}</p>
         </div>
       </header>

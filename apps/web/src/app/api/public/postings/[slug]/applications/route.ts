@@ -19,6 +19,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
   const { slug } = await params;
   const formData = await request.formData();
   const file = formData.get("resume");
+  const candidateName = formData.get("candidateName");
+
+  if (typeof candidateName !== "string" || candidateName.trim().length === 0) {
+    return Response.json({ error: "후보자 이름을 입력하세요." }, { status: 400 });
+  }
 
   if (!(file instanceof File)) {
     return Response.json({ error: "PDF 이력서 파일을 선택하세요." }, { status: 400 });
@@ -33,6 +38,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
   const sha256 = createHash("sha256").update(bytes).digest("hex");
   const parsed = publicResumeSubmissionInputSchema.safeParse({
     publicSlug: slug,
+    candidateName,
     candidateId,
     applicationId,
     resumeFileId,

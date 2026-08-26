@@ -123,5 +123,22 @@ export interface ApplicationReviewRecord {
   submitted_at: string;
   workflow_state: string;
   created_at: string;
-  candidate: { demo_label: string } | null;
+  candidate: { demo_label: string; full_name: string | null } | null;
+}
+
+interface CandidateTriageLabelInput {
+  source: string;
+  processingStatus: string | undefined;
+  fullName: string | null | undefined;
+  demoLabel: string | null | undefined;
+}
+
+export function candidateTriageLabel(input: CandidateTriageLabelInput): string {
+  if (input.source !== "PUBLIC_POSTING") return input.demoLabel ?? "지원자";
+  if (input.processingStatus !== "COMPLETED") return "공개 지원";
+  return input.fullName ?? "이름 미입력";
+}
+
+export function candidateSourceLabel(source: string): string {
+  return source === "PUBLIC_POSTING" ? "공개 지원" : "내부 등록";
 }

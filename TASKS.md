@@ -39,6 +39,7 @@ This is the execution checklist. Product behavior is defined in `docs/01_PRD.md`
 - [x] Add HL-028 public careers route, candidate-facing posting editor/preview, and opaque slug (anonymous read projection; no upload).
 - [x] Supersede synthetic-only intake: accept valid PDFs without content classification; keep presentation fixtures synthetic.
 - [x] Add HL-029 anonymous submission form, private server-side upload flow, and public-route/RLS/E2E tests for submission denial and no internal-data leakage (Alpha rollback-only pgTAP and public E2E complete).
+- [x] Collect a candidate-provided name at public intake and reveal it to authorized reviewers after ATS validation without sending it through the AI pipeline.
 - [x] Create job form and list.
 - [x] Add explicit, editable AI Job Requisition/job-description drafting with a
       versioned strict four-field contract, no auto-save, and AI eval coverage;

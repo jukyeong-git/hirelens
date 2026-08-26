@@ -2,7 +2,7 @@ begin;
 
 -- This file is safe for hosted verification only when migration 026 is loaded
 -- earlier in the same transaction. Every fixture mutation is rolled back.
-select plan(43);
+select plan(47);
 
 set local role postgres;
 
@@ -49,6 +49,22 @@ select ok(
     'EXECUTE'
   ),
   'Authenticated browser callers cannot invoke the server-owned public RPC'
+);
+select ok(
+  has_function_privilege(
+    'service_role',
+    'public.create_named_public_resume_submission(text,text,uuid,uuid,uuid,text,text,integer,text)',
+    'EXECUTE'
+  ),
+  'The server service role may invoke named public intake'
+);
+select ok(
+  not has_function_privilege(
+    'anon',
+    'public.create_named_public_resume_submission(text,text,uuid,uuid,uuid,text,text,integer,text)',
+    'EXECUTE'
+  ),
+  'Anonymous callers cannot invoke named public intake directly'
 );
 select is(
   (select public from storage.buckets where id = 'resumes'),
@@ -376,14 +392,28 @@ select is(
 set local role service_role;
 select set_config('request.jwt.claim.role', 'service_role', true);
 select lives_ok(
-  $$ select public.create_public_resume_submission(
+  $$ select public.create_named_public_resume_submission(
     'feedfacefeedfacefeedfacefeedface',
+    '  김지원  ',
     '40000000-0000-0000-0000-000000000264',
     '50000000-0000-0000-0000-000000000264',
     '60000000-0000-0000-0000-000000000264',
     'applicant.pdf', 'application/pdf', 1024, repeat('e', 64)
   ) $$,
   'Server-owned public intake reserves any valid PDF without policy arguments'
+);
+select throws_ok(
+  $$ select public.create_named_public_resume_submission(
+    'feedfacefeedfacefeedfacefeedface',
+    '   ',
+    '40000000-0000-0000-0000-000000000265',
+    '50000000-0000-0000-0000-000000000265',
+    '60000000-0000-0000-0000-000000000265',
+    'applicant.pdf', 'application/pdf', 1024, repeat('f', 64)
+  ) $$,
+  '22023',
+  'candidate name must be between 1 and 100 visible characters',
+  'Blank candidate names are rejected'
 );
 
 set local role postgres;
@@ -414,6 +444,15 @@ select is(
   ),
   'Public application',
   'New public candidates receive a neutral label'
+);
+select is(
+  (
+    select full_name
+    from public.candidates
+    where id = '40000000-0000-0000-0000-000000000264'
+  ),
+  '김지원',
+  'Candidate-provided names are trimmed and stored separately'
 );
 insert into storage.objects (bucket_id, name, metadata)
 select 'resumes', storage_path, '{"size":1024}'::jsonb

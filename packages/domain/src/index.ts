@@ -88,6 +88,8 @@ export {
   interviewProgressionOutcomeSchema,
   requestHiringManagerReviewInputSchema,
   recordInterviewProgressionInputSchema,
+  candidateSourceLabel,
+  candidateTriageLabel,
   reviewConfidenceSchema,
   setReviewNoteDeletedInputSchema,
   updateReviewNoteInputSchema,

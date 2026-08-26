@@ -279,6 +279,13 @@ h2 {
   background: #f2f6ff;
 }
 
+.application-link-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
 .upload-result-success {
   border-left: 3px solid #16a34a;
 }

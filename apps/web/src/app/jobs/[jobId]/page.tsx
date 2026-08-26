@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { candidateSourceLabel, candidateTriageLabel } from "@hirelens/domain";
+
 import {
   getJobForScorecard,
   getJobPosting,
@@ -119,11 +121,19 @@ export default async function JobDetailPage({
   const assignedHiringManager = profiles.find((profile) => profile.id === job.hiring_manager_id);
   const triageItems = applications.map((application) => ({
     id: application.id,
-    label: visibleCopy(application.candidate?.demo_label ?? "지원자"),
+    label: visibleCopy(
+      candidateTriageLabel({
+        source: application.source,
+        processingStatus: latestRunByApplicationId.get(application.id)?.status,
+        fullName: application.candidate?.full_name,
+        demoLabel: application.candidate?.demo_label,
+      }),
+    ),
+    sourceLabel: candidateSourceLabel(application.source),
     submittedAt: application.submitted_at,
     atsStatus: atsStatusLabel(latestRunByApplicationId.get(application.id)?.status),
     evidenceCount: latestRunByApplicationId.get(application.id)
-      ? evidenceCountByRunId.get(latestRunByApplicationId.get(application.id)!.id) ?? 0
+      ? (evidenceCountByRunId.get(latestRunByApplicationId.get(application.id)!.id) ?? 0)
       : 0,
   }));
 

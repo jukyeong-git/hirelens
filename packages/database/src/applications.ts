@@ -3,7 +3,7 @@ import type { ApplicationReviewRecord } from "@hirelens/domain";
 import type { SupabaseRestClient } from "./rest";
 
 const applicationSelect =
-  "id,candidate_id,job_id,source,submitted_at,workflow_state,created_at,candidate:candidates(demo_label)";
+  "id,candidate_id,job_id,source,submitted_at,workflow_state,created_at,candidate:candidates(demo_label,full_name)";
 
 export async function listApplicationsForJob(
   client: SupabaseRestClient,

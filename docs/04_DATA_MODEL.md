@@ -332,9 +332,10 @@ controls.
 
 - `id`
 - `demo_label`
+- `full_name` (nullable, candidate-provided direct identifier; never AI-inferred)
 - `created_at`
 
-For P0, avoid duplicating raw name/email fields unless required for the demo. Use a synthetic label.
+Public applicants provide `full_name` explicitly during submission. It is visible only through the existing assigned-job candidate RLS boundary, is excluded from AI requests and safe metadata, and is never inferred from resume content. Existing and synthetic records may leave it null and continue to use `demo_label`.
 
 ### Evidence processing additions
 

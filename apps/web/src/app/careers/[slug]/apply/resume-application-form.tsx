@@ -120,6 +120,23 @@ export function ResumeApplicationForm({ slug }: { slug: string }) {
   return (
     <>
       <form className="public-application-upload-card" onSubmit={submit} ref={formRef}>
+        <div className="field public-candidate-name-field">
+          <label htmlFor="candidate-name">후보자 이름</label>
+          <input
+            id="candidate-name"
+            name="candidateName"
+            type="text"
+            autoComplete="name"
+            minLength={1}
+            maxLength={100}
+            required
+            disabled={isSubmitting}
+          />
+          <span className="field-help">
+            지원서 검증이 완료되면 권한이 있는 채용 담당자에게 표시됩니다.
+          </span>
+        </div>
+
         <div
           className={`public-resume-dropzone${isDragging ? " is-dragging" : ""}${
             selectedFileName ? " is-selected" : ""
