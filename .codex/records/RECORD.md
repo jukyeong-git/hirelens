@@ -3332,3 +3332,6 @@ Recruiter 홈의 채용 목록과 상단 집계를 배정된 `접수 준비(READ
 ## Input — 2026-08-26 08:08:38 +0800
 
 현재 누적 변경 사항을 `develop` 브랜치에 커밋·푸시하고, 완료 후 `alpha` 브랜치에 병합·푸시하도록 요청.
+## Output — 2026-08-26 08:10:06 +0800
+
+누적 변경 사항을 `develop`에 커밋(`965425d`, `feat: refine hiring workflow and role workspaces`)하고 원격에 푸시했다. 이어서 `develop`을 `alpha`에 병합(`bd1c98e`, `merge: develop into alpha`)하고 원격 `alpha`에 푸시했다. 전체 테스트 104개와 production build가 통과했고, diff 검사와 비밀정보 패턴 검사도 통과했다. 최종 작업 브랜치는 `develop`로 복귀했다.
