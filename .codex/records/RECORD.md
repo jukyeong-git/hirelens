@@ -3397,3 +3397,6 @@ Hiring Manager 채용 작성 화면과 AI 초안을 역할 개요, 주요 책임
 ## Input — 2026-08-26 09:38:03 +0800
 
 develop에 커밋/푸시 해주고 끝나면 alpha에 머지해줘
+## Output — 2026-08-26 09:39:13 +0800
+
+구조화된 채용 작성 및 AI 초안 변경사항을 `develop`에 `fe69e9e`로 커밋하고 origin/develop에 푸시했다. 이후 `alpha`에 병합 커밋 `3862ef8`로 병합하고 origin/alpha에 푸시했다. 병합 전 alpha에 존재하던 `packages/domain/src/workspace.test.ts`, `packages/domain/src/workspace.ts`의 미커밋 사용자 변경은 보존했다. 현재 브랜치는 alpha이며 해당 두 파일이 미커밋 상태다.
