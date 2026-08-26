@@ -93,3 +93,69 @@ export type {
 export { buildFrameworkRevisionPrompt, FRAMEWORK_REVISION_SYSTEM_PROMPT } from "./revision-prompt";
 export { FRAMEWORK_REVISION_CONTRACT_VERSIONS, FRAMEWORK_REVISION_SCHEMA_NAME } from "./versions";
 export type { FrameworkRevisionContractVersions } from "./versions";
+
+export {
+  interviewGuideContract,
+  interviewGuideCriterionSchema,
+  interviewGuideJsonSchema,
+  interviewGuidePromptInputSchema,
+  interviewGuideQuestionSchema,
+  interviewGuideResponseFormat,
+  interviewGuideSchema,
+  interviewProbePrioritySchema,
+  validateInterviewGuide,
+  InterviewGuideValidationError,
+} from "./interview-guide";
+export type {
+  InterviewGuide,
+  InterviewGuideCriterion,
+  InterviewGuidePromptInput,
+  InterviewProbePriority,
+} from "./interview-guide";
+
+export {
+  interviewAssessmentContract,
+  interviewAssessmentCriterionSchema,
+  interviewAssessmentJsonSchema,
+  interviewAssessmentPromptInputSchema,
+  interviewAssessmentResponseFormat,
+  interviewAssessmentSchema,
+  validateInterviewAssessment,
+  InterviewAssessmentValidationError,
+} from "./interview-assessment";
+export type {
+  InterviewAssessment,
+  InterviewAssessmentCriterion,
+  InterviewAssessmentPromptInput,
+} from "./interview-assessment";
+
+export {
+  buildInterviewAssessmentPrompt,
+  buildInterviewGuidePrompt,
+  INTERVIEW_ASSESSMENT_SYSTEM_PROMPT,
+  INTERVIEW_GUIDE_SYSTEM_PROMPT,
+} from "./interview-prompt";
+
+export {
+  createInterviewAssessmentAdapter,
+  createInterviewGuideAdapter,
+  InterviewAdapterError,
+} from "./interview-adapter";
+export type {
+  InterviewAdapterOptions,
+  InterviewAssessmentAdapter,
+  InterviewAssessmentAdapterResult,
+  InterviewGuideAdapter,
+  InterviewGuideAdapterResult,
+} from "./interview-adapter";
+
+export {
+  INTERVIEW_ASSESSMENT_CONTRACT_VERSIONS,
+  INTERVIEW_ASSESSMENT_SCHEMA_NAME,
+  INTERVIEW_GUIDE_CONTRACT_VERSIONS,
+  INTERVIEW_GUIDE_SCHEMA_NAME,
+} from "./versions";
+export type {
+  InterviewAssessmentContractVersions,
+  InterviewGuideContractVersions,
+} from "./versions";

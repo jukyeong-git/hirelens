@@ -38,6 +38,56 @@ describe("interviewObservationInputSchema", () => {
     ).toThrow(/Only WEAKER/u);
   });
 
+  it("defaults an observation with no stated provenance to a hand-filled form", () => {
+    expect(
+      interviewObservationInputSchema.parse({
+        criterionId,
+        verdict: "MATCHED",
+        weaknessType: null,
+        note: null,
+      }),
+    ).toMatchObject({ source: "FORM", aiDraftAccepted: null });
+  });
+
+  it("accepts a transcript-derived observation the interviewer has not confirmed", () => {
+    expect(
+      interviewObservationInputSchema.parse({
+        criterionId,
+        verdict: "WEAKER",
+        weaknessType: "LEVEL_INSUFFICIENT",
+        note: null,
+        source: "TRANSCRIPT",
+        aiDraftAccepted: false,
+      }),
+    ).toMatchObject({ source: "TRANSCRIPT", aiDraftAccepted: false });
+  });
+
+  it("rejects a drafted observation that does not state acceptance", () => {
+    expect(() =>
+      interviewObservationInputSchema.parse({
+        criterionId,
+        verdict: "MATCHED",
+        weaknessType: null,
+        note: null,
+        source: "TRANSCRIPT",
+        aiDraftAccepted: null,
+      }),
+    ).toThrow(/must state whether the draft was accepted/u);
+  });
+
+  it("rejects a form observation that claims to accept a draft", () => {
+    expect(() =>
+      interviewObservationInputSchema.parse({
+        criterionId,
+        verdict: "MATCHED",
+        weaknessType: null,
+        note: null,
+        source: "FORM",
+        aiDraftAccepted: true,
+      }),
+    ).toThrow(/no draft to accept/u);
+  });
+
   it("rejects unknown keys", () => {
     expect(() =>
       interviewObservationInputSchema.parse({

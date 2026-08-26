@@ -10,6 +10,9 @@ export const notificationEventTypeSchema = z.enum([
   "PROCESSING_COMPLETED",
   "PROCESSING_FAILED",
   "DECISION_FOLLOW_UP",
+  // Raised when a post-interview review pushes a criterion past the calibration
+  // threshold. `relevant_version` carries the criterion lineage id.
+  "CRITERION_REVIEW_REQUIRED",
 ]);
 
 export const markNotificationReadInputSchema = z.object({ notificationId: uuidSchema }).strict();

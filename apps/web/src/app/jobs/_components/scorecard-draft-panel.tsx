@@ -23,6 +23,7 @@ import {
   saveScorecardDraftAction,
   updateScorecardDraftAction,
 } from "../actions";
+import { FieldSelect } from "../../_components/field-select";
 import { visibleCopy } from "../../_components/visible-copy";
 
 interface ScorecardDraftPanelProps {
@@ -470,21 +471,24 @@ function CriteriaEditor({
                     }
                   />
                 </label>
-                <label>
-                  중요도
-                  <select
+                <div className="field">
+                  <label htmlFor={`criterion-type-${index}`}>중요도</label>
+                  <FieldSelect
+                    id={`criterion-type-${index}`}
+                    ariaLabel="중요도"
                     value={criterion.type}
-                    onChange={(event) =>
+                    onChange={(value) =>
                       updateCriterion(index, (item) =>
-                        updateCriterionType(item, event.target.value as CriterionType),
+                        updateCriterionType(item, value as CriterionType),
                       )
                     }
-                  >
-                    <option value="REQUIRED">필수</option>
-                    <option value="PREFERRED">우대</option>
-                    <option value="INTERVIEW_ONLY">면접 확인</option>
-                  </select>
-                </label>
+                    options={[
+                      { value: "REQUIRED", label: "필수", hint: "없으면 이 역할을 못 맡습니다" },
+                      { value: "PREFERRED", label: "우대", hint: "있으면 좋지만 필수는 아닙니다" },
+                      { value: "INTERVIEW_ONLY", label: "면접 확인", hint: "서류로는 판단하지 않습니다" },
+                    ]}
+                  />
+                </div>
               </div>
               <label>
                 판단 기준
@@ -495,22 +499,25 @@ function CriteriaEditor({
                   }
                 />
               </label>
-              <label>
-                확인 방법
-                <select
+              <div className="field">
+                <label htmlFor={`criterion-method-${index}`}>확인 방법</label>
+                <FieldSelect
+                  id={`criterion-method-${index}`}
+                  ariaLabel="확인 방법"
                   value={criterion.resume_assessable ? "RESUME" : "INTERVIEW"}
                   disabled={criterion.type === "INTERVIEW_ONLY"}
-                  onChange={(event) =>
+                  onChange={(value) =>
                     updateCriterion(index, (item) => ({
                       ...item,
-                      resume_assessable: event.target.value === "RESUME",
+                      resume_assessable: value === "RESUME",
                     }))
                   }
-                >
-                  <option value="RESUME">이력서에서 확인</option>
-                  <option value="INTERVIEW">면접에서 확인</option>
-                </select>
-              </label>
+                  options={[
+                    { value: "RESUME", label: "이력서에서 확인" },
+                    { value: "INTERVIEW", label: "면접에서 확인" },
+                  ]}
+                />
+              </div>
               <ListTextArea
                 label="인정 근거"
                 value={criterion.accepted_evidence}
@@ -884,7 +891,7 @@ function EvaluationCriteriaIssues({
                   />
                 ) : null}
               </div>
-              <span>{criterion.ambiguity_note ?? "평가 방법을 사람이 확인해야 합니다."}</span>
+              <span>{criterion.ambiguity_note ?? "이 기준을 어떻게 확인할지 정해야 합니다."}</span>
               {criterion.suggested_interview_question ? (
                 <p className="ambiguity-question">
                   <strong>AI 제안 질문</strong> {criterion.suggested_interview_question}

@@ -35,7 +35,7 @@ export function CriterionDiagnosisPanel({
         <div>
           <h2 id="criterion-diagnosis-title">평가 기준 진단</h2>
           <p className="section-copy">
-            확정된 면접 관찰만 집계합니다. 진단은 기준이나 사람의 결정을 자동으로 변경하지 않습니다.
+            담당자가 확인한 면접 결과만 집계합니다. 진단이 기준을 자동으로 바꾸지는 않습니다.
           </p>
         </div>
         <span className="count-label">
@@ -189,7 +189,7 @@ function CriterionRevisionActions({
           <input type="hidden" name="proposalToken" value={generationState.proposalToken} />
           <div className="draft-origin-banner draft-origin-ai" role="status">
             <strong>AI 개정안</strong>
-            <span>자동 적용되지 않습니다. 새 초안으로 저장한 뒤 사람이 수정하고 승인합니다.</span>
+            <span>바로 반영되지 않습니다. 초안으로 저장한 뒤 검토하고 승인해야 적용됩니다.</span>
           </div>
           <div className="framework-revision-diff">
             <RevisionEvidenceColumn

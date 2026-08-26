@@ -53,3 +53,29 @@ export type FrameworkRevisionContractVersions = {
   prompt: typeof FRAMEWORK_REVISION_CONTRACT_VERSIONS.prompt;
   schema: typeof FRAMEWORK_REVISION_CONTRACT_VERSIONS.schema;
 };
+
+export const INTERVIEW_GUIDE_CONTRACT_VERSIONS = {
+  pipeline: "interview-guide-pipeline-v1",
+  prompt: "interview-guide-prompt-v1",
+  schema: "interview-guide-schema-v1",
+} as const;
+export const INTERVIEW_GUIDE_SCHEMA_NAME = "hirelens_interview_guide_v1" as const;
+export type InterviewGuideContractVersions = {
+  model: string;
+  pipeline: typeof INTERVIEW_GUIDE_CONTRACT_VERSIONS.pipeline;
+  prompt: typeof INTERVIEW_GUIDE_CONTRACT_VERSIONS.prompt;
+  schema: typeof INTERVIEW_GUIDE_CONTRACT_VERSIONS.schema;
+};
+
+export const INTERVIEW_ASSESSMENT_CONTRACT_VERSIONS = {
+  pipeline: "interview-assessment-pipeline-v1",
+  prompt: "interview-assessment-prompt-v1",
+  schema: "interview-assessment-schema-v1",
+} as const;
+export const INTERVIEW_ASSESSMENT_SCHEMA_NAME = "hirelens_interview_assessment_v1" as const;
+export type InterviewAssessmentContractVersions = {
+  model: string;
+  pipeline: typeof INTERVIEW_ASSESSMENT_CONTRACT_VERSIONS.pipeline;
+  prompt: typeof INTERVIEW_ASSESSMENT_CONTRACT_VERSIONS.prompt;
+  schema: typeof INTERVIEW_ASSESSMENT_CONTRACT_VERSIONS.schema;
+};

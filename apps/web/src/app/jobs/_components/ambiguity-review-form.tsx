@@ -5,6 +5,8 @@ import { useActionState } from "react";
 
 import type { AmbiguityResolution, CriterionType, ScorecardCriterion } from "@hirelens/domain";
 
+import { SegmentedControl } from "../../_components/segmented-control";
+import { FieldSelect } from "../../_components/field-select";
 import { initialAmbiguityReviewActionState } from "../action-state";
 import { reviewScorecardAmbiguityAction } from "../actions";
 import { visibleCopy } from "../../_components/visible-copy";
@@ -44,7 +46,7 @@ export function AmbiguityReviewForm({
   const reasonId = useId();
 
   if (criterion.ambiguity_status === "CLEAR") {
-    return <p className="review-complete">사람의 검토가 완료된 기준입니다.</p>;
+    return <p className="review-complete">검토를 마친 기준입니다.</p>;
   }
 
   return (
@@ -67,22 +69,30 @@ export function AmbiguityReviewForm({
       />
 
       <fieldset disabled={pending}>
-        <legend>사람의 검토 결과</legend>
+        <legend>검토 결과</legend>
 
-        <label>
-          검토 결과
-          <select
-            name="resolution"
-            value={resolution}
-            onChange={(event) => setResolution(event.target.value as AmbiguityResolution)}
-          >
-            <option value="CLARIFY">기준을 구체화해서 이력서 평가에 사용</option>
-            <option value="INTERVIEW_ONLY">면접 전용으로 분류</option>
-          </select>
-        </label>
+        <SegmentedControl
+          legend="이 기준을 어떻게 하시겠습니까?"
+          name="resolution"
+          value={resolution}
+          onChange={(value) => setResolution(value as AmbiguityResolution)}
+          columns={2}
+          options={[
+            {
+              value: "CLARIFY",
+              label: "구체화해서 이력서로 확인",
+              hint: "무엇이 근거인지 명확히 적습니다",
+            },
+            {
+              value: "INTERVIEW_ONLY",
+              label: "면접에서만 확인",
+              hint: "서류로는 판단하지 않습니다",
+            },
+          ]}
+        />
 
         <label htmlFor={definitionId}>
-          사람이 확정할 기준 정의
+          확정할 기준 정의
           <textarea
             id={definitionId}
             name="definition"
@@ -93,49 +103,63 @@ export function AmbiguityReviewForm({
         </label>
 
         <div className="form-grid-two">
-          <label htmlFor={criterionTypeId}>
-            기준 유형
+          <div className="field">
+            <label htmlFor={criterionTypeId}>기준 유형</label>
             {resolution === "INTERVIEW_ONLY" ? (
               <>
                 <input type="hidden" name="criterionType" value="INTERVIEW_ONLY" />
-                <select id={criterionTypeId} value="INTERVIEW_ONLY" disabled>
-                  <option value="INTERVIEW_ONLY">면접 전용</option>
-                </select>
+                <FieldSelect
+                  id={criterionTypeId}
+                  ariaLabel="기준 유형"
+                  value="INTERVIEW_ONLY"
+                  onChange={() => undefined}
+                  disabled
+                  options={[{ value: "INTERVIEW_ONLY", label: "면접 전용" }]}
+                />
               </>
             ) : (
-              <select
+              <FieldSelect
                 id={criterionTypeId}
                 name="criterionType"
+                ariaLabel="기준 유형"
                 value={criterionType === "INTERVIEW_ONLY" ? "REQUIRED" : criterionType}
-                onChange={(event) => setCriterionType(event.target.value as CriterionType)}
-              >
-                <option value="REQUIRED">필수</option>
-                <option value="PREFERRED">우대</option>
-              </select>
+                onChange={(value) => setCriterionType(value as CriterionType)}
+                options={[
+                  { value: "REQUIRED", label: "필수", hint: "없으면 이 역할을 못 맡습니다" },
+                  { value: "PREFERRED", label: "우대", hint: "있으면 좋지만 필수는 아닙니다" },
+                ]}
+              />
             )}
-          </label>
+          </div>
 
-          <label htmlFor={resumeAssessableId}>
-            이력서 평가
+          <div className="field">
+            <label htmlFor={resumeAssessableId}>이력서로 확인</label>
             {resolution === "INTERVIEW_ONLY" ? (
               <>
                 <input type="hidden" name="resumeAssessable" value="false" />
-                <select id={resumeAssessableId} value="false" disabled>
-                  <option value="false">불가 · 면접에서 확인</option>
-                </select>
+                <FieldSelect
+                  id={resumeAssessableId}
+                  ariaLabel="이력서로 확인"
+                  value="false"
+                  onChange={() => undefined}
+                  disabled
+                  options={[{ value: "false", label: "불가 · 면접에서 확인" }]}
+                />
               </>
             ) : (
-              <select
+              <FieldSelect
                 id={resumeAssessableId}
                 name="resumeAssessable"
+                ariaLabel="이력서로 확인"
                 value={resumeAssessable}
-                onChange={(event) => setResumeAssessable(event.target.value)}
-              >
-                <option value="true">가능</option>
-                <option value="false">불가 · 면접에서 확인</option>
-              </select>
+                onChange={setResumeAssessable}
+                options={[
+                  { value: "true", label: "가능" },
+                  { value: "false", label: "불가 · 면접에서 확인" },
+                ]}
+              />
             )}
-          </label>
+          </div>
         </div>
 
         <label htmlFor={acceptedEvidenceId}>
@@ -185,7 +209,7 @@ export function AmbiguityReviewForm({
           {pending ? "검토 저장 중…" : "검토 결과 저장"}
         </button>
         <span className="form-help">
-          저장 후에도 AI가 처음 표시한 표현과 사람이 정한 결과가 구분되어 감사 기록에 남습니다.
+          저장 후에도 AI가 처음 짚은 표현과 담당자가 확정한 내용이 구분되어 기록에 남습니다.
         </span>
       </div>
 

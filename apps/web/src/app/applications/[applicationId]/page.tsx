@@ -126,7 +126,7 @@ export default async function ApplicationReviewPage({
       </header>
       <nav className="section-navigation" aria-label="지원서 검토 섹션">
         <a href="#evidence-title">근거</a>
-        <a href="#manager-request-title">사람 검토</a>
+        <a href="#manager-request-title">검토와 결정</a>
         <a href="#post-interview-review-title">면접 결과</a>
         <a href="#processing-title">처리 상태</a>
       </nav>
@@ -198,7 +198,7 @@ export default async function ApplicationReviewPage({
         published) are unavailable. Restore this section together with audit
         persistence.
       */}
-      <ProcessingStatus runs={processingRuns} />
+      <ProcessingStatus runs={processingRuns} viewerRole={viewer.role} />
     </main>
   );
 }

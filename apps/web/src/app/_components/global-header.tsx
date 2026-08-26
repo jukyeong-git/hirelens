@@ -94,10 +94,17 @@ export function GlobalHeader({
                       <div className="global-notification-item" key={notification.id}>
                         <div>
                           <strong>{notificationLabel(notification.event_type)}</strong>
-                          <span>{notification.read_at ? "확인 완료" : "처리 필요"}</span>
+                          <span>
+                            {notificationDetail(notification) ??
+                              (notification.read_at ? "확인 완료" : "처리 필요")}
+                          </span>
                         </div>
                         <div className="global-notification-actions">
-                          {notification.aggregate_type === "job" ? (
+                          {notification.event_type === "CRITERION_REVIEW_REQUIRED" ? (
+                            <Link href={`/jobs/${notification.aggregate_id}?tab=review-framework`}>
+                              평가 기준 열기
+                            </Link>
+                          ) : notification.aggregate_type === "job" ? (
                             <Link href={`/jobs/${notification.aggregate_id}`}>채용 요청 열기</Link>
                           ) : notification.aggregate_type === "application" ? (
                             <Link href={`/applications/${notification.aggregate_id}`}>
@@ -145,6 +152,23 @@ function notificationLabel(eventType: NotificationRecord["event_type"]) {
       PROCESSING_COMPLETED: "지원서 처리가 완료되었습니다",
       PROCESSING_FAILED: "지원서 처리에 실패했습니다",
       DECISION_FOLLOW_UP: "채용 결정 후속 검토가 필요합니다",
+      CRITERION_REVIEW_REQUIRED: "평가 기준을 다시 볼 시점입니다",
     }[eventType] ?? "새로운 처리 요청"
   );
+}
+
+/**
+ * A second line for the notifications that carry one. `safe_metadata` is
+ * written by database triggers from hiring-team-authored fields only, but it is
+ * still typed as open JSON, so read it defensively rather than asserting.
+ */
+function notificationDetail(notification: NotificationRecord): string | null {
+  if (notification.event_type !== "CRITERION_REVIEW_REQUIRED") return null;
+  const name = notification.safe_metadata.criterion_name;
+  const supported = notification.safe_metadata.supported_observations;
+  const insufficient = notification.safe_metadata.level_insufficient_count;
+  if (typeof name !== "string") return null;
+  return typeof supported === "number" && typeof insufficient === "number"
+    ? `${name} · 서류 통과 ${supported}명 중 ${insufficient}명이 면접에서 미달`
+    : name;
 }

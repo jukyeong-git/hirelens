@@ -17,12 +17,24 @@ export async function recordPostInterviewReview(
     body: JSON.stringify({
       target_application_id: input.applicationId,
       target_scorecard_version_id: input.scorecardVersionId,
-      observations: input.observations.map((observation) => ({
-        criterion_id: observation.criterionId,
-        verdict: observation.verdict,
-        weakness_type: observation.weaknessType,
-        note: observation.note,
-      })),
+      // The RPC accepts either the four original keys or those plus the two
+      // provenance keys, and rejects any other shape. Send the short form for a
+      // hand-filled observation so nothing changes for existing callers.
+      observations: input.observations.map((observation) => {
+        const base = {
+          criterion_id: observation.criterionId,
+          verdict: observation.verdict,
+          weakness_type: observation.weaknessType,
+          note: observation.note,
+        };
+        return observation.source === "FORM"
+          ? base
+          : {
+              ...base,
+              source: observation.source,
+              ai_draft_accepted: observation.aiDraftAccepted,
+            };
+      }),
       off_criteria_reason_value: input.offCriteriaReason,
       new_decision: input.decision,
       new_reason_code: input.reasonCode,

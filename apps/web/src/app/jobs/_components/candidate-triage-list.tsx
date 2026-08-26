@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { FieldSelect } from "../../_components/field-select";
+
 interface TriageCriterion {
   name: string;
   type: "REQUIRED" | "PREFERRED" | "INTERVIEW_ONLY";
@@ -76,39 +78,51 @@ export function CandidateTriageList({ items }: { items: CandidateTriageItem[] })
   return (
     <>
       <div className="triage-filters" aria-label="지원서 필터">
-        <label>
-          지원서 처리
-          <select value={processing} onChange={(event) => setProcessing(event.target.value)}>
-            <option value="ALL">전체</option>
-            {processingOptions.map((value) => (
-              <option key={value} value={value}>
-                {label(PROCESSING_LABELS, value)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          검토 단계
-          <select value={stage} onChange={(event) => setStage(event.target.value)}>
-            <option value="ALL">전체</option>
-            {stageOptions.map((value) => (
-              <option key={value} value={value}>
-                {label(STAGE_LABELS, value)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          근거 상태
-          <select value={evidence} onChange={(event) => setEvidence(event.target.value)}>
-            <option value="ALL">전체</option>
-            {EVIDENCE_FILTERS.map((value) => (
-              <option key={value} value={value}>
-                {label(EVIDENCE_LABELS, value)}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="field">
+          <label htmlFor="filter-processing">지원서 처리</label>
+          <FieldSelect
+            id="filter-processing"
+            value={processing}
+            onChange={setProcessing}
+            ariaLabel="지원서 처리 상태로 거르기"
+            options={[
+              { value: "ALL", label: "전체" },
+              ...processingOptions.map((value) => ({
+                value,
+                label: label(PROCESSING_LABELS, value),
+              })),
+            ]}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="filter-stage">검토 단계</label>
+          <FieldSelect
+            id="filter-stage"
+            value={stage}
+            onChange={setStage}
+            ariaLabel="검토 단계로 거르기"
+            options={[
+              { value: "ALL", label: "전체" },
+              ...stageOptions.map((value) => ({ value, label: label(STAGE_LABELS, value) })),
+            ]}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="filter-evidence">근거 상태</label>
+          <FieldSelect
+            id="filter-evidence"
+            value={evidence}
+            onChange={setEvidence}
+            ariaLabel="근거 상태로 거르기"
+            options={[
+              { value: "ALL", label: "전체" },
+              ...EVIDENCE_FILTERS.map((value) => ({
+                value: value as string,
+                label: label(EVIDENCE_LABELS, value),
+              })),
+            ]}
+          />
+        </div>
       </div>
 
       <p className="triage-count">

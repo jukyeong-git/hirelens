@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import type {
   JobSummary,
@@ -17,6 +17,7 @@ import {
   resolveRequisitionApprovalAction,
   submitRequisitionAction,
 } from "../actions";
+import { FieldSelect } from "../../_components/field-select";
 import { visibleCopy } from "../../_components/visible-copy";
 
 interface RequisitionWorkflowProps {
@@ -55,6 +56,7 @@ export function RequisitionWorkflow({
     resolveRequisitionApprovalAction,
     initialRequisitionActionState,
   );
+  const [approverId, setApproverId] = useState(job.requisition_approver_id ?? "");
   const isAssignedHiringManager =
     viewerRole === "HIRING_MANAGER" && viewerId === job.hiring_manager_id;
   const isDesignatedApprover =
@@ -120,21 +122,19 @@ export function RequisitionWorkflow({
         <form action={assignAction} className="scorecard-workflow-form">
           <input type="hidden" name="jobId" value={job.id} />
           <label htmlFor="requisition-approver">채용 요청 승인자</label>
-          <select
+          <FieldSelect
             id="requisition-approver"
             name="approverId"
             required
-            defaultValue={job.requisition_approver_id ?? ""}
-          >
-            <option value="" disabled>
-              승인자 선택
-            </option>
-            {approvers.map((approver) => (
-              <option key={approver.id} value={approver.id}>
-                {approver.display_name}
-              </option>
-            ))}
-          </select>
+            value={approverId}
+            onChange={setApproverId}
+            placeholder="승인자 선택"
+            ariaLabel="채용 요청 승인자"
+            options={approvers.map((approver) => ({
+              value: approver.id,
+              label: approver.display_name,
+            }))}
+          />
           <button
             className="button button-quiet"
             type="submit"

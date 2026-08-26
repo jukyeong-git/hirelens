@@ -6,6 +6,7 @@ import type { ProfileRecord } from "@hirelens/domain";
 
 import { initialJobActionState, initialJobRequisitionDraftActionState } from "../action-state";
 import { createJobAction, generateJobRequisitionDraftAction } from "../actions";
+import { FieldSelect } from "../../_components/field-select";
 import { visibleCopy } from "../../_components/visible-copy";
 
 interface JobCreateFormProps {
@@ -139,22 +140,19 @@ export function JobCreateForm({ viewerId, viewerName, profiles }: JobCreateFormP
           </div>
           <div className="field">
             <label htmlFor="recruiterId">채용 담당자</label>
-            <select
+            <FieldSelect
               id="recruiterId"
               name="recruiterId"
               required
               value={recruiterId}
-              onChange={(event) => setRecruiterId(event.target.value)}
-            >
-              <option value="" disabled>
-                채용 담당자 선택
-              </option>
-              {recruiters.map((profile) => (
-                <option key={profile.id} value={profile.id}>
-                  {profile.display_name}
-                </option>
-              ))}
-            </select>
+              onChange={setRecruiterId}
+              placeholder="채용 담당자 선택"
+              ariaLabel="채용 담당자"
+              options={recruiters.map((profile) => ({
+                value: profile.id,
+                label: profile.display_name,
+              }))}
+            />
           </div>
           <div className="field">
             <label htmlFor="hiringManagerId">채용 책임자</label>

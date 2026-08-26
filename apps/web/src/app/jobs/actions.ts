@@ -1268,7 +1268,7 @@ export async function recordCriterionCalibrationNoActionAction(
     return scorecardWorkflowError(error, "판단 기록을 저장하지 못했습니다.");
   }
   revalidatePath(`/jobs/${jobId}`);
-  return { status: "success", message: "기준을 유지하기로 한 사람의 판단을 기록했습니다." };
+  return { status: "success", message: "기준을 그대로 두기로 한 판단을 기록했습니다." };
 }
 
 export async function enqueueFrameworkReanalysisAction(
@@ -1331,7 +1331,7 @@ export async function saveHumanDecisionAction(
     return reviewActionError(error, "최종 결정을 저장하지 못했습니다. 다시 시도하세요.");
   }
   revalidatePath(`/applications/${parsed.data.applicationId}`);
-  return { status: "success", message: "사람의 최종 결정과 사유를 감사 이력에 저장했습니다." };
+  return { status: "success", message: "최종 결정과 사유를 기록했습니다." };
 }
 
 export async function recordPostInterviewReviewAction(
@@ -1377,7 +1377,7 @@ export async function recordPostInterviewReviewAction(
   revalidatePath(`/applications/${parsed.data.applicationId}`);
   return {
     status: "success",
-    message: "사람이 확인한 면접 관찰과 최종 결정을 append-only 이력에 저장했습니다.",
+    message: "면접 확인 결과와 최종 결정을 저장했습니다.",
   };
 }
 
@@ -1432,7 +1432,7 @@ export async function recordInterviewProgressionAction(
     return reviewActionError(error, "인터뷰 판단을 저장하지 못했습니다.");
   }
   revalidatePath(`/applications/${parsed.data.applicationId}`);
-  return { status: "success", message: "사람의 인터뷰 판단과 사유를 이력에 저장했습니다." };
+  return { status: "success", message: "면접 진행 여부와 사유를 저장했습니다." };
 }
 
 export async function createRecruiterNoteAction(

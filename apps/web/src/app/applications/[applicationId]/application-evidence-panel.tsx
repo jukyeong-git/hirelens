@@ -44,7 +44,7 @@ export function ApplicationEvidencePanel({
       ) : null}
       {latestRun?.status === "NEEDS_OCR" ? (
         <p className="form-alert form-alert-warning" role="status">
-          이미지 전용 PDF입니다. P0에서는 OCR을 실행하지 않으며 사람이 원문을 검토해야 합니다.
+          글자가 없는 이미지 PDF입니다. 담당자가 원문을 직접 확인해 주세요.
         </p>
       ) : null}
       {evidence.length === 0 ? (
@@ -151,7 +151,7 @@ function evidenceLabel(status: string) {
         PARTIAL: "부분 근거",
         NOT_FOUND: "근거 미발견",
         CONTRADICTED: "명시적 상충",
-        HUMAN_ONLY: "사람 확인 전용",
+        HUMAN_ONLY: "면접에서 확인",
         PENDING: "결과 대기",
       } as Record<string, string>
     )[status] ?? status

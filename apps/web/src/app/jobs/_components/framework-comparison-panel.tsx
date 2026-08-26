@@ -39,7 +39,7 @@ export function FrameworkComparisonPanel({
         <div>
           <h2 id="framework-comparison-title">평가 기준 버전 비교</h2>
           <p className="section-copy">
-            새 근거는 새 처리 런에만 저장됩니다. 과거 면접 관찰과 사람의 판단은 변경하지 않습니다.
+            다시 분석한 결과는 따로 저장되며, 이미 기록한 면접 결과와 결정은 그대로 남습니다.
           </p>
         </div>
         <form action={action}>

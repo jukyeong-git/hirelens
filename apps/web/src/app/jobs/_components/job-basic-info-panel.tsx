@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { parseJobDescriptionSections, type JobRecord, type ProfileRecord } from "@hirelens/domain";
 
+import { FieldSelect } from "../../_components/field-select";
 import { visibleCopy, visibleMultilineCopy } from "../../_components/visible-copy";
 import { initialJobActionState } from "../action-state";
 import { updateJobBasicInfoAction } from "../actions";
@@ -25,6 +26,7 @@ export function JobBasicInfoPanel({
   const [navigationActionTarget, setNavigationActionTarget] = useState<HTMLElement | null>(null);
   const [state, action, pending] = useActionState(updateJobBasicInfoAction, initialJobActionState);
   const recruiters = profiles.filter((profile) => profile.role === "RECRUITER");
+  const [recruiterId, setRecruiterId] = useState(job.recruiter_id);
   const hiringManager = profiles.find((profile) => profile.id === job.hiring_manager_id);
   const descriptionSections = parseJobDescriptionSections(job.raw_job_description);
 
@@ -114,18 +116,18 @@ export function JobBasicInfoPanel({
               </div>
               <div className="field">
                 <label htmlFor="edit-job-recruiter">채용 담당자</label>
-                <select
+                <FieldSelect
                   id="edit-job-recruiter"
                   name="recruiterId"
-                  defaultValue={job.recruiter_id}
+                  value={recruiterId}
+                  onChange={setRecruiterId}
                   required
-                >
-                  {recruiters.map((profile) => (
-                    <option key={profile.id} value={profile.id}>
-                      {visibleCopy(profile.display_name)}
-                    </option>
-                  ))}
-                </select>
+                  ariaLabel="채용 담당자"
+                  options={recruiters.map((profile) => ({
+                    value: profile.id,
+                    label: visibleCopy(profile.display_name),
+                  }))}
+                />
               </div>
               <div className="field">
                 <label htmlFor="edit-job-hiring-manager">채용 책임자</label>

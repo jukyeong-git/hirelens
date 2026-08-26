@@ -26,9 +26,30 @@ export const interviewObservationInputSchema = z
     verdict: interviewCriterionVerdictSchema,
     weaknessType: interviewWeaknessTypeSchema.nullable(),
     note: z.string().trim().min(1).max(1_000).nullable(),
+    // Where the verdict came from. Omitted means a hand-filled form, which is
+    // what every caller sent before speech capture existed.
+    source: interviewObservationSourceSchema.default("FORM"),
+    // Null for a form. For a drafted verdict, whether the interviewer accepted
+    // it — only an accepted draft is confirmed, and only confirmed
+    // observations are counted when calibrating a criterion.
+    aiDraftAccepted: z.boolean().nullable().default(null),
   })
   .strict()
   .superRefine((observation, context) => {
+    if (observation.source === "FORM" && observation.aiDraftAccepted !== null) {
+      context.addIssue({
+        code: "custom",
+        path: ["aiDraftAccepted"],
+        message: "Form observations have no draft to accept",
+      });
+    }
+    if (observation.source !== "FORM" && observation.aiDraftAccepted === null) {
+      context.addIssue({
+        code: "custom",
+        path: ["aiDraftAccepted"],
+        message: "Drafted observations must state whether the draft was accepted",
+      });
+    }
     if (observation.verdict === "WEAKER" && observation.weaknessType === null) {
       context.addIssue({
         code: "custom",

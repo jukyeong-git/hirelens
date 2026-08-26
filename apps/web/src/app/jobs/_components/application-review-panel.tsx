@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import type {
   AppRole,
@@ -12,6 +12,8 @@ import type {
   ScorecardVersionRecord,
 } from "@hirelens/domain";
 
+import { FieldSelect } from "../../_components/field-select";
+import { SegmentedControl } from "../../_components/segmented-control";
 import {
   createRecruiterNoteAction,
   saveHumanDecisionAction,
@@ -86,7 +88,7 @@ export function ApplicationReviewPanel({
       </div>
       <div className="review-grid">
         <section className="panel" aria-labelledby="human-decision-title">
-          <h2 id="human-decision-title">사람의 최종 결정</h2>
+          <h2 id="human-decision-title">최종 결정</h2>
           {currentReview ? (
             <DecisionHistory reviews={reviews} profileNames={profileNames} />
           ) : (
@@ -147,25 +149,36 @@ function InterviewProgressionForm({
     recordInterviewProgressionAction,
     initialReviewActionState,
   );
+  const [outcome, setOutcome] = useState("");
   return (
     <form action={formAction} className="scorecard-workflow-form compact-form">
       <input type="hidden" name="applicationId" value={applicationId} />
       <input type="hidden" name="scorecardVersionId" value={scorecardVersionId} />
-      <label>
-        진행 판단
-        <select name="outcome" required defaultValue="">
-          <option value="" disabled>
-            선택하세요
-          </option>
-          <option value="INTERVIEW">인터뷰 진행</option>
-          <option value="HOLD">보류</option>
-          <option value="MORE_INFORMATION_REQUIRED">추가 정보 요청</option>
-        </select>
-      </label>
-      <label>
-        판단 사유
-        <textarea name="reason" required minLength={1} maxLength={2000} disabled={pending} />
-      </label>
+      <SegmentedControl
+        legend="이 지원자를 면접까지 진행할까요?"
+        options={[
+          { value: "INTERVIEW", label: "면접 진행", tone: "positive" },
+          { value: "HOLD", label: "보류", tone: "neutral" },
+          { value: "MORE_INFORMATION_REQUIRED", label: "자료 보완 요청", tone: "caution" },
+        ]}
+        value={outcome}
+        onChange={setOutcome}
+        name="outcome"
+        disabled={pending}
+        columns={3}
+      />
+      <div className="field">
+        <label htmlFor="progression-reason">그렇게 판단한 이유</label>
+        <textarea
+          id="progression-reason"
+          name="reason"
+          required
+          minLength={1}
+          maxLength={2000}
+          disabled={pending}
+          placeholder="어떤 기준의 근거를 보고 이렇게 정했는지 적어 주세요."
+        />
+      </div>
       <button className="button button-primary" type="submit" disabled={pending}>
         {pending ? "저장 중…" : "인터뷰 판단 저장"}
       </button>
@@ -209,6 +222,9 @@ function DecisionForm({
     saveHumanDecisionAction,
     initialReviewActionState,
   );
+  const [decision, setDecision] = useState("");
+  const [reasonCode, setReasonCode] = useState("");
+  const [confidence, setConfidence] = useState("MEDIUM");
   if (!approvedVersion)
     return (
       <p className="form-alert form-alert-warning" role="status">
@@ -219,52 +235,65 @@ function DecisionForm({
     <form action={formAction} className="scorecard-workflow-form">
       <input type="hidden" name="applicationId" value={applicationId} />
       <input type="hidden" name="scorecardVersionId" value={approvedVersion.id} />
-      <label>
-        결정{" "}
-        <select name="decision" required defaultValue="">
-          <option value="" disabled>
-            선택하세요
-          </option>
-          <option value="PROCEED">다음 단계 진행</option>
-          <option value="HOLD">보류</option>
-          <option value="DO_NOT_PROCEED">진행하지 않음</option>
-        </select>
-      </label>
-      <label>
-        사유 분류{" "}
-        <select name="reasonCode" required defaultValue="">
-          <option value="" disabled>
-            선택하세요
-          </option>
-          <option value="EVIDENCE_REVIEW">근거 검토</option>
-          <option value="INTERVIEW_REQUIRED">추가 인터뷰 필요</option>
-          <option value="ROLE_ALIGNMENT">직무 기준 정합성</option>
-          <option value="BUSINESS_CONTEXT">업무 상황</option>
-        </select>
-      </label>
-      <label>
-        상세 사유{" "}
+      <SegmentedControl
+        legend="이 지원자를 어떻게 할까요?"
+        options={[
+          { value: "PROCEED", label: "다음 단계 진행", tone: "positive" },
+          { value: "HOLD", label: "보류", tone: "neutral" },
+          { value: "DO_NOT_PROCEED", label: "진행하지 않음", tone: "critical" },
+        ]}
+        value={decision}
+        onChange={setDecision}
+        name="decision"
+        disabled={pending}
+        columns={3}
+      />
+      <div className="field">
+        <label htmlFor="decision-reason-code">사유 분류</label>
+        <FieldSelect
+          id="decision-reason-code"
+          options={[
+            { value: "EVIDENCE_REVIEW", label: "근거 검토", hint: "기준별 확인 결과에 따른 판단" },
+            { value: "INTERVIEW_REQUIRED", label: "추가 면접 필요", hint: "한 번 더 확인이 필요함" },
+            { value: "ROLE_ALIGNMENT", label: "직무 정합성", hint: "요구 역량과 맞지 않음" },
+            { value: "BUSINESS_CONTEXT", label: "업무 상황", hint: "채용 상황·조직 사정" },
+          ]}
+          value={reasonCode}
+          onChange={setReasonCode}
+          name="reasonCode"
+          disabled={pending}
+          ariaLabel="사유 분류"
+        />
+      </div>
+      <div className="field">
+        <label htmlFor="decision-reason-detail">결정 이유</label>
         <textarea
+          id="decision-reason-detail"
           name="reasonDetail"
           required
           minLength={1}
           maxLength={2000}
           disabled={pending}
-          placeholder="사람이 검토한 근거와 판단 이유를 기록하세요."
+          placeholder="어떤 근거로 이렇게 판단했는지 적어 주세요."
         />
-      </label>
-      <label>
-        확신도{" "}
-        <select name="confidence" required defaultValue="MEDIUM">
-          <option value="HIGH">높음</option>
-          <option value="MEDIUM">중간</option>
-          <option value="LOW">낮음</option>
-        </select>
-      </label>
-      <label>
-        추가 메모{" "}
-        <textarea name="note" maxLength={2000} disabled={pending} placeholder="선택 사항" />
-      </label>
+      </div>
+      <SegmentedControl
+        legend="이 판단에 대한 확신"
+        options={[
+          { value: "HIGH", label: "높음" },
+          { value: "MEDIUM", label: "보통" },
+          { value: "LOW", label: "낮음" },
+        ]}
+        value={confidence}
+        onChange={setConfidence}
+        name="confidence"
+        disabled={pending}
+        columns={3}
+      />
+      <div className="field">
+        <label htmlFor="decision-note">추가 메모 (선택)</label>
+        <textarea id="decision-note" name="note" maxLength={2000} disabled={pending} />
+      </div>
       <button className="button button-primary" type="submit" disabled={pending}>
         {pending ? "결정 저장 중…" : "최종 결정 저장"}
       </button>
@@ -404,12 +433,11 @@ function DecisionHistory({
             {index === 0 ? "현재 결정" : "이전 결정"}: {decisionLabel(review.decision)}
           </strong>
           <p>
-            {review.reason_code} · 확신도 {review.confidence}
+            {reasonCodeLabel(review.reason_code)} · 확신도 {confidenceLabel(review.confidence)}
           </p>
           <p>{review.reason_detail}</p>
           <span>
-            {profileNames[review.reviewer_id] ?? "사용자"} · {formatDate(review.created_at)} · 검토
-            기준 {review.scorecard_version_id.slice(0, 8)}
+            {profileNames[review.reviewer_id] ?? "사용자"} · {formatDate(review.created_at)}
           </span>
         </article>
       ))}
@@ -444,6 +472,25 @@ function ActionMessage({
     </p>
   );
 }
+function reasonCodeLabel(value: string) {
+  return (
+    (
+      {
+        EVIDENCE_REVIEW: "근거 검토",
+        INTERVIEW_REQUIRED: "추가 인터뷰 필요",
+        ROLE_ALIGNMENT: "직무 기준 정합성",
+        BUSINESS_CONTEXT: "업무 상황",
+      } as Record<string, string>
+    )[value] ?? value
+  );
+}
+
+function confidenceLabel(value: string) {
+  return (
+    ({ HIGH: "높음", MEDIUM: "보통", LOW: "낮음" } as Record<string, string>)[value] ?? value
+  );
+}
+
 function decisionLabel(value: string) {
   return (
     { PROCEED: "다음 단계 진행", HOLD: "보류", DO_NOT_PROCEED: "진행하지 않음" }[value] ?? value
